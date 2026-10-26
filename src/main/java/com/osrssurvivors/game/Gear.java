@@ -42,6 +42,8 @@ public enum Gear
 	SCYTHE_OF_VITUR(weapon("Scythe of vitur", Style.MELEE, 10, 5, 58).targets(3).twoHanded()),
 	SOULREAPER_AXE(weapon("Soulreaper axe", Style.MELEE, 10, 5, 54).twoHanded().cleave(1).power(1.05)),
 	ELDER_MAUL(weapon("Elder maul", Style.MELEE, 10, 6, 54).twoHanded().cleave(3)),
+	// two quick slashes per swing (a volley shares the swing's damage)
+	DRAGON_CLAWS(weapon("Dragon claws", Style.MELEE, 8, 4, 46).twoHanded().volley(2).power(1.05)),
 
 	// ranged weapons, on rapid
 	SHORTBOW(weapon("Shortbow", Style.RANGED, 1, 3, 210).twoHanded().missile(Missile.ARROW)),
@@ -266,7 +268,17 @@ public enum Gear
 	AVERNIC_TREADS(accessory("Avernic treads", Slot.FEET, 5).speed(0.10).damage(0.07).unique()),
 	RING_OF_THE_GODS(accessory("Ring of the gods (i)", Slot.RING, 5).damage(0.12).magnet(60).unique()),
 	DIZANAS_QUIVER(accessory("Dizana's quiver", Slot.AMMO, 4).damage(0.08).speed(0.03).unique()),
-	ELYSIAN_SPIRIT_SHIELD(accessory("Elysian spirit shield", Slot.SHIELD, 9).defence(70).damage(0.04).unique());
+	ELYSIAN_SPIRIT_SHIELD(accessory("Elysian spirit shield", Slot.SHIELD, 9).defence(70).damage(0.04).unique()),
+	// the Fractured Archive's armour, rare from a champion's casket
+	RONDACHE(accessory("Rondache", Slot.SHIELD, 9).defence(55).damage(0.06).unique()),
+	IMBUED_ANCIENT_CAPE(accessory("Imbued ancient cape", Slot.CAPE, 5).damage(0.11).speed(0.04).unique()),
+
+	// megarares: the Fractured Archive's weapons, only ever from a champion's casket, one per style,
+	// and better than anything else for it
+	OBLIGATOR(weapon("Obligator", Style.MELEE, 10, 5, 58).cleave(4).freeze(0.8).power(1.45).unique()),
+	ASCENSION_CROSSBOWS(weapon("Ascension crossbows", Style.RANGED, 10, 3, 290).twoHanded().volley(2).missile(Missile.BOLT)
+		.power(1.4).unique()),
+	ZORYAS_TOME(weapon("Zorya's tome", Style.MAGIC, 10, 3, 250).targets(2).splash(26).missile(Missile.SPELL).power(1.35).unique());
 
 	/** Seconds per game tick. */
 	public static final double TICK = 0.6;
@@ -603,6 +615,28 @@ public enum Gear
 	}
 
 	/** Combination weapons and boss drops. */
+	/** How rare this item is, for its cards: by its place in its slot's chain, or legendary and megarare for uniques. */
+	public ItemRarity getRarity()
+	{
+		if (BossDrop.MEGARARES.contains(this))
+		{
+			return ItemRarity.MEGARARE;
+		}
+		if (spec.unique)
+		{
+			return ItemRarity.LEGENDARY;
+		}
+		int top = 1;
+		for (Gear g : values())
+		{
+			if (!g.spec.unique && g.spec.slot == spec.slot && g.spec.style == spec.style)
+			{
+				top = Math.max(top, g.spec.tier);
+			}
+		}
+		return ItemRarity.ofTier(spec.tier, top);
+	}
+
 	public boolean isUnique()
 	{
 		return spec.unique;

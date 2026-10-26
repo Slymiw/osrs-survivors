@@ -36,10 +36,12 @@ public final class Build
 	/** Melee: seconds each hit staggers a monster. */
 	static final double MELEE_STAGGER = 0.6;
 	/** Melee: damage reduction from fighting up close in heavier armour. */
-	static final double MELEE_GUARD = 0.1;
+	static final double MELEE_GUARD = 0.14;
 
 	private final Map<Slot, Gear> worn = new EnumMap<>(Slot.class);
 	private final Map<Passive, Integer> ranks = new EnumMap<>(Passive.class);
+	/** Potion doses taken this run. */
+	private final Map<Boost, Integer> doses = new EnumMap<>(Boost.class);
 	/** Bumped on every gear change so renderers can tell when the character's look changed. */
 	private int gearVersion;
 	/** Permanent upgrades; null for none. */
@@ -95,10 +97,26 @@ public final class Build
 		ranks.merge(p, 1, Integer::sum);
 	}
 
+	void addDose(Boost b)
+	{
+		doses.merge(b, 1, Integer::sum);
+	}
+
+	public int doses(Boost b)
+	{
+		return doses.getOrDefault(b, 0);
+	}
+
+	public Map<Boost, Integer> getDoses()
+	{
+		return Collections.unmodifiableMap(doses);
+	}
+
 	void clear()
 	{
 		worn.clear();
 		ranks.clear();
+		doses.clear();
 		level = 1;
 		gearVersion++;
 	}
@@ -185,7 +203,7 @@ public final class Build
 		{
 			base *= 0.9;
 		}
-		base *= levelHaste() * Math.pow(0.97, perk(Perk.HASTE)) * (pet(Pet.TZREK_JAD) ? 0.96 : 1);
+		base *= levelHaste() * Math.pow(0.97, perk(Perk.HASTE)) * (pet(Pet.TZREK_JAD) ? 0.96 : 1) * (pet(Pet.AKKHITO) ? 0.98 : 1);
 		return Math.max(MIN_COOLDOWN, base * Math.pow(0.92, rank(Passive.SWIFTNESS)));
 	}
 
@@ -286,7 +304,7 @@ public final class Build
 		switch (style)
 		{
 			case MELEE:
-				bonus += 0.05 * rank(Passive.MELEE_PRAYER) + 0.04 * rank(Passive.SUPER_COMBAT);
+				bonus += 0.05 * rank(Passive.MELEE_PRAYER) + 0.04 * rank(Passive.SUPER_COMBAT) + Boost.DAMAGE * doses(Boost.DIVINE_SUPER_COMBAT);
 				bonus += hasSet(GearSet.INQUISITOR) ? 0.15 : 0;
 				if (hasSet(GearSet.OBSIDIAN))
 				{
@@ -294,20 +312,21 @@ public final class Build
 				}
 				break;
 			case RANGED:
-				bonus += 0.05 * rank(Passive.RANGED_PRAYER) + 0.04 * rank(Passive.RANGING_POTION);
+				bonus += 0.05 * rank(Passive.RANGED_PRAYER) + 0.04 * rank(Passive.RANGING_POTION) + Boost.DAMAGE * doses(Boost.DIVINE_RANGING);
 				if (hasSet(GearSet.CRYSTAL))
 				{
 					bonus += worn.get(Slot.WEAPON) == Gear.BOW_OF_FAERDHINEN ? 0.4 : 0.1;
 				}
 				break;
 			default:
-				bonus += 0.05 * rank(Passive.MAGIC_PRAYER) + 0.04 * rank(Passive.IMBUED_HEART);
+				bonus += 0.05 * rank(Passive.MAGIC_PRAYER) + 0.04 * rank(Passive.IMBUED_HEART) + Boost.DAMAGE * doses(Boost.DIVINE_MAGIC);
 				bonus += hasSet(GearSet.AHRIM) ? 0.2 : 0;
 				bonus += hasSet(GearSet.VIRTUS) ? 0.12 : 0;
 				break;
 		}
 		bonus += hasSet(GearSet.VOID) ? 0.2 : 0;
-		bonus += 0.04 * rank(Passive.OVERLOAD) + 0.04 * perk(Perk.MIGHT) + (pet(Pet.PET_CHAOS_ELEMENTAL) ? 0.05 : 0);
+		bonus += 0.04 * rank(Passive.OVERLOAD) + 0.04 * perk(Perk.MIGHT) + (pet(Pet.PET_CHAOS_ELEMENTAL) ? 0.05 : 0)
+			+ (pet(Pet.TEKTINY) ? 0.03 : 0) + (pet(Pet.MIMI) ? 0.03 : 0);
 		return 1 + bonus;
 	}
 
@@ -329,7 +348,7 @@ public final class Build
 	/** Damage multiplier against champions (Slayer). */
 	public double championMultiplier()
 	{
-		return 1 + 0.2 * rank(Passive.SLAYER);
+		return 1 + 0.2 * rank(Passive.SLAYER) + (pet(Pet.ORION) ? 0.1 : 0);
 	}
 
 	/** Chance a kill drops a second gem (Thieving). */
@@ -341,13 +360,13 @@ public final class Build
 	/** Coins multiplier for a finished run. */
 	public double coinMultiplier()
 	{
-		return 1 + 0.1 * perk(Perk.GREED) + (pet(Pet.OLMLET) ? 0.1 : 0);
+		return 1 + 0.1 * perk(Perk.GREED) + (pet(Pet.OLMLET) ? 0.1 : 0) + (pet(Pet.XARI) ? 0.05 : 0);
 	}
 
 	public double defence()
 	{
 		double d = (hasSet(GearSet.TORAG) ? 40 : 0) + (hasSet(GearSet.OBSIDIAN) ? 20 : 0);
-		d += 6 * perk(Perk.ARMOUR) + (pet(Pet.PRINCE_BLACK_DRAGON) ? 12 : 0);
+		d += 6 * perk(Perk.ARMOUR) + (pet(Pet.PRINCE_BLACK_DRAGON) ? 12 : 0) + (pet(Pet.VANGUARD) ? 8 : 0) + (pet(Pet.DORK) ? 6 : 0);
 		for (Gear g : worn.values())
 		{
 			d += g.getDefence();
@@ -360,7 +379,8 @@ public final class Build
 	{
 		double d = defence();
 		double fromArmour = d / (d + DEFENCE_SCALE);
-		return Math.min(MAX_REDUCTION, fromArmour + 0.05 * rank(Passive.PROTECTION) + (getStyle() == Style.MELEE ? MELEE_GUARD : 0));
+		return Math.min(MAX_REDUCTION, fromArmour + 0.05 * rank(Passive.PROTECTION) + (getStyle() == Style.MELEE ? MELEE_GUARD : 0)
+			+ Boost.REDUCTION * doses(Boost.ANTIFIRE));
 	}
 
 	/** Extra reduction against monsters touching the player (Protect from Melee). */
@@ -377,12 +397,14 @@ public final class Build
 
 	public double maxHealth()
 	{
-		return Player.BASE_MAX_HEALTH + 20 * rank(Passive.HITPOINTS) + 10 * perk(Perk.VITALITY);
+		return Player.BASE_MAX_HEALTH + 20 * rank(Passive.HITPOINTS) + 10 * perk(Perk.VITALITY) + (pet(Pet.BABI) ? 10 : 0)
+			+ Boost.HITPOINTS * doses(Boost.SARADOMIN_BREW);
 	}
 
 	public double speed()
 	{
-		double bonus = 0.08 * rank(Passive.AGILITY) + 0.04 * perk(Perk.SPEED) + (pet(Pet.BABY_MOLE) ? 0.06 : 0);
+		double bonus = 0.08 * rank(Passive.AGILITY) + 0.04 * perk(Perk.SPEED) + (pet(Pet.BABY_MOLE) ? 0.06 : 0) + (pet(Pet.VESPINA) ? 0.04 : 0)
+			+ Boost.SPEED * doses(Boost.STAMINA);
 		for (Gear g : worn.values())
 		{
 			bonus += g.getSpeedBonus();
@@ -392,7 +414,7 @@ public final class Build
 
 	public double magnetRadius()
 	{
-		double r = Player.BASE_MAGNET_RADIUS + 40 * rank(Passive.TELEKINETIC_GRAB) + 20 * perk(Perk.MAGNET) + (pet(Pet.VORKI) ? 40 : 0);
+		double r = Player.BASE_MAGNET_RADIUS + 40 * rank(Passive.TELEKINETIC_GRAB) + 20 * perk(Perk.MAGNET) + (pet(Pet.VORKI) ? 40 : 0) + (pet(Pet.KEPHRITI) ? 20 : 0);
 		for (Gear g : worn.values())
 		{
 			r += g.getMagnet();
@@ -402,19 +424,20 @@ public final class Build
 
 	public double xpMultiplier()
 	{
-		return 1 + 0.2 * rank(Passive.LAMP) + 0.06 * perk(Perk.WISDOM) + (pet(Pet.LIL_ZIK) ? 0.08 : 0);
+		return 1 + 0.2 * rank(Passive.LAMP) + 0.06 * perk(Perk.WISDOM) + (pet(Pet.LIL_ZIK) ? 0.08 : 0) + (pet(Pet.TUMEKENS_GUARDIAN) ? 0.05 : 0);
 	}
 
 	public double regenPerSecond()
 	{
 		return Player.BASE_REGEN + 0.6 * rank(Passive.RAPID_HEAL) + (hasSet(GearSet.TORAG) ? 0.5 : 0)
-			+ 0.15 * perk(Perk.RECOVERY) + (pet(Pet.PET_DARK_CORE) ? 0.3 : 0);
+			+ 0.15 * perk(Perk.RECOVERY) + (pet(Pet.PET_DARK_CORE) ? 0.3 : 0) + (pet(Pet.VASA_MINIRIO) ? 0.2 : 0)
+			+ Boost.REGEN * doses(Boost.SUPER_RESTORE);
 	}
 
 	/** Hitpoints healed per kill. */
 	public double healPerKill()
 	{
-		return rank(Passive.BONECRUSHER);
+		return rank(Passive.BONECRUSHER) + (pet(Pet.CHUBBLES) ? 1 : 0);
 	}
 
 	/** Damage per second dealt to each enemy touching the player. */

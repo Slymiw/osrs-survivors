@@ -43,7 +43,7 @@ public class DropTest
 	@Test
 	public void reelsLandOnThePrize()
 	{
-		BossDrop drop = BossDrop.roll(new Random(1), BossDrop.ITEMS, new ArrayList<>(), 3);
+		BossDrop drop = BossDrop.roll(new Random(1), new ArrayList<>(), BossDrop.ITEMS, new ArrayList<>(), 3);
 		for (int i = 0; i < drop.reelCount(); i++)
 		{
 			assertEquals(0, drop.reelPosition(i), 1e-9);
@@ -69,15 +69,16 @@ public class DropTest
 		int n = 20_000;
 		for (int i = 0; i < n; i++)
 		{
-			counts.merge(BossDrop.roll(random, BossDrop.ITEMS, pets, 2).getRarity(), 1, Integer::sum);
+			counts.merge(BossDrop.roll(random, BossDrop.MEGARARES, BossDrop.ITEMS, pets, 2).getRarity(), 1, Integer::sum);
 		}
 		assertEquals(BossDrop.JACKPOT_CHANCE, counts.get(BossDrop.Rarity.JACKPOT) / (double) n, 0.01);
 		assertEquals(BossDrop.RARE_CHANCE, counts.get(BossDrop.Rarity.RARE) / (double) n, 0.015);
+		assertEquals(BossDrop.MEGARARE_CHANCE, counts.get(BossDrop.Rarity.MEGARARE) / (double) n, 0.004);
 
 		// nothing left to win: the roll falls back to lamps and coins
 		for (int i = 0; i < 200; i++)
 		{
-			BossDrop d = BossDrop.roll(random, new ArrayList<>(), new ArrayList<>(), 2);
+			BossDrop d = BossDrop.roll(random, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), 2);
 			assertTrue(d.getRarity() == BossDrop.Rarity.UNCOMMON || d.getRarity() == BossDrop.Rarity.COMMON);
 		}
 	}
@@ -220,6 +221,22 @@ public class DropTest
 					assertTrue(g + " beats " + other, g.getDamageBonus() + g.getSpeedBonus() >= other.getDamageBonus() + other.getSpeedBonus());
 				}
 			}
+		}
+	}
+
+	@Test
+	public void megararesMatchTheStyleAndAreUnique()
+	{
+		assertEquals("one megarare per style", Style.values().length, BossDrop.MEGARARES.size());
+		for (Style style : Style.values())
+		{
+			long count = BossDrop.MEGARARES.stream().filter(g -> g.getStyle() == style).count();
+			assertEquals(1, count);
+		}
+		for (Gear g : BossDrop.MEGARARES)
+		{
+			assertTrue(g + " stays out of the upgrade chains", g.isUnique());
+			assertEquals(Slot.WEAPON, g.getSlot());
 		}
 	}
 }

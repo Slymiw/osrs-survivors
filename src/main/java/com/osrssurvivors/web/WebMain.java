@@ -1,6 +1,7 @@
 package com.osrssurvivors.web;
 
 import com.osrssurvivors.game.Arena;
+import com.osrssurvivors.game.Changelog;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
@@ -142,6 +143,7 @@ public final class WebMain
 		s.setDevTools(devTools);
 		s.setOptions(options);
 		s.setAllUnlocked(allUnlocked);
+		s.setChangelogNews(Changelog.hasNews(Saves.loadChangelogSeen()));
 		lastFrame = 0;
 		lastPhase = s.getPhase();
 		session = s;
@@ -461,6 +463,13 @@ public final class WebMain
 				break;
 			case PET_CARD:
 				break;
+			case CHANGELOG:
+				s.showTitleScreen(TitleScreen.CHANGELOG);
+				Saves.storeChangelogSeen(Changelog.VERSION);
+				break;
+			case CHANGELOG_PAGE:
+				s.setChangelogPage(button.index);
+				break;
 			case OPTIONS:
 				s.openOptions();
 				break;
@@ -580,6 +589,8 @@ public final class WebMain
 			menu.setStatus("Couldn't load " + location.getTitle() + (problem == null ? "." : ": " + problem));
 			return;
 		}
+		// the arenas are big: keep only the latest one loaded
+		areas.clear();
 		areas.put(location, area);
 		assets.setArea(area);
 		begin(menu, new GameSession(new Random(), area.arena, location), save);

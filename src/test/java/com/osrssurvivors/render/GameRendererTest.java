@@ -1,8 +1,10 @@
 package com.osrssurvivors.render;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import com.osrssurvivors.game.Changelog;
 import com.osrssurvivors.game.EnemyKind;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.MetaProgress;
@@ -394,5 +396,72 @@ public class GameRendererTest
 		g.fillRect(0, 0, w, h);
 		g.dispose();
 		return img;
+	}
+
+	@Test
+	public void changelogShowsEveryReleaseOnceAcrossItsPages()
+	{
+		for (Rectangle view : new Rectangle[]{VIEWS[0], VIEWS[1], new Rectangle(0, 0, 400, 260)})
+		{
+			GameSession s = new GameSession(new Random(1));
+			s.setMeta(new MetaProgress());
+			s.showTitle(null);
+			s.showTitleScreen(TitleScreen.CHANGELOG);
+			List<Changelog.Release> seen = new ArrayList<>();
+			for (int page = 0; page < Changelog.RELEASES.size(); page++)
+			{
+				s.setChangelogPage(page);
+				Rectangle panel = UiLayout.panel(view, s);
+				int buttonsTop = Integer.MAX_VALUE;
+				for (UiLayout.Button b : UiLayout.buttons(view, s))
+				{
+					buttonsTop = Math.min(buttonsTop, b.bounds.y);
+					assertTrue(panel.contains(b.bounds));
+				}
+				List<UiLayout.ReleaseCard> cards = UiLayout.releaseCards(view, s);
+				assertFalse("every page shows something at " + view, cards.isEmpty());
+				for (UiLayout.ReleaseCard c : cards)
+				{
+					assertTrue("card inside the panel at " + view, panel.contains(c.bounds));
+					assertTrue("card above the buttons at " + view, c.bounds.y + c.bounds.height <= buttonsTop);
+					if (!seen.contains(c.release))
+					{
+						seen.add(c.release);
+					}
+				}
+				draw(s, view, new FakeAssets(), null);
+				if (!actions(view, s).contains(UiLayout.Action.CHANGELOG_PAGE) || seen.size() == Changelog.RELEASES.size())
+				{
+					break;
+				}
+			}
+			assertEquals("all releases reachable at " + view, Changelog.RELEASES, seen);
+		}
+	}
+
+	@Test
+	public void mainMenuPointsAtTheChangelogUntilItIsOpened()
+	{
+		Rectangle view = VIEWS[1];
+		GameSession s = new GameSession(new Random(1));
+		s.setMeta(new MetaProgress());
+		s.showTitle(null);
+		assertTrue(actions(view, s).contains(UiLayout.Action.CHANGELOG));
+		BufferedImage quiet = draw(s, view, new FakeAssets(), null);
+		s.setChangelogNews(true);
+		BufferedImage news = draw(s, view, new FakeAssets(), null);
+		assertTrue("the highlight and callout are drawn", differs(quiet, news));
+		s.showTitleScreen(TitleScreen.CHANGELOG);
+		assertFalse("opening the page clears it", s.hasChangelogNews());
+	}
+
+	@Test
+	public void changelogDatesReadNaturally()
+	{
+		assertEquals("26 Oct 2026", GameRenderer.formatDate("2026-10-26"));
+		assertEquals("3 Jan 2027", GameRenderer.formatDate("2027-01-03"));
+		assertTrue(Changelog.hasNews(null));
+		assertTrue(Changelog.hasNews("0.0"));
+		assertFalse(Changelog.hasNews(Changelog.VERSION));
 	}
 }

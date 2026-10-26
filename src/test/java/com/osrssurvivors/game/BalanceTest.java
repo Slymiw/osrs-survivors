@@ -13,9 +13,21 @@ import org.junit.Test;
  */
 public class BalanceTest
 {
-	private static final long[] SEEDS = {11, 23, 37, 41, 53, 67, 71, 89};
+	/** Seeds drawn from one generator (neighbouring small seeds play out nearly alike). */
+	private static final long[] SEEDS = seeds(48);
 	private static final double MAX_SECONDS = 1200;
 	private static final double ALLOWED_SPREAD = 1.25;
+
+	private static long[] seeds(int n)
+	{
+		java.util.Random random = new java.util.Random(2026);
+		long[] seeds = new long[n];
+		for (int i = 0; i < n; i++)
+		{
+			seeds[i] = random.nextLong();
+		}
+		return seeds;
+	}
 
 	@Test
 	public void stylesSurviveAboutEquallyLong()

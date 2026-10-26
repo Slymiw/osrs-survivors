@@ -311,16 +311,39 @@ public class OfferTest
 		// already combined, and settled on melee
 		s.grant(Offer.gear(Gear.SANGUINE_SCYTHE_OF_VITUR));
 		levelledUp(s, GameSession.STYLE_SWITCH_MAX_LEVEL);
-		// with nothing left to upgrade, still food and a coin pouch to pick from
-		assertTrue(s.getChoices().size() >= 2);
-		Offer pouch = null;
-		for (Offer o : s.getChoices())
+		// with nothing left to upgrade: three different fillers, which change from level to level
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		boolean paid = false;
+		for (int level = 0; level < 12; level++)
 		{
-			pouch = o.getKind() == Offer.Kind.COINS ? o : pouch;
+			List<Offer> choices = s.getChoices();
+			assertEquals("always a full choice", GameSession.CHOICE_COUNT, choices.size());
+			assertEquals("no repeats on one screen", choices.size(), new java.util.HashSet<>(choices).size());
+			for (Offer o : choices)
+			{
+				assertTrue(o.getKind() == Offer.Kind.BOOST || o.getKind() == Offer.Kind.COINS || o.getKind() == Offer.Kind.FOOD);
+				assertTrue("melee only gets the melee potion", o.getBoost() == null || o.getBoost().getStyle() == null
+					|| o.getBoost().getStyle() == Style.MELEE);
+				seen.add(o.getBoost() != null ? o.getBoost().name() : o.getKind().name());
+			}
+			Offer pick = choices.get(0);
+			int coins = s.coinsSoFar();
+			s.chooseUpgrade(0);
+			if (pick.getKind() == Offer.Kind.COINS)
+			{
+				assertTrue(s.coinsSoFar() >= coins + pick.getCoins());
+				paid = true;
+			}
+			if (pick.getBoost() != null)
+			{
+				assertEquals(pick.getRank(), s.getBuild().doses(pick.getBoost()));
+			}
+			levelledUp(s, 1);
 		}
-		assertNotNull("a coin pouch fills the gap: " + s.getChoices(), pouch);
-		s.chooseUpgrade(s.getChoices().indexOf(pouch));
-		assertTrue(s.coinsSoFar() >= pouch.getCoins());
+		assertTrue("a varied mix, not the same three: " + seen, seen.size() >= 5);
+		double before = s.getBuild().damageMultiplier();
+		s.grant(Offer.boost(Boost.DIVINE_SUPER_COMBAT, 1));
+		assertEquals("a dose of the style's potion adds damage", before + Boost.DAMAGE, s.getBuild().damageMultiplier(), 1e-9);
 	}
 
 	@Test

@@ -14,8 +14,8 @@ import java.util.TreeMap;
 
 /**
  * The stored records, kept in the browser's local storage as JSON: the saved run, best times per
- * location, the lasting profile, the display options and the developer's map unlock. Unreadable
- * records are ignored.
+ * location, the lasting profile, the display options, the last changelog opened and the
+ * developer's map unlock. Unreadable records are ignored.
  */
 final class Saves
 {
@@ -24,6 +24,7 @@ final class Saves
 	private static final String META_KEY = "osrssurvivors.profile";
 	private static final String OPTIONS_KEY = "osrssurvivors.options";
 	private static final String UNLOCK_KEY = "osrssurvivors.devUnlockAll";
+	private static final String CHANGELOG_KEY = "osrssurvivors.changelogSeen";
 
 	private Saves()
 	{
@@ -63,6 +64,7 @@ final class Saves
 		m.put("y", save.y);
 		m.put("gear", save.gear);
 		m.put("passives", save.passives);
+		m.put("boosts", save.boosts);
 		m.put("championsSlain", save.championsSlain);
 		m.put("rerolls", save.rerolls);
 		m.put("revives", save.revives);
@@ -102,6 +104,11 @@ final class Saves
 			{
 				passives.forEach((k, v) -> s.passives.put(k, Json.integer(v, 0)));
 			}
+			Map<String, Object> boosts = Json.object(m.get("boosts"));
+			if (boosts != null)
+			{
+				boosts.forEach((k, v) -> s.boosts.put(k, Json.integer(v, 0)));
+			}
 			s.championsSlain = Json.integer(m.get("championsSlain"), 0);
 			s.rerolls = m.get("rerolls") instanceof Number ? Json.integer(m.get("rerolls"), 0) : null;
 			s.revives = m.get("revives") instanceof Number ? Json.integer(m.get("revives"), 0) : null;
@@ -115,7 +122,7 @@ final class Saves
 				}
 			}
 			// runs in places that no longer exist (the open field) can't be continued
-			return s.version == RunSave.CURRENT_VERSION && s.location() != null ? s : null;
+			return s.version >= 2 && s.isReadable() && s.location() != null ? s : null;
 		}
 		catch (RuntimeException e)
 		{
@@ -226,6 +233,19 @@ final class Saves
 		Map<String, Object> m = new LinkedHashMap<>();
 		m.put("off", off);
 		Browser.setItem(OPTIONS_KEY, Json.write(m));
+	}
+
+	// ---------------------------------------------------------------- changelog
+
+	/** The version whose changelog the player last opened, or null. */
+	static String loadChangelogSeen()
+	{
+		return Browser.getItem(CHANGELOG_KEY);
+	}
+
+	static void storeChangelogSeen(String version)
+	{
+		Browser.setItem(CHANGELOG_KEY, version);
 	}
 
 	// ---------------------------------------------------------------- developer tools

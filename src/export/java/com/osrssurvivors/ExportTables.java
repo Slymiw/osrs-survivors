@@ -121,6 +121,25 @@ final class ExportTables
 		LOOKS.put(EnemyKind.NEX, new NpcLook(NpcID.NEX));
 		LOOKS.put(EnemyKind.VERZIK_VITUR, new NpcLook(NpcID.VERZIK_PHASE3));
 		LOOKS.put(EnemyKind.YAMA, new NpcLook(NpcID.YAMA));
+		LOOKS.put(EnemyKind.ICE_DEMON, new NpcLook(NpcID.RAIDS_ICEDEMON_COMBAT));
+		LOOKS.put(EnemyKind.MUTTADILE, new NpcLook(NpcID.RAIDS_DOGODILE));
+		LOOKS.put(EnemyKind.VANGUARD, new NpcLook(NpcID.RAIDS_VANGUARD_MELEE));
+		LOOKS.put(EnemyKind.VESPULA, new NpcLook(NpcID.RAIDS_VESPULA_WALKING));
+		LOOKS.put(EnemyKind.TEKTON, new NpcLook(NpcID.RAIDS_TEKTON_WALKING_STANDARD));
+		LOOKS.put(EnemyKind.VASA_NISTIRIO, new NpcLook(NpcID.RAIDS_VASANISTIRIO_WALKING));
+		LOOKS.put(EnemyKind.BA_BA, new NpcLook(NpcID.TOA_BABA));
+		LOOKS.put(EnemyKind.AKKHA, new NpcLook(NpcID.AKKHA_MELEE));
+		LOOKS.put(EnemyKind.KEPHRI, new NpcLook(NpcID.TOA_KEPHRI_BOSS_WEAK));
+		LOOKS.put(EnemyKind.TUMEKENS_WARDEN, new NpcLook(NpcID.TOA_WARDEN_TUMEKEN_PHASE3));
+		LOOKS.put(EnemyKind.DAGONHAI_ELDER, new NpcLook(NpcID.TFA_DAGONHAI_LEADER));
+		LOOKS.put(EnemyKind.THE_SMORKS, new NpcLook(NpcID.TFA_SMORK));
+		LOOKS.put(EnemyKind.BORK, new NpcLook(NpcID.TFA_BORK));
+		LOOKS.put(EnemyKind.DREADNOTH, new NpcLook(NpcID.TFA_JELLY_BOSS));
+		LOOKS.put(EnemyKind.XARTH, new NpcLook(NpcID.TFA_XARTH));
+		LOOKS.put(EnemyKind.MOIA, new NpcLook(NpcID.TFA_MOIA));
+		LOOKS.put(EnemyKind.EZEKIEL, new NpcLook(NpcID.TFA_EZEKIEL));
+		LOOKS.put(EnemyKind.ARCHIVE_GUARDIAN, new NpcLook(NpcID.TFA_GUARDIAN));
+		LOOKS.put(EnemyKind.OCELLUS, new NpcLook(NpcID.TFA_OCELLUS_P1));
 	}
 
 	/** Item shown on each location's card. */
@@ -131,7 +150,6 @@ final class ExportTables
 		LOCATION_ICONS.put(Location.LUMBRIDGE, ItemID.POH_TABLET_LUMBRIDGETELEPORT);
 		LOCATION_ICONS.put(Location.DRAYNOR, ItemID.GARLIC);
 		LOCATION_ICONS.put(Location.VARROCK, ItemID.POH_TABLET_VARROCKTELEPORT);
-		LOCATION_ICONS.put(Location.BARBARIAN_VILLAGE, ItemID.LUNAR_TABLET_BARBARIAN_TELEPORT);
 		LOCATION_ICONS.put(Location.FALADOR, ItemID.POH_TABLET_FALADORTELEPORT);
 		LOCATION_ICONS.put(Location.AL_KHARID, ItemID.SHANTAY_PASS);
 		LOCATION_ICONS.put(Location.ARDOUGNE, ItemID.POH_TABLET_ARDOUGNETELEPORT);

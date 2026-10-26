@@ -27,15 +27,11 @@ public enum Location
 		at(120, EnemyKind.BARBARIAN, 2), at(180, EnemyKind.SKELETON, 2), at(240, EnemyKind.HILL_GIANT, 1.5),
 		at(330, EnemyKind.MOSS_GIANT, 1.2), at(480, EnemyKind.LESSER_DEMON, 1), at(660, EnemyKind.GREATER_DEMON, 0.8),
 		at(900, EnemyKind.BLACK_DEMON, 0.6)),
-	BARBARIAN_VILLAGE("Barbarian Village", "Barbarians, druids and giants.", 3082, 3420, 2,
-		at(0, EnemyKind.BARBARIAN, 3), at(0, EnemyKind.MAN, 2), at(60, EnemyKind.CHAOS_DRUID, 2),
-		at(120, EnemyKind.SKELETON, 2), at(210, EnemyKind.HILL_GIANT, 1.5), at(330, EnemyKind.MOSS_GIANT, 1.2),
-		at(480, EnemyKind.LESSER_DEMON, 1), at(660, EnemyKind.GREATER_DEMON, 0.8), at(900, EnemyKind.BLACK_DEMON, 0.6)),
 	FALADOR("Falador", "Knights, dwarves and the cold of Ice Mountain.", 2965, 3380, 3,
 		at(0, EnemyKind.MAN, 2), at(0, EnemyKind.DWARF, 2), at(40, EnemyKind.GUARD, 2), at(90, EnemyKind.WHITE_KNIGHT, 2),
 		at(150, EnemyKind.BLACK_KNIGHT, 2), at(240, EnemyKind.ICE_WARRIOR, 1.5), at(330, EnemyKind.ICE_GIANT, 1.2),
 		at(480, EnemyKind.LESSER_DEMON, 1), at(660, EnemyKind.GREATER_DEMON, 0.8), at(840, EnemyKind.BLACK_DEMON, 0.6)),
-	AL_KHARID("Al Kharid", "Scorpions, bandits and kalphites from the desert.", 3293, 3174, 3,
+	AL_KHARID("Al Kharid", "Scorpions, bandits and kalphites from the desert.", 3335, 3150, 3,
 		at(0, EnemyKind.SCORPION, 3), at(30, EnemyKind.BANDIT, 2), at(90, EnemyKind.KALPHITE_WORKER, 2),
 		at(150, EnemyKind.SKELETON_MAGE, 1.5), at(240, EnemyKind.CROCODILE, 1.5), at(330, EnemyKind.KALPHITE_SOLDIER, 1.2),
 		at(480, EnemyKind.LESSER_DEMON, 1), at(660, EnemyKind.GREATER_DEMON, 0.8), at(840, EnemyKind.BLACK_DEMON, 0.6)),
@@ -57,8 +53,10 @@ public enum Location
 		at(360, EnemyKind.REVENANT_KNIGHT, 1), at(420, EnemyKind.GREATER_DEMON, 0.8), at(600, EnemyKind.BLACK_DEMON, 0.6),
 		at(840, EnemyKind.CHAOS_ELEMENTAL, 0.3));
 
-	/** Arena edge length, in tiles, for map locations. */
-	public static final int SIZE = 96;
+	/** Arena edge length, in tiles, for map locations: three map squares, with room to roam. */
+	public static final int SIZE = 192;
+	/** The edge length before the arenas grew, for moving positions in older saves. */
+	static final int OLD_SIZE = 96;
 
 	/** One monster in a location's roster: what, from when, and how common. */
 	static final class Entry

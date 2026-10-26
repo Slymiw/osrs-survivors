@@ -291,4 +291,71 @@ public class ArenaTest
 		run(s, 3);
 		assertTrue("got past the tree: " + p.getX(), p.getX() > 4 * T);
 	}
+	@Test
+	public void enemiesDontSnagOnSceneryTheyCanSeePast()
+	{
+		Arena a = scenery(
+			"..........",
+			"S...T.....",
+			"..........");
+		GameSession s = new GameSession(new Random(1), a);
+		s.disableSpawning();
+		Player p = s.getPlayer();
+		// the straight line between them just clears the trunk, but the monster's body doesn't
+		double y = 2 * T - Arena.PROP_INSET * Arena.CELL + 2;
+		p.y = y;
+		Enemy e = s.spawnEnemyAt(9.5 * T, y, 1e9);
+		assertTrue(a.clearLine(e.x, e.y, p.x, p.y));
+		run(s, 6);
+		double dist = Math.hypot(e.x - p.x, e.y - p.y);
+		assertTrue("the enemy got round the tree: " + dist, dist < Enemy.RADIUS + Player.RADIUS + 2);
+	}
+
+	@Test
+	public void bigEnemiesGetRoundTreesHeadOn()
+	{
+		Arena a = scenery(
+			"............",
+			"............",
+			"S....T......",
+			"............",
+			"............");
+		GameSession s = new GameSession(new Random(1), a);
+		s.disableSpawning();
+		Player p = s.getPlayer();
+		Enemy e = s.spawnKindAt(EnemyKind.GREATER_DEMON, 11.5 * T, 2.5 * T, true);
+		run(s, 10);
+		double dist = Math.hypot(e.x - p.x, e.y - p.y);
+		assertTrue("the champion got round the tree: " + dist, dist < e.radius + Player.RADIUS + 2);
+	}
+	@Test
+	public void bigEnemiesFitThroughAFencedPassage()
+	{
+		// a wall across the middle row, with a one-tile gap fenced on both sides going south
+		int w = 9;
+		int h = 7;
+		boolean[] blocked = new boolean[w * h];
+		byte[] walls = new byte[w * h];
+		for (int x = 0; x < w; x++)
+		{
+			if (x != 4)
+			{
+				blocked[3 * w + x] = true;
+			}
+		}
+		for (int y = 2; y <= 4; y++)
+		{
+			walls[y * w + 4] = (byte) (Arena.WALL_EAST | Arena.WALL_WEST);
+			walls[y * w + 3] |= Arena.WALL_EAST;
+			walls[y * w + 5] |= Arena.WALL_WEST;
+		}
+		Arena a = Arena.of(w, h, blocked, walls, 1, 0);
+		GameSession s = new GameSession(new Random(1), a);
+		s.disableSpawning();
+		Player p = s.getPlayer();
+		Enemy e = s.spawnKindAt(EnemyKind.GREATER_DEMON, 7.5 * T, 6.5 * T, true);
+		run(s, 10);
+		double dist = Math.hypot(e.x - p.x, e.y - p.y);
+		assertTrue("the champion came through the passage: " + dist, dist < e.radius + Player.RADIUS + 2);
+	}
 }

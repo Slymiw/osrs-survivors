@@ -3,6 +3,7 @@ package com.osrssurvivors;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.osrssurvivors.game.Arena;
+import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.EnemyKind;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.Location;
@@ -287,6 +288,10 @@ public final class WebExport
 		// offer and prize icons (GearArt.prizeItem)
 		icon("offer.coins", item(ItemID.COINS_250));
 		icon("offer.food", item(ItemID.SHARK));
+		for (Boost boost : Boost.values())
+		{
+			icon("boost." + boost.name(), item(GearArt.boostItem(boost)));
+		}
 		icon("prize.coins", item(ItemID.COINS_10000));
 		icon("prize.lamp", item(ItemID.MACRO_GENILAMP));
 		manifest.put("icons", icons);

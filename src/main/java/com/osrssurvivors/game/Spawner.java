@@ -28,6 +28,17 @@ final class Spawner
 	/** When overtime begins, and how fast monsters toughen after it (e-folding time). */
 	static final double OVERTIME_START = 900;
 	static final double OVERTIME_GROWTH = 200;
+	/** Overtime damage grows as this power of overtime health. */
+	static final double OVERTIME_DAMAGE_SHARE = 0.6;
+	/** Overtime also speeds monsters up, by up to this share, over {@link #OVERTIME_SPEED_TIME} seconds. */
+	static final double OVERTIME_SPEED = 0.6;
+	static final double OVERTIME_SPEED_TIME = 600;
+	/**
+	 * In overtime a full screen is refreshed: monsters older than this, and further from the
+	 * player than this share of the spawn distance, give way to fresh (tougher) ones.
+	 */
+	static final double STALE_AGE = 20;
+	static final double STALE_DISTANCE = 0.6;
 	/** Spawn distance beyond the edge of the visible area. */
 	static final double OFFSCREEN_MARGIN = 60;
 	/** Spawns never land closer than this, even when the arena edge forces them inward. */
@@ -43,8 +54,8 @@ final class Spawner
 	/** Bosses, weakest first; champions are picked from a window that moves along it. */
 	static final EnemyKind[] BOSSES = bosses();
 	/** How far along the list each champion of a run, and each difficulty step, moves the window. */
-	static final int BOSS_STEP = 2;
-	static final int BOSS_WINDOW = 3;
+	static final int BOSS_STEP = 3;
+	static final int BOSS_WINDOW = 4;
 
 	private final Random random;
 	private final Location location;
@@ -83,6 +94,12 @@ final class Spawner
 		return elapsed <= OVERTIME_START ? 1 : Math.exp((elapsed - OVERTIME_START) / OVERTIME_GROWTH);
 	}
 
+	/** Speed multiplier: 1 until overtime, then rising to 1 + {@link #OVERTIME_SPEED}. */
+	static double overtimeSpeed(double elapsed)
+	{
+		return 1 + OVERTIME_SPEED * Math.min(1, Math.max(0, elapsed - OVERTIME_START) / OVERTIME_SPEED_TIME);
+	}
+
 	/** Damage multiplier for monster missiles: they hit harder the longer the run goes. */
 	static double damageScale(double elapsed)
 	{
@@ -107,10 +124,13 @@ final class Spawner
 		// a boss is as tough as a champion of the strongest monster around would be
 		EnemyKind stats = kind.boss ? location.newest(elapsed) : kind;
 		double health = baseHealth(elapsed) * stats.healthScale * location.healthMultiplier(elapsed) * (champion ? CHAMPION_HEALTH : 1);
-		double speed = (70 + Math.min(elapsed * 0.3, 50)) * stats.speedScale * (champion ? 0.75 : 1);
-		double damage = CONTACT_SCALE * location.damageMultiplier(elapsed) * (champion ? 1.5 : 1) * Math.sqrt(overtime(elapsed));
+		double speed = (70 + Math.min(elapsed * 0.3, 50)) * stats.speedScale * (champion ? 0.75 : 1) * overtimeSpeed(elapsed);
+		// damage grows without limit in overtime too (a little slower than health), so no defence or healing outlasts it
+		double damage = CONTACT_SCALE * location.damageMultiplier(elapsed) * (champion ? 1.5 : 1)
+			* Math.pow(overtime(elapsed), OVERTIME_DAMAGE_SHARE);
 		Enemy e = new Enemy(kind, kind.radius * (champion ? CHAMPION_SIZE : 1), x, y, health, speed, stats.contactDps * damage,
 			(int) Math.round(stats.xp * XP_SCALE * (champion ? 10 : 1)), animOffset, champion);
+		e.born = elapsed;
 		// a boss's missiles hit about as hard as a ranged champion of that monster's strength
 		e.missileDamage = kind.boss ? kind.attackDamage * stats.contactDps * 0.5 * damage : kind.attackDamage * damage;
 		e.attackTimer = kind.attackCooldown * (0.5 + animOffset / 20);
@@ -143,14 +163,40 @@ final class Spawner
 		}
 		timer += interval(elapsed);
 
-		for (int n = batchSize(elapsed); n > 0 && enemies.size() < MAX_ENEMIES; n--)
+		for (int n = batchSize(elapsed); n > 0; n--)
 		{
+			if (enemies.size() >= MAX_ENEMIES && !(elapsed > OVERTIME_START && retireStale(elapsed, player, spawnDistance, enemies)))
+			{
+				break;
+			}
 			Enemy e = placeEnemy(location.choose(elapsed, random), player, arena, spawnDistance, elapsed, false);
 			if (e != null)
 			{
 				enemies.add(e);
 			}
 		}
+	}
+
+	/**
+	 * Takes the oldest monster that has fallen well behind the player off the board, making room
+	 * for a fresh one. Without this a full screen of monsters too tough to kill would never be
+	 * replaced, and overtime would stall into a standoff.
+	 *
+	 * @return whether one was removed
+	 */
+	static boolean retireStale(double elapsed, Player player, double spawnDistance, List<Enemy> enemies)
+	{
+		double far = spawnDistance * STALE_DISTANCE;
+		Enemy oldest = null;
+		for (Enemy e : enemies)
+		{
+			if (!e.champion && elapsed - e.born >= STALE_AGE && Math.hypot(e.x - player.x, e.y - player.y) >= far
+				&& (oldest == null || e.born < oldest.born))
+			{
+				oldest = e;
+			}
+		}
+		return oldest != null && enemies.remove(oldest);
 	}
 
 	/** Brings the next champion forward to now (a developer tool). */
@@ -191,7 +237,7 @@ final class Spawner
 				}
 				continue;
 			}
-			if (farEnough && arena.isWalkable(Arena.tileOf(x), Arena.tileOf(y)) && !arena.isSolidBox(x, y, Math.min(radius * 0.7, 14)))
+			if (farEnough && arena.isWalkable(Arena.tileOf(x), Arena.tileOf(y)) && !arena.isSolidBox(x, y, Enemy.collisionRadius(radius)))
 			{
 				return createEnemy(kind, x, y, elapsed, random.nextDouble() * 10, location, champion);
 			}

@@ -409,6 +409,8 @@ final class WebAssets implements GameAssets
 				return icon("passive." + offer.getPassive().name() + "." + offer.getRank());
 			case COINS:
 				return icon("offer.coins");
+			case BOOST:
+				return icon("boost." + offer.getBoost().name());
 			default:
 				return icon("offer.food");
 		}

@@ -4,13 +4,13 @@ import java.util.Objects;
 
 /**
  * One choice on the level-up screen: a piece of gear, the next rank of a passive, or a filler
- * (food, a coin pouch) when there aren't enough upgrades left.
+ * (a potion, food, a coin pouch) when there aren't enough upgrades left.
  */
 public final class Offer
 {
 	public enum Kind
 	{
-		GEAR, PASSIVE, FOOD, COINS
+		GEAR, PASSIVE, FOOD, COINS, BOOST
 	}
 
 	/** Fraction of max hitpoints a food offer restores. */
@@ -19,15 +19,34 @@ public final class Offer
 	private final Kind kind;
 	private final Gear gear;
 	private final Passive passive;
+	private final Boost boost;
 	/** Passive rank gained, 1-based, or coins in a pouch. */
 	private final int rank;
 
 	private Offer(Kind kind, Gear gear, Passive passive, int rank)
 	{
+		this(kind, gear, passive, null, rank);
+	}
+
+	private Offer(Kind kind, Gear gear, Passive passive, Boost boost, int rank)
+	{
 		this.kind = kind;
 		this.gear = gear;
 		this.passive = passive;
+		this.boost = boost;
 		this.rank = rank;
+	}
+
+	/** A potion dose; {@code dose} is which dose this would be, 1-based. */
+	public static Offer boost(Boost boost, int dose)
+	{
+		return new Offer(Kind.BOOST, null, null, boost, dose);
+	}
+
+	/** The potion for {@link Kind#BOOST}, else null. */
+	public Boost getBoost()
+	{
+		return boost;
 	}
 
 	public static Offer gear(Gear gear)
@@ -89,6 +108,8 @@ public final class Offer
 				return passive.title(rank);
 			case COINS:
 				return "Coin pouch";
+			case BOOST:
+				return boost.getTitle();
 			default:
 				return "Shark";
 		}
@@ -104,6 +125,8 @@ public final class Offer
 				return passive.getEffect();
 			case COINS:
 				return "+" + rank + " coins, kept when the run ends";
+			case BOOST:
+				return boost.getEffect() + (rank > 1 ? " (dose " + rank + ")" : "") + ". Lasts the run";
 			default:
 				return "Heal " + Math.round(FOOD_HEAL * 100) + "% of your hitpoints";
 		}
@@ -117,13 +140,13 @@ public final class Offer
 			return false;
 		}
 		Offer other = (Offer) o;
-		return kind == other.kind && gear == other.gear && passive == other.passive && rank == other.rank;
+		return kind == other.kind && gear == other.gear && passive == other.passive && boost == other.boost && rank == other.rank;
 	}
 
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(kind, gear, passive, rank);
+		return Objects.hash(kind, gear, passive, boost, rank);
 	}
 
 	@Override

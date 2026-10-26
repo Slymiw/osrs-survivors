@@ -297,6 +297,35 @@ public final class Arena
 		return true;
 	}
 
+	/**
+	 * Whether a box of half-size {@code r} can walk in a straight line from (x0, y0) until
+	 * {@code stopShort} from (x1, y1) without touching anything solid (sampled every half cell).
+	 * Stricter than {@link #clearLine}: a monster's body catches on a tree its centre would miss.
+	 */
+	public boolean clearPath(double x0, double y0, double x1, double y1, double stopShort, double r)
+	{
+		if (open)
+		{
+			return true;
+		}
+		double len = Math.hypot(x1 - x0, y1 - y0);
+		double walk = len - stopShort;
+		if (walk <= 0)
+		{
+			return true;
+		}
+		int steps = (int) Math.ceil(walk / (CELL / 2));
+		for (int i = 1; i <= steps; i++)
+		{
+			double t = walk * i / steps / len;
+			if (isSolidBox(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/** Whether one may step from a tile to a neighbouring one (8 directions; diagonals need both sides clear). */
 	boolean canStep(int tx, int ty, int dx, int dy)
 	{

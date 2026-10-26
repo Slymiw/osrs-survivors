@@ -361,6 +361,8 @@ final class DropShow
 		{
 			case JACKPOT:
 				return Color.getHSBColor((float) n, 0.75f, 1f);
+			case MEGARARE:
+				return n < 0.8 ? GameRenderer.megarareColour(n / 0.8) : Color.WHITE;
 			case RARE:
 				return n < 0.5 ? GOLD : n < 0.8 ? new Color(255, 140, 40) : new Color(255, 245, 200);
 			case UNCOMMON:

@@ -1,5 +1,12 @@
 {
   "icons": {
+    "boost.ANTIFIRE": "i2452",
+    "boost.DIVINE_MAGIC": "i23745",
+    "boost.DIVINE_RANGING": "i23733",
+    "boost.DIVINE_SUPER_COMBAT": "i23685",
+    "boost.SARADOMIN_BREW": "i6685",
+    "boost.STAMINA": "i12625",
+    "boost.SUPER_RESTORE": "i3024",
     "gear.ABYSSAL_TENTACLE": "i12006",
     "gear.ABYSSAL_WHIP": "i4151",
     "gear.ACCURSED_SCEPTRE": "i27665",
@@ -30,6 +37,7 @@
     "gear.ARMADYL_GODSWORD": "i11802",
     "gear.ARMADYL_GODSWORD_OR": "i20368",
     "gear.ARMADYL_HELMET": "i11826",
+    "gear.ASCENSION_CROSSBOWS": "i34681",
     "gear.AVERNIC_DEFENDER": "i22322",
     "gear.AVERNIC_TREADS": "i31088",
     "gear.BANDOS_CHESTPLATE": "i11832",
@@ -66,6 +74,7 @@
     "gear.DRAGONFIRE_WARD": "i22002",
     "gear.DRAGON_ARROWS": "i11212",
     "gear.DRAGON_BOOTS": "i11840",
+    "gear.DRAGON_CLAWS": "i13652",
     "gear.DRAGON_DEFENDER": "i12954",
     "gear.DRAGON_FULL_HELM": "i11335",
     "gear.DRAGON_HUNTER_CROSSBOW": "i21012",
@@ -94,6 +103,7 @@
     "gear.HOLY_SANGUINESTI_STAFF": "i25731",
     "gear.IBANS_STAFF": "i1409",
     "gear.ICE_ANCIENT_SCEPTRE": "i28262",
+    "gear.IMBUED_ANCIENT_CAPE": "i34639",
     "gear.IMBUED_SARADOMIN_CAPE": "i21791",
     "gear.INFERNAL_CAPE": "i21295",
     "gear.INFERNAL_MAX_CAPE": "i21285",
@@ -141,6 +151,7 @@
     "gear.NECKLACE_OF_ANGUISH": "i19547",
     "gear.NEITIZNOT_FACEGUARD": "i24271",
     "gear.OAK_SHORTBOW": "i843",
+    "gear.OBLIGATOR": "i34715",
     "gear.OBSIDIAN_CAPE": "i6568",
     "gear.OBSIDIAN_HELMET": "i21298",
     "gear.OBSIDIAN_PLATEBODY": "i21301",
@@ -160,6 +171,7 @@
     "gear.RING_OF_THE_GODS": "i13202",
     "gear.RING_OF_WEALTH": "i2572",
     "gear.ROBIN_HOOD_HAT": "i2581",
+    "gear.RONDACHE": "i34719",
     "gear.RUNE_CROSSBOW": "i9185",
     "gear.RUNE_DEFENDER": "i8850",
     "gear.RUNE_FULL_HELM": "i1163",
@@ -225,6 +237,7 @@
     "gear.YEW_SHORTBOW": "i857",
     "gear.ZARYTE_CROSSBOW": "i26374",
     "gear.ZARYTE_VAMBRACES": "i26235",
+    "gear.ZORYAS_TOME": "i34725",
     "gem.1": "i1623",
     "gem.15": "i1631",
     "gem.2": "i1621",
@@ -233,7 +246,6 @@
     "gem.8": "i1617",
     "location.AL_KHARID": "i1854",
     "location.ARDOUGNE": "i8011",
-    "location.BARBARIAN_VILLAGE": "i24955",
     "location.CANIFIS": "i4251",
     "location.DRAYNOR": "i1550",
     "location.FALADOR": "i8009",
@@ -431,14 +443,27 @@
     "perk.SPEED": "s204",
     "perk.VITALITY": "s203",
     "perk.WISDOM": "i2528",
+    "pet.AKKHITO": "i27382",
+    "pet.BABI": "i27383",
     "pet.BABY_MOLE": "i12646",
+    "pet.CHUBBLES": "i34651",
+    "pet.DORK": "i34655",
+    "pet.KEPHRITI": "i27384",
     "pet.LIL_ZIK": "i22473",
+    "pet.MIMI": "i34654",
     "pet.OLMLET": "i20851",
+    "pet.ORION": "i34646",
     "pet.PET_CHAOS_ELEMENTAL": "i11995",
     "pet.PET_DARK_CORE": "i12816",
     "pet.PRINCE_BLACK_DRAGON": "i12653",
+    "pet.TEKTINY": "i22378",
+    "pet.TUMEKENS_GUARDIAN": "i27352",
     "pet.TZREK_JAD": "i13225",
+    "pet.VANGUARD": "i22380",
+    "pet.VASA_MINIRIO": "i22382",
+    "pet.VESPINA": "i22384",
     "pet.VORKI": "i21992",
+    "pet.XARI": "i34649",
     "prize.coins": "i1004",
     "prize.lamp": "i2528",
     "spell.ACCURSED_SCEPTRE": "s51",
@@ -462,6 +487,7 @@
     "spell.TRIDENT_OF_THE_SWAMP_E": "s51",
     "spell.TUMEKENS_SHADOW": "s46",
     "spell.VOLATILE_NIGHTMARE_STAFF": "s52",
+    "spell.ZORYAS_TOME": "s52",
     "ui.BORDER_BOTTOM_LEFT": "s312",
     "ui.BORDER_BOTTOM_RIGHT": "s313",
     "ui.BORDER_TOP_LEFT": "s310",
@@ -829,6 +855,42 @@
       "idle": 4484,
       "scale": 0.6
     },
+    "ICE_DEMON": {
+      "model": "npc.ICE_DEMON",
+      "walk": 63,
+      "idle": 66,
+      "scale": 1.0
+    },
+    "MUTTADILE": {
+      "model": "npc.MUTTADILE",
+      "walk": 7419,
+      "idle": 7417,
+      "scale": 0.6
+    },
+    "VANGUARD": {
+      "model": "npc.VANGUARD",
+      "walk": 7439,
+      "idle": 7439,
+      "scale": 1.0
+    },
+    "VESPULA": {
+      "model": "npc.VESPULA",
+      "walk": 7448,
+      "idle": 7449,
+      "scale": 0.6
+    },
+    "TEKTON": {
+      "model": "npc.TEKTON",
+      "walk": 7477,
+      "idle": 7476,
+      "scale": 0.75
+    },
+    "VASA_NISTIRIO": {
+      "model": "npc.VASA_NISTIRIO",
+      "walk": 7411,
+      "idle": 7416,
+      "scale": 0.6
+    },
     "ZULRAH": {
       "model": "npc.ZULRAH",
       "walk": 5070,
@@ -858,6 +920,30 @@
       "walk": 8232,
       "idle": 8233,
       "scale": 0.5
+    },
+    "BA_BA": {
+      "model": "npc.BA_BA",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
+    },
+    "AKKHA": {
+      "model": "npc.AKKHA",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "KEPHRI": {
+      "model": "npc.KEPHRI",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
+    },
+    "TUMEKENS_WARDEN": {
+      "model": "npc.TUMEKENS_WARDEN",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
     },
     "THE_NIGHTMARE": {
       "model": "npc.THE_NIGHTMARE",
@@ -918,6 +1004,60 @@
       "walk": -1,
       "idle": -1,
       "scale": 0.6
+    },
+    "DAGONHAI_ELDER": {
+      "model": "npc.DAGONHAI_ELDER",
+      "walk": 14587,
+      "idle": 14581,
+      "scale": 1.0
+    },
+    "THE_SMORKS": {
+      "model": "npc.THE_SMORKS",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "BORK": {
+      "model": "npc.BORK",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.75
+    },
+    "DREADNOTH": {
+      "model": "npc.DREADNOTH",
+      "walk": 14778,
+      "idle": 14776,
+      "scale": 0.6
+    },
+    "XARTH": {
+      "model": "npc.XARTH",
+      "walk": 14980,
+      "idle": 14979,
+      "scale": 1.0
+    },
+    "MOIA": {
+      "model": "npc.MOIA",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "EZEKIEL": {
+      "model": "npc.EZEKIEL",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "ARCHIVE_GUARDIAN": {
+      "model": "npc.ARCHIVE_GUARDIAN",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
+    },
+    "OCELLUS": {
+      "model": "npc.OCELLUS",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
     }
   },
   "player": {
@@ -1096,6 +1236,14 @@
           5
         ],
         "attack": 1665
+      },
+      "DRAGON_CLAWS": {
+        "model": "gear.DRAGON_CLAWS",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 7527
       },
       "SHORTBOW": {
         "model": "gear.SHORTBOW",
@@ -2286,6 +2434,40 @@
         "model": "gear.ELYSIAN_SPIRIT_SHIELD",
         "slot": 5,
         "hides": []
+      },
+      "RONDACHE": {
+        "model": "gear.RONDACHE",
+        "slot": 5,
+        "hides": []
+      },
+      "IMBUED_ANCIENT_CAPE": {
+        "model": "gear.IMBUED_ANCIENT_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "OBLIGATOR": {
+        "model": "gear.OBLIGATOR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 15122
+      },
+      "ASCENSION_CROSSBOWS": {
+        "model": "gear.ASCENSION_CROSSBOWS",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 15115
+      },
+      "ZORYAS_TOME": {
+        "model": "gear.ZORYAS_TOME",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 727
       }
     },
     "punch": 422,

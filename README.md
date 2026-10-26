@@ -19,6 +19,8 @@ The start menu offers:
 - **Pets**: the pets you've won from champions.
 - **Options**: turn off screen flashes, the level-up animation or the boss drop animation for a
   calmer screen. Also on the pause screen. Kept in your browser.
+- **What's new**: the changelog, newest version first. After an update the button glows until
+  you've looked. The version number sits beside the game's name.
 
 | Key | Action |
 | --- | --- |
@@ -41,7 +43,7 @@ now, max all, reset all, +1000 coins, unlock maps).
 - Each level-up offers three rewards. When possible, one is gear, one is a passive and one
   is either.
   - **Gear** follows upgrade chains for your weapon's style:
-    - Melee: bronze → rune → dragon scimitar → whip → rapier → scythe.
+    - Melee: bronze → rune → dragon scimitar → whip → rapier → scythe (dragon claws strike twice).
     - Ranged: shortbow → magic shortbow → crossbows → blowpipe → twisted bow.
     - Magic: staves → tridents → sang → shadow.
     - Matching armour for each style (plate / d'hide / robes).
@@ -55,12 +57,17 @@ now, max all, reset all, +1000 coins, unlock maps).
     - Skills: Hitpoints, Agility, Swiftness, Longrange, Multicombat.
     - Spells and items: Telekinetic Grab, Lamp of Knowledge, Vengeance, Special Attack.
   - **Food** (a shark) is sometimes offered when you're hurt.
+  - **Potions** fill the offers once upgrades run out, so the end of a long run still gives a
+    varied choice: divine potions for your style (+4% damage), Saradomin brews, stamina, super
+    restore and antifire. Doses last the run and stack. With food and coin pouches.
+  - **Rarity**: every item shows how rare it is: Common, Uncommon, Rare, Epic (by its place in
+    its chain), Legendary (boss drops and combinations) and Megarare.
   - **Abilities** attack on their own: cannon, thralls, Ice and Blood Barrage, chinchompas,
     god spells and a dragonfire shield. A run holds at most four.
   - More passives: Overload, Slayer (damage to champions), Thieving (extra gems), Retribution.
 - **Attack speed** follows the game's ticks (0.6 s each): a scimitar swings every 4 ticks
   (2.4 s), a blowpipe every 2. Every level makes you attack a little faster, down to about half
-  the starting time by level 30. Melee hits stagger monsters and melee takes 10% less damage,
+  the starting time by level 30. Melee hits stagger monsters and melee takes 14% less damage,
   making up for fighting up close.
 - **Combinations**: hold a weapon and max a matching passive, and its combined version leads
   every offer until you take it. Abyssal whip + Swiftness → Abyssal tentacle; AGS + Special
@@ -71,12 +78,17 @@ now, max all, reset all, +1000 coins, unlock maps).
 - **Sets**: Barrows, Void, Inquisitor's, plus Obsidian (stronger with the Tzhaar-ket-om),
   Crystal (stronger with the Bow of faerdhinen) and Virtus (spells freeze).
 - **Champions** arrive every 3 minutes, marked by a gold ring, a name tag and an arrow at the
-  edge of the screen when off-screen. Their casket spins three reels for a unique drop: coins,
-  an XP lamp, a boss-only item (Infernal max cape, Amulet of rancour, Elysian spirit shield...)
-  or, as the jackpot, a **pet** that stays with you in every run. Then it offers gear as before.
+  edge of the screen when off-screen. They're real bosses, from the Giant Mole up through the
+  God Wars, the Chambers of Xeric, the Tombs of Amascut and the Fractured Archive. Their casket
+  spins three reels for a unique drop: coins, an XP lamp, a boss-only item (Infernal max cape,
+  Elysian spirit shield, Rondache...) or, as the jackpot, a **pet** that stays with you in every
+  run (21 to collect). Rarer still, about one casket in 250 holds a **megarare**: the
+  Fractured Archive's weapon for your style (the Obligator, Ascension crossbows or Zorya's
+  tome), better than anything else. Then it offers gear as before.
 - **Monsters** come in fewer but tougher, so the screen stays readable. Each place has its own
-  roster arriving over time. After 15 minutes they toughen quickly, so every run ends
-  eventually.
+  roster arriving over time. After 15 minutes overtime begins: fresh monsters keep arriving
+  ever tougher, faster and harder-hitting, and going long without a kill makes them hit harder
+  still, so every run ends. No build can stand off forever.
 
 ### Coins and upgrades
 
@@ -98,8 +110,8 @@ Needs JDK 17 (this machine: `export JAVA_HOME=/c/Users/Joe/.devtools/jdk17`).
 
 `build/dist` is the whole game: `index.html`, `game.js` (~0.9 MB, compiled from Java by
 [TeaVM](https://teavm.org)), `assets/data.js` (sprites, icons, fonts, models and animations) and
-one `assets/loc/<LOCATION>.js` per map location, loaded when a run starts there. About 28 MB in
-all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
+one `assets/loc/<LOCATION>.js` per map location (192 × 192 tiles, about 10 MB each), loaded
+when a run starts there. About 85 MB in all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
 host.
 
 The artwork is committed in `src/main/webapp/assets`, so building the page doesn't need the game.
@@ -127,8 +139,10 @@ When the renderer starts using an AWT method the shim lacks, `generateJavaScript
 
 ## Limits
 
-- Six newest bosses (Phantom Muspah, Duke Sucellus, Vardorvis, the Leviathan, the Whisperer,
-  Yama) stand still: their animations are skeletal, which the browser can't play. Weapons whose
+- The newest bosses stand still: Phantom Muspah, Duke Sucellus, Vardorvis, the Leviathan, the
+  Whisperer, Yama, the four Tombs of Amascut bosses and most of the Fractured Archive's (Bork,
+  the Smorks, Moia, Ezekiel, the Archive Guardian, Ocellus). Their animations are skeletal,
+  which the browser can't play. Weapons whose
   attack is skeletal (rapier, scythe, Tumeken's shadow...) use another weapon's attack of the
   same style.
 - The ground ignores height, and scenery is drawn at a fixed angle; upper floors and roofs are

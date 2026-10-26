@@ -1,5 +1,6 @@
 package com.osrssurvivors;
 
+import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.BossDrop;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.Passive;
@@ -192,6 +193,7 @@ final class GearArt
 		weapon(Gear.ARMADYL_GODSWORD, ItemID.AGS, AnimationID.HUMAN_SWORD_SLASH);
 		weapon(Gear.SOULREAPER_AXE, ItemID.SOULREAPER, AnimationID.HUMAN_AXE_HACK);
 		weapon(Gear.ELDER_MAUL, ItemID.ELDER_MAUL, AnimationID.SLAYER_GRANITE_MAUL_ATTACK);
+		weapon(Gear.DRAGON_CLAWS, ItemID.DRAGON_CLAWS, AnimationID.DCLAWS_HUMAN_ATTACK);
 		weapon(Gear.KARILS_CROSSBOW, ItemID.BARROWS_KARIL_WEAPON, AnimationID.BARROWS_REPEATING_CROSSBOW_FIRE);
 		weapon(Gear.DARK_BOW, ItemID.DARKBOW, AnimationID.HUMAN_BOW);
 		weapon(Gear.DRAGON_HUNTER_CROSSBOW, ItemID.DRAGONHUNTER_XBOW, AnimationID.XBOWS_HUMAN_FIRE_AND_RELOAD);
@@ -288,6 +290,13 @@ final class GearArt
 		item(Gear.RING_OF_THE_GODS, ItemID.NZONE_ROTG);
 		item(Gear.DIZANAS_QUIVER, ItemID.DIZANAS_QUIVER_CHARGED);
 		item(Gear.ELYSIAN_SPIRIT_SHIELD, ItemID.ELYSIAN);
+		item(Gear.RONDACHE, ItemID.RONDACHE);
+		item(Gear.IMBUED_ANCIENT_CAPE, ItemID.MA2_ZAROS_CAPE_DARKER);
+
+		// megarares, with their own animations from the Fractured Archive
+		weapon(Gear.OBLIGATOR, ItemID.OBLIGATOR, AnimationID.TFA_HUMAN_OBLIGATOR_ATTACK);
+		weapon(Gear.ASCENSION_CROSSBOWS, ItemID.ASCENSION_CROSSBOWS, AnimationID.TFA_HUMAN_ASCENSION_CROSSBOW_FIRE_RIGHT);
+		staff(Gear.ZORYAS_TOME, ItemID.ZORYAS_TOME, AnimationID.HUMAN_CASTWAVE, SpriteID.Magicon.FIRE_WAVE);
 	}
 
 	private static final Map<Pet, Integer> PETS = new EnumMap<>(Pet.class);
@@ -302,6 +311,41 @@ final class GearArt
 		PETS.put(Pet.LIL_ZIK, ItemID.VERZIKPET);
 		PETS.put(Pet.OLMLET, ItemID.OLMPET);
 		PETS.put(Pet.VORKI, ItemID.VORKATHPET);
+		PETS.put(Pet.TEKTINY, ItemID.TEKTONPET);
+		PETS.put(Pet.VANGUARD, ItemID.VANGUARDPET);
+		PETS.put(Pet.VASA_MINIRIO, ItemID.VASAPET);
+		PETS.put(Pet.VESPINA, ItemID.VESPULAPET);
+		PETS.put(Pet.TUMEKENS_GUARDIAN, ItemID.WARDENPET_TUMEKEN);
+		PETS.put(Pet.AKKHITO, ItemID.WARDENPET_AKKHA);
+		PETS.put(Pet.BABI, ItemID.WARDENPET_BABA);
+		PETS.put(Pet.KEPHRITI, ItemID.WARDENPET_KEPHRI);
+		PETS.put(Pet.ORION, ItemID.OCELLUSPET);
+		PETS.put(Pet.XARI, ItemID.XARTHPET);
+		PETS.put(Pet.CHUBBLES, ItemID.JELLYPET);
+		PETS.put(Pet.MIMI, ItemID.MOIAPET);
+		PETS.put(Pet.DORK, ItemID.BORKPET);
+	}
+
+	/** The potion each filler boost is drawn as (four doses). */
+	static int boostItem(Boost boost)
+	{
+		switch (boost)
+		{
+			case DIVINE_SUPER_COMBAT:
+				return ItemID._4DOSEDIVINECOMBAT;
+			case DIVINE_RANGING:
+				return ItemID._4DOSEDIVINERANGE;
+			case DIVINE_MAGIC:
+				return ItemID._4DOSEDIVINEMAGIC;
+			case SARADOMIN_BREW:
+				return ItemID._4DOSEPOTIONOFSARADOMIN;
+			case STAMINA:
+				return ItemID._4DOSESTAMINA;
+			case SUPER_RESTORE:
+				return ItemID._4DOSE2RESTORE;
+			default:
+				return ItemID._4DOSE1ANTIDRAGON;
+		}
 	}
 
 	/** The item a pet is drawn as. */

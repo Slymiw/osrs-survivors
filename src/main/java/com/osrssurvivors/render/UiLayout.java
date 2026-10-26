@@ -1,6 +1,8 @@
 package com.osrssurvivors.render;
 
+import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.Build;
+import com.osrssurvivors.game.Changelog;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.GearSet;
@@ -35,6 +37,10 @@ public final class UiLayout
 		/** Turns the option with this ordinal on or off. */
 		TOGGLE_OPTION,
 		CLOSE_OPTIONS,
+		/** Opens the changelog. */
+		CHANGELOG,
+		/** Turns the changelog to the page in the index. */
+		CHANGELOG_PAGE,
 		// developer tools, shown with ?dev
 		DEV_END_RUN, DEV_LEVELS, DEV_CHAMPION, DEV_MAX_META, DEV_RESET_META, DEV_COINS, DEV_UNLOCK_MAPS
 	}
@@ -56,6 +62,25 @@ public final class UiLayout
 			this.passive = passive;
 			this.rank = rank;
 			this.pet = pet;
+		}
+	}
+
+	/** One release on the changelog page. */
+	public static final class ReleaseCard
+	{
+		public final Rectangle bounds;
+		public final Changelog.Release release;
+		/** Whether this is the newest release. */
+		public final boolean latest;
+		/** How many of its notes fit (all but on very short screens). */
+		public final int notes;
+
+		ReleaseCard(Rectangle bounds, Changelog.Release release, boolean latest, int notes)
+		{
+			this.bounds = bounds;
+			this.release = release;
+			this.latest = latest;
+			this.notes = notes;
 		}
 	}
 
@@ -128,6 +153,13 @@ public final class UiLayout
 	static final int TITLE_BUTTON_W = 220;
 	/** Line under the menu title (tagline, loading status, hovered location's description). */
 	static final int SUBTITLE_H = 18;
+	static final int CHANGELOG_W = 560;
+	static final int CHANGELOG_MAX_H = 600;
+	/** A release card's heading row (picture, version, headline, date). */
+	public static final int RELEASE_HEAD = 40;
+	/** One note's row on a release card. */
+	public static final int NOTE_H = 24;
+	static final int RELEASE_PAD = 8;
 	static final int LOCATION_CARD_W = 156;
 	static final int LOCATION_CARD_MAX_H = 60;
 	static final int LOCATION_CARD_MIN_H = 36;
@@ -178,7 +210,12 @@ public final class UiLayout
 				h = TITLE_H + STATS_H + COINS_H + BUTTON_H + PAD;
 				break;
 			case TITLE:
-				if (session.getTitleScreen() != TitleScreen.MAIN)
+				if (session.getTitleScreen() == TitleScreen.CHANGELOG)
+				{
+					w = CHANGELOG_W;
+					h = Math.min(CHANGELOG_MAX_H, view.height - 16);
+				}
+				else if (session.getTitleScreen() != TitleScreen.MAIN)
 				{
 					int count = gridCount(session.getTitleScreen());
 					int cols = locationColumns(view);
@@ -276,6 +313,24 @@ public final class UiLayout
 					addGrid(buttons, view, panel, Action.PET_CARD, Pet.values().length);
 					break;
 				}
+				if (session.getTitleScreen() == TitleScreen.CHANGELOG)
+				{
+					int pages = changelogPages(panel).size();
+					int page = Math.min(session.getChangelogPage(), pages - 1);
+					int pw = Math.min(BUTTON_W, (panel.width - 2 * PAD - 2 * GAP) / 3);
+					int by = bottom - BUTTON_H;
+					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, by, pw, BUTTON_H), "Back"));
+					if (page > 0)
+					{
+						buttons.add(new Button(Action.CHANGELOG_PAGE, page - 1, new Rectangle(panel.x + PAD, by, pw, BUTTON_H), "Newer"));
+					}
+					if (page < pages - 1)
+					{
+						buttons.add(new Button(Action.CHANGELOG_PAGE, page + 1,
+							new Rectangle(panel.x + panel.width - PAD - pw, by, pw, BUTTON_H), "Older"));
+					}
+					break;
+				}
 				int bw = Math.min(TITLE_BUTTON_W, panel.width - 2 * PAD);
 				int bx = panel.x + (panel.width - bw) / 2;
 				int y = panel.y + TITLE_H + 20 + SUBTITLE_H;
@@ -297,6 +352,8 @@ public final class UiLayout
 					y += BUTTON_H + GAP;
 				}
 				buttons.add(new Button(Action.OPTIONS, 0, new Rectangle(bx, y, bw, BUTTON_H), "Options"));
+				y += BUTTON_H + GAP;
+				buttons.add(new Button(Action.CHANGELOG, 0, new Rectangle(bx, y, bw, BUTTON_H), "What's new"));
 				if (session.isDevTools() && session.getMeta() != null)
 				{
 					addRow(buttons, panel, y + 2 * BUTTON_H + GAP, DEV_BUTTON_W,
@@ -381,6 +438,62 @@ public final class UiLayout
 	}
 
 	/** The button under {@code point}, or null. */
+	/** The releases on the changelog's current page, as cards stacked down the panel. */
+	public static List<ReleaseCard> releaseCards(Rectangle view, GameSession session)
+	{
+		Rectangle panel = panel(view, session);
+		if (panel == null || session.getTitleScreen() != TitleScreen.CHANGELOG || session.isOptionsOpen())
+		{
+			return Collections.emptyList();
+		}
+		List<Integer> pages = changelogPages(panel);
+		int page = Math.min(session.getChangelogPage(), pages.size() - 1);
+		int end = page + 1 < pages.size() ? pages.get(page + 1) : Changelog.RELEASES.size();
+		List<ReleaseCard> cards = new ArrayList<>();
+		int y = panel.y + TITLE_H + SUBTITLE_H;
+		int room = changelogRoom(panel);
+		for (int i = pages.get(page); i < end; i++)
+		{
+			Changelog.Release r = Changelog.RELEASES.get(i);
+			// a release taller than the whole page keeps the notes that fit
+			int notes = Math.max(0, Math.min(r.notes.size(), (room - RELEASE_HEAD - RELEASE_PAD) / NOTE_H));
+			int h = RELEASE_HEAD + notes * NOTE_H + RELEASE_PAD;
+			cards.add(new ReleaseCard(new Rectangle(panel.x + PAD, y, panel.width - 2 * PAD, h), r, i == 0, notes));
+			y += h + GAP;
+		}
+		return cards;
+	}
+
+	/** Height for release cards between the page's subtitle and its buttons. */
+	private static int changelogRoom(Rectangle panel)
+	{
+		return panel.height - TITLE_H - SUBTITLE_H - BUTTON_H - 2 * PAD;
+	}
+
+	/** First release of each changelog page: as many whole cards as fit above the buttons. */
+	static List<Integer> changelogPages(Rectangle panel)
+	{
+		int room = changelogRoom(panel);
+		List<Integer> starts = new ArrayList<>();
+		int used = room;
+		for (int i = 0; i < Changelog.RELEASES.size(); i++)
+		{
+			int h = releaseHeight(Changelog.RELEASES.get(i));
+			if (used + h > room)
+			{
+				starts.add(i);
+				used = 0;
+			}
+			used += h + GAP;
+		}
+		return starts;
+	}
+
+	private static int releaseHeight(Changelog.Release r)
+	{
+		return RELEASE_HEAD + r.notes.size() * NOTE_H + RELEASE_PAD;
+	}
+
 	public static Button buttonAt(Rectangle view, GameSession session, Point point)
 	{
 		if (point == null)
@@ -400,7 +513,7 @@ public final class UiLayout
 	/** Buttons on the main menu page, for its height. */
 	private static int mainButtons(GameSession session)
 	{
-		int n = 2 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 2 : 0);
+		int n = 3 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 2 : 0);
 		return n + (session.isDevTools() && session.getMeta() != null ? 1 : 0);
 	}
 
@@ -468,6 +581,16 @@ public final class UiLayout
 		{
 			sections.add(new Section("Set bonuses", y, Collections.emptyList(), sets));
 			y += SECTION_HEAD + sets.size() * SECTION_LINE + 6;
+		}
+		List<String> potions = new ArrayList<>();
+		for (Map.Entry<Boost, Integer> e : build.getDoses().entrySet())
+		{
+			potions.add(e.getKey().getTitle() + " ×" + e.getValue());
+		}
+		if (!potions.isEmpty())
+		{
+			sections.add(new Section("Potions", y, Collections.emptyList(), potions));
+			y += SECTION_HEAD + potions.size() * SECTION_LINE + 6;
 		}
 		List<Tile> pets = new ArrayList<>();
 		for (Pet pet : build.getPets())

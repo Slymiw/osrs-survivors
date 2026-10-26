@@ -10,7 +10,7 @@ import java.util.Random;
  * A champion's unique drop, revealed on three spinning reels like a slot machine. The prize is
  * rolled when the casket is opened; the reels are dressed to land on it one after another, and
  * how big the celebration is depends on its rarity. Coin pouches and XP lamps are common, boss
- * items rare, and a new pet is the jackpot.
+ * items rare, a new pet is the jackpot, and rarest of all is a megarare weapon.
  */
 public final class BossDrop
 {
@@ -19,7 +19,9 @@ public final class BossDrop
 		COMMON("Loot!"),
 		UNCOMMON("Nice drop!"),
 		RARE("Rare drop!"),
-		JACKPOT("New pet!");
+		JACKPOT("New pet!"),
+		/** Rarer than a pet: one of the Fractured Archive's weapons. */
+		MEGARARE("Megarare!");
 
 		private final String banner;
 
@@ -132,8 +134,14 @@ public final class BossDrop
 
 	/** Boss-only items, rolled for a rare drop. */
 	static final List<Gear> ITEMS = Collections.unmodifiableList(Arrays.asList(Gear.INFERNAL_MAX_CAPE, Gear.AMULET_OF_RANCOUR,
-		Gear.CONFLICTION_GAUNTLETS, Gear.AVERNIC_TREADS, Gear.RING_OF_THE_GODS, Gear.DIZANAS_QUIVER, Gear.ELYSIAN_SPIRIT_SHIELD));
+		Gear.CONFLICTION_GAUNTLETS, Gear.AVERNIC_TREADS, Gear.RING_OF_THE_GODS, Gear.DIZANAS_QUIVER, Gear.ELYSIAN_SPIRIT_SHIELD,
+		Gear.RONDACHE, Gear.IMBUED_ANCIENT_CAPE));
+	/** Megarare weapons, one per style; a casket only offers the one for the player's style. */
+	static final List<Gear> MEGARARES = Collections.unmodifiableList(Arrays.asList(Gear.OBLIGATOR, Gear.ASCENSION_CROSSBOWS,
+		Gear.ZORYAS_TOME));
 
+	/** About one casket in 250: a megarare outclasses everything, so it should feel like one. */
+	static final double MEGARARE_CHANCE = 0.004;
 	static final double JACKPOT_CHANCE = 0.08;
 	static final double RARE_CHANCE = 0.27;
 	static final double UNCOMMON_CHANCE = 0.33;
@@ -168,14 +176,21 @@ public final class BossDrop
 	}
 
 	/**
-	 * Rolls a drop. {@code items} are the boss items the player could still use; {@code pets}
-	 * the pets not yet won. A roll for something unavailable falls to the next rarity down.
+	 * Rolls a drop. {@code megarares} are the megarare weapons on offer (the player's style, not
+	 * held yet), {@code items} the boss items the player could still use, {@code pets} the pets
+	 * not yet won. A roll for something unavailable falls to the next rarity down.
 	 */
-	static BossDrop roll(Random random, List<Gear> items, List<Pet> pets, int difficulty)
+	static BossDrop roll(Random random, List<Gear> megarares, List<Gear> items, List<Pet> pets, int difficulty)
 	{
-		double r = random.nextDouble();
+		double m = random.nextDouble();
 		Rarity rarity;
 		Prize prize;
+		// the megarare has its own roll, so the other odds stay as they were
+		if (m < MEGARARE_CHANCE && !megarares.isEmpty())
+		{
+			return new BossDrop(Rarity.MEGARARE, Prize.gear(megarares.get(random.nextInt(megarares.size()))), symbols(null), random);
+		}
+		double r = random.nextDouble();
 		if (r < JACKPOT_CHANCE && !pets.isEmpty())
 		{
 			rarity = Rarity.JACKPOT;
@@ -196,11 +211,20 @@ public final class BossDrop
 			rarity = Rarity.COMMON;
 			prize = Prize.coins(40 + 30 * difficulty);
 		}
-		// the reels show everything that could have been won, pets included
+		return new BossDrop(rarity, prize, symbols(prize), random);
+	}
+
+	/** The reels show everything that could have been won, pets and megarares included. */
+	private static List<Prize> symbols(Prize prize)
+	{
 		List<Prize> symbols = new ArrayList<>();
-		symbols.add(Prize.coins(prize.kind == Prize.Kind.COINS ? prize.amount : 100));
+		symbols.add(Prize.coins(prize != null && prize.kind == Prize.Kind.COINS ? prize.amount : 100));
 		symbols.add(Prize.lamp(2));
 		for (Gear g : ITEMS)
+		{
+			symbols.add(Prize.gear(g));
+		}
+		for (Gear g : MEGARARES)
 		{
 			symbols.add(Prize.gear(g));
 		}
@@ -208,7 +232,7 @@ public final class BossDrop
 		{
 			symbols.add(Prize.pet(p));
 		}
-		return new BossDrop(rarity, prize, symbols, random);
+		return symbols;
 	}
 
 	void advance(double dt)

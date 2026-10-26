@@ -66,11 +66,23 @@ public enum EnemyKind
 	KRIL_TSUTSAROTH("K'ril Tsutsaroth", 19),
 	KREEARRA("Kree'arra", 19, Attack.ARROW, 0.9, 240, 2.8),
 	CERBERUS("Cerberus", 20),
+	// Chambers of Xeric
+	ICE_DEMON("Ice demon", 18, Attack.MAGIC, 1.0, 220, 3.0),
+	MUTTADILE("Muttadile", 21),
+	VANGUARD("Vanguard", 19),
+	VESPULA("Vespula", 21, Attack.ARROW, 1.0, 230, 2.8),
+	TEKTON("Tekton", 21),
+	VASA_NISTIRIO("Vasa Nistirio", 22, Attack.MAGIC, 1.1, 230, 3.0),
 	ZULRAH("Zulrah", 19, Attack.MAGIC, 1.0, 230, 2.6),
 	VORKATH("Vorkath", 21, Attack.MAGIC, 1.1, 230, 3.0),
 	TZTOK_JAD("TzTok-Jad", 21, Attack.MAGIC, 1.3, 240, 4.0),
 	CORPOREAL_BEAST("Corporeal Beast", 21),
 	ALCHEMICAL_HYDRA("Alchemical Hydra", 20, Attack.MAGIC, 1.0, 220, 2.8),
+	// Tombs of Amascut
+	BA_BA("Ba-Ba", 21),
+	AKKHA("Akkha", 19, Attack.MAGIC, 1.0, 220, 2.8),
+	KEPHRI("Kephri", 21, Attack.MAGIC, 1.0, 230, 2.8),
+	TUMEKENS_WARDEN("Tumeken's Warden", 22, Attack.MAGIC, 1.2, 240, 2.6),
 	THE_NIGHTMARE("The Nightmare", 21),
 	PHANTOM_MUSPAH("Phantom Muspah", 19, Attack.ARROW, 1.0, 240, 2.6),
 	DUKE_SUCELLUS("Duke Sucellus", 21),
@@ -80,7 +92,17 @@ public enum EnemyKind
 	ARAXXOR("Araxxor", 21),
 	NEX("Nex", 18, Attack.MAGIC, 1.2, 220, 2.4),
 	VERZIK_VITUR("Verzik Vitur", 20, Attack.MAGIC, 1.2, 230, 2.4),
-	YAMA("Yama", 21, Attack.MAGIC, 1.3, 230, 2.4);
+	YAMA("Yama", 21, Attack.MAGIC, 1.3, 230, 2.4),
+	// the Fractured Archive
+	DAGONHAI_ELDER("Dagon'hai Elder", 17, Attack.MAGIC, 1.2, 230, 2.4),
+	THE_SMORKS("The Smorks", 20),
+	BORK("Bork", 22),
+	DREADNOTH("Dreadnoth the Jellied", 22),
+	XARTH("Xarth", 21, Attack.ARROW, 1.2, 240, 2.4),
+	MOIA("Moia", 21, Attack.MAGIC, 1.3, 230, 2.2),
+	EZEKIEL("Ezekiel", 21),
+	ARCHIVE_GUARDIAN("Archive Guardian", 22),
+	OCELLUS("Ocellus", 21, Attack.MAGIC, 1.4, 240, 2.2);
 
 	/** How a ranged monster attacks. */
 	public enum Attack

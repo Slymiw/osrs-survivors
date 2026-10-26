@@ -83,6 +83,8 @@ public final class GameSession
 	private Phase phase;
 	private double elapsed;
 	private int kills;
+	/** Run time of the last kill, for {@link #stallMultiplier}. */
+	private double lastKillTime;
 	private int championsSlain;
 	private double accumulator;
 	private double moveX;
@@ -112,6 +114,12 @@ public final class GameSession
 	private Options options = new Options();
 	/** Whether the options page covers the start menu or the pause screen. */
 	private boolean optionsOpen;
+	/** Whether this player hasn't opened the changelog since the latest update. */
+	private boolean changelogNews;
+	/** Which page of the changelog is showing. */
+	private int changelogPage;
+	/** Real seconds the start menu has been showing, for its little animations. */
+	private double menuTime;
 	/** Developer tool: every location can be picked. */
 	private boolean allUnlocked;
 	private double retributionTimer;
@@ -168,6 +176,7 @@ public final class GameSession
 		phase = Phase.RUNNING;
 		elapsed = 0;
 		kills = 0;
+		lastKillTime = 0;
 		championsSlain = 0;
 		accumulator = 0;
 		moveX = 0;
@@ -290,7 +299,40 @@ public final class GameSession
 		if (phase == Phase.TITLE)
 		{
 			titleScreen = screen;
+			if (screen == TitleScreen.CHANGELOG)
+			{
+				changelogNews = false;
+				changelogPage = 0;
+			}
 		}
+	}
+
+	/** Whether the main menu should point the player at the changelog. */
+	public boolean hasChangelogNews()
+	{
+		return changelogNews;
+	}
+
+	public void setChangelogNews(boolean news)
+	{
+		changelogNews = news;
+	}
+
+	public int getChangelogPage()
+	{
+		return changelogPage;
+	}
+
+	/** Turns the changelog's page; the layout keeps it in range. */
+	public void setChangelogPage(int page)
+	{
+		changelogPage = Math.max(0, page);
+	}
+
+	/** Real seconds the start menu has been up. */
+	public double getMenuTime()
+	{
+		return menuTime;
 	}
 
 	/** A line shown on the start menu, e.g. while a location loads; null for none. */
@@ -345,6 +387,10 @@ public final class GameSession
 		{
 			s.passives.put(e.getKey().name(), e.getValue());
 		}
+		for (Map.Entry<Boost, Integer> e : build.getDoses().entrySet())
+		{
+			s.boosts.put(e.getKey().name(), e.getValue());
+		}
 		return s;
 	}
 
@@ -373,8 +419,20 @@ public final class GameSession
 				build.addRank(p);
 			}
 		}
+		if (save.boosts != null)
+		{
+			for (Map.Entry<String, Integer> e : save.boosts.entrySet())
+			{
+				Boost b = enumOrNull(Boost.class, e.getKey());
+				for (int i = 0; b != null && e.getValue() != null && i < e.getValue(); i++)
+				{
+					build.addDose(b);
+				}
+			}
+		}
 		progression.restore(save.level, save.xp, save.pendingLevelUps);
 		elapsed = Math.max(0, save.elapsed);
+		lastKillTime = elapsed;
 		kills = Math.max(0, save.kills);
 		championsSlain = Math.max(0, save.championsSlain);
 		rerollsLeft = save.rerolls == null ? rerollsLeft : Math.max(0, Math.min(rerollsLeft, save.rerolls));
@@ -395,12 +453,21 @@ public final class GameSession
 		spawner.resume(elapsed);
 		applyBuild();
 		player.health = save.health > 0 ? Math.min(player.maxHealth, save.health) : player.maxHealth;
-		if (save.x >= 0 && save.y >= 0 && save.x < arena.getWidth() && save.y < arena.getHeight()
-			&& arena.isWalkable(Arena.tileOf(save.x), Arena.tileOf(save.y))
-			&& !arena.isSolidBox(save.x, save.y, Player.COLLISION_RADIUS))
+		double x = save.x;
+		double y = save.y;
+		if (save.version < 3 && x >= 0 && y >= 0)
 		{
-			player.x = save.x;
-			player.y = save.y;
+			// the arenas grew around the same centre since
+			double shift = (Location.SIZE - Location.OLD_SIZE) / 2 * Arena.TILE;
+			x += shift;
+			y += shift;
+		}
+		if (x >= 0 && y >= 0 && x < arena.getWidth() && y < arena.getHeight()
+			&& arena.isWalkable(Arena.tileOf(x), Arena.tileOf(y))
+			&& !arena.isSolidBox(x, y, Player.COLLISION_RADIUS))
+		{
+			player.x = x;
+			player.y = y;
 		}
 		if (progression.getPendingLevelUps() > 0)
 		{
@@ -459,6 +526,10 @@ public final class GameSession
 	/** Advances the simulation by a frame's worth of real time. Does nothing unless running. */
 	public void advance(double frameSeconds)
 	{
+		if (phase == Phase.TITLE && frameSeconds > 0)
+		{
+			menuTime += Math.min(frameSeconds, MAX_FRAME);
+		}
 		if (levelUpTime >= 0 && frameSeconds > 0)
 		{
 			// the level-up show plays in real time over the paused game
@@ -670,7 +741,15 @@ public final class GameSession
 				pets.add(p);
 			}
 		}
-		bossDrop = BossDrop.roll(random, items, pets, location.getDifficulty());
+		List<Gear> megarares = new ArrayList<>();
+		for (Gear g : BossDrop.MEGARARES)
+		{
+			if (g.getStyle() == build.getStyle() && weapon != g)
+			{
+				megarares.add(g);
+			}
+		}
+		bossDrop = BossDrop.roll(random, megarares, items, pets, location.getDifficulty());
 		phase = Phase.BOSS_DROP;
 	}
 
@@ -725,10 +804,17 @@ public final class GameSession
 			case COINS:
 				bonusCoins += offer.getCoins();
 				break;
+			case BOOST:
+				build.addDose(offer.getBoost());
+				break;
 			default:
 				break;
 		}
 		applyBuild();
+		if (offer.getBoost() == Boost.SARADOMIN_BREW)
+		{
+			player.heal(Boost.HITPOINTS);
+		}
 		if (offer.getKind() == Offer.Kind.FOOD)
 		{
 			player.heal(player.maxHealth * Offer.FOOD_HEAL);
@@ -836,9 +922,19 @@ public final class GameSession
 				if (--e.sightCheck <= 0)
 				{
 					e.inSight = arena.clearLine(e.x, e.y, player.x, player.y);
+					e.clearWalk = e.inSight && arena.clearPath(e.x, e.y, player.x, player.y, contact, e.collisionRadius());
+					if (e.wanted > STUCK_MIN_WALK && Math.hypot(e.x - e.checkX, e.y - e.checkY) < e.wanted * STUCK_SHARE)
+					{
+						// barely moved while trying to walk: caught on something, so follow the paths for a while
+						e.detour = DETOUR_SECONDS;
+					}
+					e.checkX = e.x;
+					e.checkY = e.y;
+					e.wanted = 0;
 					e.sightCheck = 8 + i % 5;
 				}
-				if (!e.inSight)
+				e.detour = Math.max(0, e.detour - STEP);
+				if (!e.clearWalk || e.detour > 0)
 				{
 					double[] next = paths.nextStep(Arena.tileOf(e.x), Arena.tileOf(e.y));
 					if (next != null)
@@ -872,6 +968,13 @@ public final class GameSession
 		separateEnemies();
 	}
 
+	/** A monster that covered less than this share of the way it tried to walk is stuck. */
+	static final double STUCK_SHARE = 0.25;
+	/** Walking less than this (world units) between checks never counts as stuck. */
+	static final double STUCK_MIN_WALK = 4;
+	/** Seconds a stuck monster follows the paths before trying the straight line again. */
+	static final double DETOUR_SECONDS = 1.5;
+
 	/** Flies monster missiles; they hurt the player on contact and stop at walls. */
 	private void moveShots()
 	{
@@ -886,7 +989,7 @@ public final class GameSession
 			double dy = player.y - (s.y + 8);
 			if (dx * dx + dy * dy <= reach * reach)
 			{
-				double taken = s.damage * (1 - build.damageReduction()) * (1 - build.missileReduction());
+				double taken = s.damage * (1 - build.damageReduction()) * (1 - build.missileReduction()) * stallMultiplier();
 				missileDamageTaken += taken;
 				player.damage(taken);
 				damageTaken += taken;
@@ -1005,6 +1108,27 @@ public final class GameSession
 		}
 	}
 
+	/** In overtime, seconds without a kill before monsters start hitting harder for it. */
+	static final double STALL_GRACE = 20;
+	/** Seconds over which stalling multiplies monster damage by e. */
+	static final double STALL_GROWTH = 20;
+
+	/**
+	 * Monster damage multiplier for a stalled run: in overtime, once the player has gone
+	 * {@link #STALL_GRACE} seconds without a kill, damage keeps growing until something gives. A
+	 * build that can't kill anything any more and can't be killed either would otherwise stand
+	 * off forever.
+	 */
+	double stallMultiplier()
+	{
+		if (elapsed <= Spawner.OVERTIME_START)
+		{
+			return 1;
+		}
+		double stalled = elapsed - Math.max(lastKillTime, Spawner.OVERTIME_START) - STALL_GRACE;
+		return stalled <= 0 ? 1 : Math.exp(stalled / STALL_GROWTH);
+	}
+
 	/** Applies contact damage (and Vengeance) for this step. Returns true if the player died. */
 	private boolean hurtPlayer()
 	{
@@ -1021,7 +1145,7 @@ public final class GameSession
 				}
 			}
 		}
-		double taken = raw * (1 - build.damageReduction()) * (1 - build.contactReduction());
+		double taken = raw * (1 - build.damageReduction()) * (1 - build.contactReduction()) * stallMultiplier();
 		if (taken > 0)
 		{
 			player.damage(taken);
@@ -1106,6 +1230,7 @@ public final class GameSession
 			{
 				it.remove();
 				kills++;
+				lastKillTime = elapsed;
 				orbs.add(new XpOrb(e.x, e.y, e.xpValue));
 				if (random.nextDouble() < build.extraGemChance())
 				{
@@ -1275,14 +1400,29 @@ public final class GameSession
 				choices.remove(choices.size() - 1);
 			}
 		}
-		// when upgrades run out, fill up with food and a coin pouch so there's always a real choice
-		if (choices.size() < CHOICE_COUNT && !choices.contains(Offer.food()))
-		{
-			choices.add(Offer.food());
-		}
+		// when upgrades run out, fill up from potions, food and a coin pouch, so the last levels
+		// of a long run still give a real (and varied) choice
 		if (choices.size() < CHOICE_COUNT)
 		{
-			choices.add(Offer.coins(fillerCoins()));
+			List<Offer> fillers = new ArrayList<>();
+			for (Boost b : Boost.values())
+			{
+				int had = build.doses(b);
+				if (b.offerable(had, style))
+				{
+					fillers.add(Offer.boost(b, had + 1));
+				}
+			}
+			if (player.health < player.maxHealth && !choices.contains(Offer.food()))
+			{
+				fillers.add(Offer.food());
+			}
+			fillers.add(Offer.coins(fillerCoins()));
+			Collections.shuffle(fillers, random);
+			while (choices.size() < CHOICE_COUNT && !fillers.isEmpty())
+			{
+				choices.add(fillers.remove(0));
+			}
 		}
 		phase = Phase.LEVEL_UP;
 	}

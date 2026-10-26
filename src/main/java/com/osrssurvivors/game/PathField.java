@@ -1,6 +1,5 @@
 package com.osrssurvivors.game;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 
 /**
@@ -16,12 +15,15 @@ final class PathField
 
 	private final Arena arena;
 	private final int[] dist;
+	/** Breadth-first queue of tile indices; every tile enters at most once. */
+	private final int[] queue;
 	private int origin = -1;
 
 	PathField(Arena arena)
 	{
 		this.arena = arena;
 		this.dist = new int[arena.getTilesX() * arena.getTilesY()];
+		this.queue = new int[dist.length];
 	}
 
 	void update(int tx, int ty)
@@ -35,11 +37,12 @@ final class PathField
 		origin = o;
 		Arrays.fill(dist, UNREACHABLE);
 		dist[o] = 0;
-		ArrayDeque<Integer> queue = new ArrayDeque<>();
-		queue.add(o);
-		while (!queue.isEmpty())
+		int head = 0;
+		int tail = 0;
+		queue[tail++] = o;
+		while (head < tail)
 		{
-			int i = queue.poll();
+			int i = queue[head++];
 			int x = i % w;
 			int y = i / w;
 			for (int d = 0; d < 8; d++)
@@ -51,7 +54,7 @@ final class PathField
 					if (dist[j] == UNREACHABLE)
 					{
 						dist[j] = dist[i] + 1;
-						queue.add(j);
+						queue[tail++] = j;
 					}
 				}
 			}

@@ -2,9 +2,11 @@ package com.osrssurvivors.render;
 
 import com.osrssurvivors.game.Abilities;
 import com.osrssurvivors.game.Arena;
+import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.BossDrop;
 import com.osrssurvivors.game.Build;
 import com.osrssurvivors.game.Casket;
+import com.osrssurvivors.game.Changelog;
 import com.osrssurvivors.game.Combination;
 import com.osrssurvivors.game.Effects;
 import com.osrssurvivors.game.Enemy;
@@ -13,6 +15,7 @@ import com.osrssurvivors.game.EnemyShot;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.GearSet;
+import com.osrssurvivors.game.ItemRarity;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
 import com.osrssurvivors.game.Offer;
@@ -136,7 +139,8 @@ public final class GameRenderer
 			g.clip(view);
 			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, assets.pixelFonts()
 				? RenderingHints.VALUE_TEXT_ANTIALIAS_OFF : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-			Ui ui = new Ui(g, assets, session.getOptions());
+			Ui ui = new Ui(g, assets, session.getOptions(),
+				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime());
 			new World(view, session, assets).draw(g);
 			if (session.getPhase() != Phase.TITLE)
 			{
@@ -1020,7 +1024,8 @@ public final class GameRenderer
 			case TITLE:
 				title = session.getTitleScreen() == TitleScreen.LOCATIONS ? "Where do you want to fight?"
 					: session.getTitleScreen() == TitleScreen.UPGRADES ? "Upgrades"
-					: session.getTitleScreen() == TitleScreen.PETS ? "Pets" : "OSRS Survivors";
+					: session.getTitleScreen() == TitleScreen.PETS ? "Pets"
+					: session.getTitleScreen() == TitleScreen.CHANGELOG ? "What's new" : "OSRS Survivors";
 				break;
 			case BOSS_DROP:
 				// the rarity's banner bounces in above the panel once the reels stop
@@ -1032,6 +1037,13 @@ public final class GameRenderer
 		}
 		ui.font(TextStyle.BOLD);
 		ui.centredFit(title, panel.x + panel.width / 2, panel.y + 24, panel.width - 2 * UiLayout.PAD, titleColor);
+		if (!options && session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN)
+		{
+			// the version, tucked after the game's name
+			int end = panel.x + (panel.width + ui.metrics().stringWidth(title)) / 2;
+			ui.font(TextStyle.SMALL);
+			ui.text("v" + Changelog.VERSION, end + 5, panel.y + 24, HINT);
+		}
 
 		if (options)
 		{
@@ -1093,6 +1105,11 @@ public final class GameRenderer
 				{
 					line = "Champions' caskets can hold a pet. Each one helps in every run.";
 				}
+				else if (session.getTitleScreen() == TitleScreen.CHANGELOG)
+				{
+					line = "You're playing version " + Changelog.VERSION + ". Newest changes first.";
+					colour = HINT;
+				}
 				else
 				{
 					MetaProgress meta = session.getMeta();
@@ -1101,6 +1118,10 @@ public final class GameRenderer
 						: "Pick a place, gear up from your bare fists, survive.";
 				}
 				ui.centredFit(line, panel.x + panel.width / 2, panel.y + UiLayout.TITLE_H + 6, panel.width - 2 * UiLayout.PAD, colour);
+				for (UiLayout.ReleaseCard card : UiLayout.releaseCards(view, session))
+				{
+					drawReleaseCard(ui, card);
+				}
 				break;
 			case PAUSED:
 				drawLoadout(ui, panel, session);
@@ -1146,6 +1167,16 @@ public final class GameRenderer
 		if (session.getPhase() == Phase.PAUSED && !options)
 		{
 			drawLoadoutTooltip(ui, view, panel, session, mouse);
+		}
+		if (session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN && !options && session.hasChangelogNews())
+		{
+			for (UiLayout.Button b : UiLayout.buttons(view, session))
+			{
+				if (b.action == UiLayout.Action.CHANGELOG)
+				{
+					drawChangelogNews(ui, view, b.bounds, session.getMenuTime());
+				}
+			}
 		}
 		if (session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN && !options)
 		{
@@ -1336,7 +1367,7 @@ public final class GameRenderer
 			if (t.gear != null)
 			{
 				title = t.gear.getTitle();
-				body = t.gear.describe();
+				body = t.gear.getRarity().getTitle() + ". " + t.gear.describe();
 			}
 			else if (t.passive != null)
 			{
@@ -1386,6 +1417,201 @@ public final class GameRenderer
 			ui.text(l, x + 6, ty, YELLOW);
 			ty += line - ui.metrics().getAscent();
 		}
+	}
+
+	private static final Color CARD_BACK = new Color(0, 0, 0, 70);
+	private static final Color CARD_EDGE = new Color(150, 132, 100, 90);
+	private static final Color PILL = new Color(120, 70, 10);
+	private static final Color NEW_PILL = new Color(20, 120, 40);
+	private static final Color NOTE_TEXT = new Color(240, 232, 210);
+	private static final String[] MONTHS = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+	/** Edge of a note's picture on the changelog. */
+	private static final int NOTE_ART = 20;
+
+	/**
+	 * One release on the changelog: a version pill, the headline and the date across the top, then
+	 * a row per change with its picture (or a bullet).
+	 */
+	private static void drawReleaseCard(Ui ui, UiLayout.ReleaseCard card)
+	{
+		Graphics2D g = ui.g;
+		Rectangle r = card.bounds;
+		Changelog.Release release = card.release;
+		g.setColor(CARD_BACK);
+		g.fillRoundRect(r.x, r.y, r.width, r.height, 10, 10);
+		g.setColor(CARD_EDGE);
+		g.drawRoundRect(r.x, r.y, r.width - 1, r.height - 1, 10, 10);
+		if (card.latest)
+		{
+			g.setColor(GOLD);
+			g.fillRoundRect(r.x, r.y + 6, 3, r.height - 12, 3, 3);
+		}
+
+		int x = r.x + 12;
+		int baseline = r.y + 22;
+		ui.font(TextStyle.BOLD);
+		x = drawPill(ui, "v" + release.version, x, baseline, PILL, WHITE) + 6;
+		if (card.latest)
+		{
+			ui.font(TextStyle.SMALL);
+			x = drawPill(ui, "NEW", x, baseline, NEW_PILL, WHITE) + 6;
+		}
+		ui.font(TextStyle.SMALL);
+		String date = formatDate(release.date);
+		int dateW = ui.metrics().stringWidth(date);
+		ui.right(date, r.x + r.width - 10, baseline, HINT);
+		ui.font(TextStyle.BOLD);
+		ui.text(fit(release.headline, ui.metrics(), r.x + r.width - 18 - dateW - x), x, baseline, ORANGE);
+
+		int y = r.y + UiLayout.RELEASE_HEAD;
+		for (Changelog.Note note : release.notes.subList(0, card.notes))
+		{
+			int cy = y + UiLayout.NOTE_H / 2 - 2;
+			int ax = r.x + 12;
+			BufferedImage art = noteArt(ui.assets, note.art);
+			if (art != null)
+			{
+				double scale = Math.min(1, NOTE_ART / (double) Math.max(art.getWidth(), art.getHeight()));
+				int w = (int) Math.round(art.getWidth() * scale);
+				int h = (int) Math.round(art.getHeight() * scale);
+				g.drawImage(art, ax + (NOTE_ART - w) / 2, cy - h / 2, w, h, null);
+			}
+			else
+			{
+				g.setColor(GOLD);
+				g.fillOval(ax + NOTE_ART / 2 - 3, cy - 3, 6, 6);
+			}
+			int tx = ax + NOTE_ART + 10;
+			int width = r.x + r.width - 10 - tx;
+			ui.font(TextStyle.REGULAR);
+			if (ui.metrics().stringWidth(note.text) > width)
+			{
+				ui.font(TextStyle.SMALL);
+			}
+			ui.text(fit(note.text, ui.metrics(), width), tx, cy + ui.metrics().getAscent() / 2 - 1, NOTE_TEXT);
+			y += UiLayout.NOTE_H;
+		}
+	}
+
+	/** A rounded label behind text, its baseline at {@code baseline}; returns its right edge. */
+	private static int drawPill(Ui ui, String text, int x, int baseline, Color back, Color fore)
+	{
+		FontMetrics fm = ui.metrics();
+		int w = fm.stringWidth(text) + 12;
+		int h = fm.getAscent() + 6;
+		ui.g.setColor(back);
+		ui.g.fillRoundRect(x, baseline - fm.getAscent() - 3, w, h, h, h);
+		ui.text(text, x + 6, baseline, fore);
+		return x + w;
+	}
+
+	/** Picture for a changelog note: an item, a pet, a place or a monster; null for none. */
+	private static BufferedImage noteArt(GameAssets assets, Object art)
+	{
+		if (art instanceof Location)
+		{
+			return assets.locationIcon((Location) art);
+		}
+		if (art instanceof Gear)
+		{
+			return assets.gearIcon((Gear) art);
+		}
+		if (art instanceof Pet)
+		{
+			return assets.petIcon((Pet) art);
+		}
+		if (art instanceof Perk)
+		{
+			return assets.perkIcon((Perk) art);
+		}
+		if (art instanceof Boost)
+		{
+			return assets.offerIcon(Offer.boost((Boost) art, 1));
+		}
+		if (art instanceof EnemyKind)
+		{
+			ActorSprite sprite = assets.enemy((EnemyKind) art, false, Math.PI / 2, false, 0, 0.5);
+			return sprite == null ? null : sprite.image;
+		}
+		return null;
+	}
+
+	/** 2026-10-26 as 26 Oct 2026. */
+	static String formatDate(String iso)
+	{
+		String[] parts = iso.split("-");
+		if (parts.length != 3)
+		{
+			return iso;
+		}
+		int month = Integer.parseInt(parts[1]);
+		return Integer.parseInt(parts[2]) + " " + MONTHS[Math.max(1, Math.min(12, month)) - 1] + " " + parts[0];
+	}
+
+	/**
+	 * After an update, until the changelog is opened: a gold glow round its button, a "NEW" badge,
+	 * and a callout beside it saying what's there. The glow pulses only with flashes on.
+	 */
+	private static void drawChangelogNews(Ui ui, Rectangle view, Rectangle b, double time)
+	{
+		Graphics2D g = ui.g;
+		boolean lively = ui.on(Option.FLASHES);
+		double pulse = lively ? 0.5 + 0.5 * Math.sin(time * 4) : 1;
+		Stroke oldStroke = g.getStroke();
+		for (int i = 3; i >= 1; i--)
+		{
+			g.setStroke(new BasicStroke(i * 2));
+			g.setColor(new Color(255, 200, 40, (int) Math.round((40 + 50 * pulse) / i)));
+			g.drawRoundRect(b.x - i, b.y - i, b.width + 2 * i - 1, b.height + 2 * i - 1, 8, 8);
+		}
+		g.setStroke(new BasicStroke(1));
+		g.setColor(new Color(255, 215, 90, (int) Math.round(160 + 95 * pulse)));
+		g.drawRoundRect(b.x - 1, b.y - 1, b.width + 1, b.height + 1, 6, 6);
+		g.setStroke(oldStroke);
+		ui.font(TextStyle.SMALL);
+		int badgeW = ui.metrics().stringWidth("NEW") + 12;
+		drawPill(ui, "NEW", b.x + b.width - badgeW - 6, b.y + (b.height + ui.metrics().getAscent()) / 2 - 1, NEW_PILL, WHITE);
+
+		// the callout: beside the button if there's room, else under it
+		String head = "Updated to v" + Changelog.VERSION;
+		String body = "See what's changed in What's new.";
+		ui.font(TextStyle.BOLD);
+		int w = ui.metrics().stringWidth(head);
+		ui.font(TextStyle.SMALL);
+		w = Math.max(w, ui.metrics().stringWidth(body)) + 20;
+		int line = ui.metrics().getHeight();
+		int h = 10 + line * 2 + 6;
+		int bob = lively ? (int) Math.round(Math.sin(time * 3) * 2) : 0;
+		boolean beside = b.x + b.width + 14 + w <= view.x + view.width - 4;
+		int x;
+		int y;
+		int[] px;
+		int[] py;
+		if (beside)
+		{
+			x = b.x + b.width + 14 + bob;
+			y = b.y + (b.height - h) / 2;
+			int my = b.y + b.height / 2;
+			px = new int[]{x - 8, x + 1, x + 1};
+			py = new int[]{my, my - 7, my + 7};
+		}
+		else
+		{
+			x = Math.max(view.x + 4, Math.min(b.x + (b.width - w) / 2, view.x + view.width - w - 4));
+			y = b.y + b.height + 12 + bob;
+			int mx = b.x + b.width / 2;
+			px = new int[]{mx, mx - 7, mx + 7};
+			py = new int[]{y - 8, y + 1, y + 1};
+		}
+		g.setColor(new Color(20, 17, 12, 240));
+		g.fillRoundRect(x, y, w, h, 10, 10);
+		g.fillPolygon(px, py, 3);
+		g.setColor(GOLD);
+		g.drawRoundRect(x, y, w - 1, h - 1, 10, 10);
+		ui.font(TextStyle.BOLD);
+		ui.text(head, x + 10, y + 6 + ui.metrics().getAscent(), GOLD);
+		ui.font(TextStyle.SMALL);
+		ui.text(body, x + 10, y + 8 + line + ui.metrics().getAscent(), NOTE_TEXT);
 	}
 
 	/** A pet on the pets page: its picture, name and bonus, faded until it's been won. */
@@ -1498,6 +1724,38 @@ public final class GameRenderer
 		}
 	}
 
+	private static final Color COMMON_ITEM = new Color(205, 200, 190);
+	private static final Color UNCOMMON_ITEM = new Color(60, 220, 60);
+	private static final Color RARE_ITEM = new Color(70, 150, 255);
+	private static final Color EPIC_ITEM = new Color(190, 95, 255);
+	private static final Color LEGENDARY_ITEM = new Color(255, 135, 20);
+
+	/** An item rarity's colour; the megarare's shifts with {@code time}. */
+	static Color rarityColour(ItemRarity rarity, double time)
+	{
+		switch (rarity)
+		{
+			case UNCOMMON:
+				return UNCOMMON_ITEM;
+			case RARE:
+				return RARE_ITEM;
+			case EPIC:
+				return EPIC_ITEM;
+			case LEGENDARY:
+				return LEGENDARY_ITEM;
+			case MEGARARE:
+				return megarareColour(0.5 + 0.5 * Math.sin(time * 3));
+			default:
+				return COMMON_ITEM;
+		}
+	}
+
+	/** The megarare's colours: violet through magenta, {@code t} from 0 to 1. */
+	static Color megarareColour(double t)
+	{
+		return Color.getHSBColor((float) (0.74 + 0.16 * t), 0.7f, 1f);
+	}
+
 	private static Color rarityColour(BossDrop.Rarity rarity, double time)
 	{
 		switch (rarity)
@@ -1509,6 +1767,8 @@ public final class GameRenderer
 			case JACKPOT:
 				// cycles through the rainbow
 				return Color.getHSBColor((float) (time * 0.6 % 1.0), 0.75f, 1f);
+			case MEGARARE:
+				return megarareColour(0.5 + 0.5 * Math.sin(time * 3));
 			default:
 				return WHITE;
 		}
@@ -1544,7 +1804,8 @@ public final class GameRenderer
 		double cx = view.x + view.width / 2.0;
 		double cy = view.y + view.height / 2.0;
 		double reach = Math.hypot(view.width, view.height);
-		int rays = drop.getRarity() == BossDrop.Rarity.JACKPOT ? 16 : 10;
+		boolean mega = drop.getRarity() == BossDrop.Rarity.MEGARARE;
+		int rays = mega ? 20 : drop.getRarity() == BossDrop.Rarity.JACKPOT ? 16 : 10;
 		float alpha = (float) Math.min(0.3, since * 0.6);
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
 		for (int i = 0; i < rays; i++)
@@ -1553,7 +1814,8 @@ public final class GameRenderer
 			double w = Math.PI / rays * 0.5;
 			int[] xs = {(int) cx, (int) (cx + Math.cos(a - w) * reach), (int) (cx + Math.cos(a + w) * reach)};
 			int[] ys = {(int) cy, (int) (cy + Math.sin(a - w) * reach), (int) (cy + Math.sin(a + w) * reach)};
-			g.setColor(drop.getRarity() == BossDrop.Rarity.JACKPOT ? Color.getHSBColor((float) (i / (double) rays), 0.6f, 1f) : GOLD);
+			g.setColor(mega ? megarareColour(i / (double) rays) : drop.getRarity() == BossDrop.Rarity.JACKPOT
+				? Color.getHSBColor((float) (i / (double) rays), 0.6f, 1f) : GOLD);
 			g.fillPolygon(xs, ys, 3);
 		}
 		g.setComposite(old);
@@ -1841,7 +2103,8 @@ public final class GameRenderer
 			}
 			else
 			{
-				Color c = rarity == BossDrop.Rarity.JACKPOT.ordinal() ? Color.getHSBColor((float) noise(i + 70), 0.7f, 1f)
+				Color c = rarity == BossDrop.Rarity.MEGARARE.ordinal() ? megarareColour(noise(i + 70))
+					: rarity == BossDrop.Rarity.JACKPOT.ordinal() ? Color.getHSBColor((float) noise(i + 70), 0.7f, 1f)
 					: rarityColour(drop.getRarity(), drop.getTime());
 				g.setColor(c);
 				int r = 2 + (int) (noise(i + 300) * 3);
@@ -1923,6 +2186,21 @@ public final class GameRenderer
 			y += 2;
 		}
 		ui.text(String.valueOf(b.index + 1), r.x + 5, r.y + 4 + ui.metrics().getAscent(), HINT);
+		if (offer.getGear() != null && combination == null)
+		{
+			// the item's rarity: its name in the corner and a border in its colour
+			ItemRarity rarity = offer.getGear().getRarity();
+			Color colour = rarityColour(rarity, ui.time);
+			if (rarity.ordinal() >= ItemRarity.RARE.ordinal())
+			{
+				Stroke oldStroke = ui.g.getStroke();
+				ui.g.setStroke(new BasicStroke(rarity.ordinal() >= ItemRarity.LEGENDARY.ordinal() ? 2f : 1f));
+				ui.g.setColor(colour);
+				ui.g.drawRect(r.x + 1, r.y + 1, r.width - 3, r.height - 3);
+				ui.g.setStroke(oldStroke);
+			}
+			ui.right(rarity.getTitle(), r.x + r.width - 5, r.y + 4 + ui.metrics().getAscent(), colour);
+		}
 		if (combination != null)
 		{
 			Stroke oldStroke = ui.g.getStroke();
@@ -1998,12 +2276,15 @@ public final class GameRenderer
 		final Graphics2D g;
 		final GameAssets assets;
 		final Options options;
+		/** Real seconds for little animations on the menus (the level-up show's, or the start menu's). */
+		final double time;
 
-		Ui(Graphics2D g, GameAssets assets, Options options)
+		Ui(Graphics2D g, GameAssets assets, Options options, double time)
 		{
 			this.g = g;
 			this.assets = assets;
 			this.options = options;
+			this.time = time;
 		}
 
 		boolean on(Option option)
