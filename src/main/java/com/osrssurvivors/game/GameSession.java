@@ -109,6 +109,11 @@ public final class GameSession
 	private boolean devTools;
 	/** See {@link #getLevelUpTime()}. */
 	private double levelUpTime = -1;
+	private Options options = new Options();
+	/** Whether the options page covers the start menu or the pause screen. */
+	private boolean optionsOpen;
+	/** Developer tool: every location can be picked. */
+	private boolean allUnlocked;
 	private double retributionTimer;
 	private int bonusCoins;
 	/** Coins paid out when the run ended; -1 while it goes on. */
@@ -183,6 +188,7 @@ public final class GameSession
 		coinsEarned = -1;
 		bossDrop = null;
 		levelUpTime = -1;
+		optionsOpen = false;
 		applyBuild();
 		player.health = player.maxHealth;
 	}
@@ -237,6 +243,48 @@ public final class GameSession
 	}
 
 	/** Switches the start menu's page; ignored outside the menu. */
+	/** The display settings; one object shared with the page, which stores it. */
+	public void setOptions(Options options)
+	{
+		this.options = options;
+	}
+
+	public Options getOptions()
+	{
+		return options;
+	}
+
+	/** Shows the options page over the start menu or the pause screen. */
+	public void openOptions()
+	{
+		if (phase == Phase.TITLE || phase == Phase.PAUSED)
+		{
+			optionsOpen = true;
+		}
+	}
+
+	public void closeOptions()
+	{
+		optionsOpen = false;
+	}
+
+	public boolean isOptionsOpen()
+	{
+		return optionsOpen && (phase == Phase.TITLE || phase == Phase.PAUSED);
+	}
+
+	/** Whether a location can be picked: opened by best times, or by the developer tool. */
+	public boolean isUnlocked(Location location)
+	{
+		return allUnlocked || location.isUnlocked(bestTimes);
+	}
+
+	/** Developer tool: opens every location. */
+	public void setAllUnlocked(boolean allUnlocked)
+	{
+		this.allUnlocked = allUnlocked;
+	}
+
 	public void showTitleScreen(TitleScreen screen)
 	{
 		if (phase == Phase.TITLE)
@@ -441,7 +489,12 @@ public final class GameSession
 
 	public void togglePause()
 	{
-		if (phase == Phase.RUNNING)
+		if (isOptionsOpen())
+		{
+			// Esc or P leaves the options page first
+			optionsOpen = false;
+		}
+		else if (phase == Phase.RUNNING)
 		{
 			phase = Phase.PAUSED;
 		}

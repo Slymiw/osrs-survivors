@@ -17,6 +17,8 @@ The start menu offers:
 - **Continue**: the saved run, in the place it was saved.
 - **Upgrades**: spend coins on permanent upgrades.
 - **Pets**: the pets you've won from champions.
+- **Options**: turn off screen flashes, the level-up animation or the boss drop animation for a
+  calmer screen. Also on the pause screen. Kept in your browser.
 
 | Key | Action |
 | --- | --- |
@@ -30,7 +32,7 @@ The start menu offers:
 
 The game pauses when the tab is hidden or loses focus, and saves every few seconds. Dying
 clears the saved run. `index.html?dev` adds developer buttons (end run, +5 levels, champion
-now, max all, reset all, +1000 coins).
+now, max all, reset all, +1000 coins, unlock maps).
 
 ### Gear and upgrades
 

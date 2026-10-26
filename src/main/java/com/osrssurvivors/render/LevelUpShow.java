@@ -65,21 +65,29 @@ final class LevelUpShow
 		return at;
 	}
 
-	/** Behind the panel: the flash, turning rays and a shockwave from the panel's centre. */
-	static void drawBehind(Graphics2D g, Rectangle view, Rectangle panel, double time)
+	/**
+	 * Behind the panel: the flash (if {@code flash}), and turning rays and a shockwave from the
+	 * panel's centre (if {@code show}).
+	 */
+	static void drawBehind(Graphics2D g, Rectangle view, Rectangle panel, double time, boolean flash, boolean show)
 	{
 		Composite old = g.getComposite();
 		Stroke oldStroke = g.getStroke();
 		int cx = (int) panel.getCenterX();
 		int cy = (int) panel.getCenterY();
 
-		if (time < 0.22)
+		if (flash && time < 0.22)
 		{
 			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.5 * (1 - time / 0.22))));
 			g.setColor(Color.WHITE);
 			g.fill(view);
 		}
 
+		if (!show)
+		{
+			g.setComposite(old);
+			return;
+		}
 		double fade = strength(time);
 		if (fade > 0)
 		{

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import com.osrssurvivors.game.GameSession;
+import com.osrssurvivors.game.Option;
 import com.osrssurvivors.game.Phase;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -65,13 +66,18 @@ public class UiLayoutTest
 	}
 
 	@Test
-	public void pauseAndDeathOfferTwoButtons()
+	public void pauseAndDeathButtons()
 	{
 		GameSession paused = new GameSession(new Random(1));
 		paused.togglePause();
 		List<UiLayout.Button> buttons = UiLayout.buttons(FIXED, paused);
 		assertEquals(UiLayout.Action.RESUME, buttons.get(0).action);
-		assertEquals(UiLayout.Action.EXIT, buttons.get(1).action);
+		assertEquals(UiLayout.Action.OPTIONS, buttons.get(1).action);
+		assertEquals(UiLayout.Action.EXIT, buttons.get(2).action);
+		for (UiLayout.Button b : buttons)
+		{
+			assertTrue(b.label, UiLayout.panel(FIXED, paused).contains(b.bounds));
+		}
 
 		GameSession dead = Sessions.dead();
 		assertEquals(Phase.GAME_OVER, dead.getPhase());
@@ -79,6 +85,39 @@ public class UiLayoutTest
 		assertEquals(UiLayout.Action.RESTART, buttons.get(0).action);
 		assertEquals(UiLayout.Action.EXIT, buttons.get(1).action);
 		assertTrue(UiLayout.panel(FIXED, dead).contains(buttons.get(1).bounds));
+	}
+
+	@Test
+	public void optionsPageListsEverySettingAndCloses()
+	{
+		for (boolean title : new boolean[]{true, false})
+		{
+			GameSession s = new GameSession(new Random(1));
+			if (title)
+			{
+				s.showTitle(null);
+				assertTrue("the main menu has no exit any more",
+					UiLayout.buttons(FIXED, s).stream().noneMatch(b -> b.action == UiLayout.Action.EXIT));
+			}
+			else
+			{
+				s.togglePause();
+			}
+			s.openOptions();
+			assertTrue(s.isOptionsOpen());
+			List<UiLayout.Button> buttons = UiLayout.buttons(FIXED, s);
+			assertEquals(Option.values().length + 1, buttons.size());
+			Rectangle panel = UiLayout.panel(FIXED, s);
+			for (UiLayout.Button b : buttons)
+			{
+				assertTrue(b.label, panel.contains(b.bounds));
+			}
+			assertEquals(UiLayout.Action.CLOSE_OPTIONS, buttons.get(buttons.size() - 1).action);
+			// Esc leaves the options page, not the pause
+			s.togglePause();
+			assertFalse(s.isOptionsOpen());
+			assertEquals(title ? Phase.TITLE : Phase.PAUSED, s.getPhase());
+		}
 	}
 
 	@Test

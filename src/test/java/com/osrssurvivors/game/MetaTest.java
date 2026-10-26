@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import com.google.gson.Gson;
 import java.util.EnumMap;
+import java.util.Random;
 import java.util.Map;
 import org.junit.Test;
 
@@ -164,6 +165,18 @@ public class MetaTest
 		assertTrue(Location.VARROCK.isUnlocked(best));
 		assertTrue(Location.DRAYNOR.isUnlocked(best));
 		assertFalse("two steps up stays shut", Location.FALADOR.isUnlocked(best));
+	}
+
+	@Test
+	public void developerToolOpensEveryPlace()
+	{
+		GameSession s = new GameSession(new Random(1));
+		assertFalse(s.isUnlocked(Location.WILDERNESS));
+		s.setAllUnlocked(true);
+		for (Location l : Location.values())
+		{
+			assertTrue(l.name(), s.isUnlocked(l));
+		}
 	}
 
 	@Test

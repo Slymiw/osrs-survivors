@@ -2,6 +2,8 @@ package com.osrssurvivors.web;
 
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
+import com.osrssurvivors.game.Option;
+import com.osrssurvivors.game.Options;
 import com.osrssurvivors.game.RunSave;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -11,14 +13,17 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * The three stored records, kept in the browser's local storage as JSON: the saved run, best
- * times per location, and the lasting profile. Unreadable records are ignored.
+ * The stored records, kept in the browser's local storage as JSON: the saved run, best times per
+ * location, the lasting profile, the display options and the developer's map unlock. Unreadable
+ * records are ignored.
  */
 final class Saves
 {
 	private static final String SAVE_KEY = "osrssurvivors.savedRun";
 	private static final String BEST_TIMES_KEY = "osrssurvivors.bestTimes";
 	private static final String META_KEY = "osrssurvivors.profile";
+	private static final String OPTIONS_KEY = "osrssurvivors.options";
+	private static final String UNLOCK_KEY = "osrssurvivors.devUnlockAll";
 
 	private Saves()
 	{
@@ -189,5 +194,56 @@ final class Saves
 		Map<String, Object> stored = new TreeMap<>();
 		times.forEach((l, t) -> stored.put(l.name(), t));
 		Browser.setItem(BEST_TIMES_KEY, Json.write(stored));
+	}
+
+	// ---------------------------------------------------------------- options
+
+	static Options loadOptions()
+	{
+		Options options = new Options();
+		Map<String, Object> m = read(OPTIONS_KEY);
+		List<Object> off = m == null ? null : Json.array(m.get("off"));
+		if (off != null)
+		{
+			for (Option o : Option.values())
+			{
+				if (off.contains(o.name()))
+				{
+					options.turnOff(o);
+				}
+			}
+		}
+		return options;
+	}
+
+	static void storeOptions(Options options)
+	{
+		List<Object> off = new ArrayList<>();
+		for (Option o : options.getOff())
+		{
+			off.add(o.name());
+		}
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("off", off);
+		Browser.setItem(OPTIONS_KEY, Json.write(m));
+	}
+
+	// ---------------------------------------------------------------- developer tools
+
+	static boolean loadAllUnlocked()
+	{
+		return "true".equals(Browser.getItem(UNLOCK_KEY));
+	}
+
+	static void storeAllUnlocked(boolean unlocked)
+	{
+		if (unlocked)
+		{
+			Browser.setItem(UNLOCK_KEY, "true");
+		}
+		else
+		{
+			Browser.removeItem(UNLOCK_KEY);
+		}
 	}
 }

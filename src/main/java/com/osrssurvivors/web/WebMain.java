@@ -4,6 +4,8 @@ import com.osrssurvivors.game.Arena;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
+import com.osrssurvivors.game.Option;
+import com.osrssurvivors.game.Options;
 import com.osrssurvivors.game.Perk;
 import com.osrssurvivors.game.Phase;
 import com.osrssurvivors.game.RunSave;
@@ -62,6 +64,9 @@ public final class WebMain
 
 	private GameSession session;
 	private MetaProgress meta;
+	private Options options;
+	/** Developer tool: every location can be picked (kept in local storage). */
+	private boolean allUnlocked;
 	private int metaStored;
 	private Phase lastPhase;
 	private double lastFrame;
@@ -118,6 +123,8 @@ public final class WebMain
 		resize();
 		meta = Saves.loadMeta();
 		metaStored = meta.getChanges();
+		options = Saves.loadOptions();
+		allUnlocked = devTools && Saves.loadAllUnlocked();
 		showMenu();
 		listen();
 		Window.requestAnimationFrame(this::frame);
@@ -133,6 +140,8 @@ public final class WebMain
 		RunSave save = Saves.loadRun();
 		s.showTitle(save == null ? null : save.summary());
 		s.setDevTools(devTools);
+		s.setOptions(options);
+		s.setAllUnlocked(allUnlocked);
 		lastFrame = 0;
 		lastPhase = s.getPhase();
 		session = s;
@@ -435,7 +444,7 @@ public final class WebMain
 				break;
 			case CHOOSE_LOCATION:
 				Location location = Location.values()[button.index];
-				if (location.isUnlocked(s.getBestTimes()))
+				if (s.isUnlocked(location))
 				{
 					startRun(s, location, null);
 				}
@@ -451,6 +460,16 @@ public final class WebMain
 				s.showTitleScreen(TitleScreen.PETS);
 				break;
 			case PET_CARD:
+				break;
+			case OPTIONS:
+				s.openOptions();
+				break;
+			case TOGGLE_OPTION:
+				options.toggle(Option.values()[button.index]);
+				Saves.storeOptions(options);
+				break;
+			case CLOSE_OPTIONS:
+				s.closeOptions();
 				break;
 			case DEV_END_RUN:
 				s.devEndRun();
@@ -468,6 +487,10 @@ public final class WebMain
 			case DEV_RESET_META:
 				meta.reset();
 				storeMetaIfChanged();
+				setAllUnlocked(s, false);
+				break;
+			case DEV_UNLOCK_MAPS:
+				setAllUnlocked(s, true);
 				break;
 			case DEV_COINS:
 				meta.addCoins(1000);
@@ -572,9 +595,18 @@ public final class WebMain
 			run.load(save);
 		}
 		run.setDevTools(devTools);
+		run.setOptions(options);
+		run.setAllUnlocked(allUnlocked);
 		lastFrame = 0;
 		lastPhase = run.getPhase();
 		session = run;
+	}
+
+	private void setAllUnlocked(GameSession s, boolean unlocked)
+	{
+		allUnlocked = unlocked;
+		s.setAllUnlocked(unlocked);
+		Saves.storeAllUnlocked(unlocked);
 	}
 
 	/** Saves an unfinished run and goes back to the start menu. */

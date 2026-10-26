@@ -16,6 +16,8 @@ import com.osrssurvivors.game.GearSet;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
 import com.osrssurvivors.game.Offer;
+import com.osrssurvivors.game.Option;
+import com.osrssurvivors.game.Options;
 import com.osrssurvivors.game.Passive;
 import com.osrssurvivors.game.Perk;
 import com.osrssurvivors.game.Pet;
@@ -134,7 +136,7 @@ public final class GameRenderer
 			g.clip(view);
 			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, assets.pixelFonts()
 				? RenderingHints.VALUE_TEXT_ANTIALIAS_OFF : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-			Ui ui = new Ui(g, assets);
+			Ui ui = new Ui(g, assets, session.getOptions());
 			new World(view, session, assets).draw(g);
 			if (session.getPhase() != Phase.TITLE)
 			{
@@ -148,21 +150,23 @@ public final class GameRenderer
 				Rectangle panel = drop == null ? null : UiLayout.panel(view, session);
 				double levelUp = session.getPhase() == Phase.LEVEL_UP && !session.isCasketOpen() ? session.getLevelUpTime() : -1;
 				Rectangle levelPanel = LevelUpShow.isPlaying(levelUp) ? UiLayout.panel(view, session) : null;
-				if (drop != null)
+				boolean dropShow = ui.on(Option.DROP_SHOW);
+				boolean levelShow = ui.on(Option.LEVEL_UP_SHOW);
+				if (drop != null && dropShow)
 				{
 					drawDropBackdrop(ui, view, drop);
 				}
 				if (levelPanel != null)
 				{
-					LevelUpShow.drawBehind(g, view, levelPanel, levelUp);
+					LevelUpShow.drawBehind(g, view, levelPanel, levelUp, ui.on(Option.FLASHES), levelShow);
 				}
 				AffineTransform plain = g.getTransform();
-				if (panel != null)
+				if (panel != null && dropShow)
 				{
 					// the machine pumps with a heartbeat and shakes as the reels land
 					g.transform(DropShow.transform(drop, panel));
 				}
-				if (levelPanel != null)
+				if (levelPanel != null && levelShow)
 				{
 					g.transform(LevelUpShow.transform(levelPanel, levelUp));
 				}
@@ -588,7 +592,7 @@ public final class GameRenderer
 					{
 						ActorSprite s = assets.enemy(e.getKind(), e.isChampion(), e.getFacing(), e.isMoving() && !e.isFrozen(),
 							animTime + e.getAnimOffset(), scale);
-						int top = drawActor(g, s, e.getX(), e.getY(), e.getRadius(), e.isFlashing() ? WHITE : kindColor(e.getKind()), 0);
+						int top = drawActor(g, s, e.getX(), e.getY(), e.getRadius(), e.isFlashing() && session.getOptions().isOn(Option.FLASHES) ? WHITE : kindColor(e.getKind()), 0);
 						heads.put(e, top);
 						if (e.isFrozen())
 						{
@@ -1000,9 +1004,10 @@ public final class GameRenderer
 		}
 		drawPanel(ui, panel);
 
+		boolean options = session.isOptionsOpen();
 		String title;
 		Color titleColor = ORANGE;
-		switch (session.getPhase())
+		switch (options ? Phase.PAUSED : session.getPhase())
 		{
 			case LEVEL_UP:
 				title = session.isCasketOpen() ? "You open the champion's casket!"
@@ -1022,13 +1027,19 @@ public final class GameRenderer
 				title = "The champion's casket";
 				break;
 			default:
-				title = "Paused";
+				title = options ? "Options" : "Paused";
 				break;
 		}
 		ui.font(TextStyle.BOLD);
 		ui.centredFit(title, panel.x + panel.width / 2, panel.y + 24, panel.width - 2 * UiLayout.PAD, titleColor);
 
-		switch (session.getPhase())
+		if (options)
+		{
+			ui.font(TextStyle.SMALL);
+			ui.centredFit("Turn any of these off for a calmer screen.", panel.x + panel.width / 2, panel.y + UiLayout.TITLE_H + 6,
+				panel.width - 2 * UiLayout.PAD, YELLOW);
+		}
+		else switch (session.getPhase())
 		{
 			case GAME_OVER:
 				ui.font(TextStyle.REGULAR);
@@ -1061,7 +1072,7 @@ public final class GameRenderer
 					if (hovered != null && hovered.action == UiLayout.Action.CHOOSE_LOCATION)
 					{
 						Location l = Location.values()[hovered.index];
-						boolean open = l.isUnlocked(session.getBestTimes());
+						boolean open = session.isUnlocked(l);
 						line = open ? l.getBlurb() : l.unlockHint();
 						colour = open ? YELLOW : RED;
 					}
@@ -1110,11 +1121,15 @@ public final class GameRenderer
 			{
 				Location location = Location.values()[b.index];
 				drawLocationCard(ui, b, location, session.getBestTimes().get(location), hover,
-					location.isUnlocked(session.getBestTimes()));
+					session.isUnlocked(location));
 			}
 			else if (b.action == UiLayout.Action.BUY_PERK)
 			{
 				drawPerkCard(ui, b, Perk.values()[b.index], session.getMeta(), hover);
+			}
+			else if (b.action == UiLayout.Action.TOGGLE_OPTION)
+			{
+				drawOptionRow(ui, b, Option.values()[b.index], hover);
 			}
 			else if (b.action == UiLayout.Action.PET_CARD)
 			{
@@ -1128,11 +1143,11 @@ public final class GameRenderer
 					b.bounds.y + (b.bounds.height + ui.metrics().getAscent()) / 2 - 2, b.bounds.width - 8, hover ? WHITE : ORANGE);
 			}
 		}
-		if (session.getPhase() == Phase.PAUSED)
+		if (session.getPhase() == Phase.PAUSED && !options)
 		{
 			drawLoadoutTooltip(ui, view, panel, session, mouse);
 		}
-		if (session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN)
+		if (session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN && !options)
 		{
 			ui.font(TextStyle.SMALL);
 			int cx = view.x + view.width / 2;
@@ -1374,6 +1389,20 @@ public final class GameRenderer
 	}
 
 	/** A pet on the pets page: its picture, name and bonus, faded until it's been won. */
+	/** A setting: its name on the left, On or Off on the right, and what it covers underneath. */
+	private static void drawOptionRow(Ui ui, UiLayout.Button b, Option option, boolean hover)
+	{
+		Rectangle r = b.bounds;
+		boolean on = ui.on(option);
+		int width = r.width - 16;
+		ui.font(TextStyle.BOLD);
+		int y = r.y + 6 + ui.metrics().getAscent();
+		ui.text(option.getTitle(), r.x + 8, y, hover ? WHITE : ORANGE);
+		ui.right(on ? "On" : "Off", r.x + r.width - 8, y, on ? GREEN : RED);
+		ui.font(TextStyle.SMALL);
+		ui.text(fit(option.getDescription(), ui.metrics(), width), r.x + 8, y + ui.metrics().getHeight() + 2, YELLOW);
+	}
+
 	private static void drawPetCard(Ui ui, UiLayout.Button b, Pet pet, boolean owned)
 	{
 		Graphics2D g = ui.g;
@@ -1573,7 +1602,8 @@ public final class GameRenderer
 			}
 			// the chase speeds up as the spin goes on
 			double chase = time * (10 + 14 * Math.min(1, time / BossDrop.STOPS[BossDrop.STOPS.length - 1]));
-			boolean lit = spinning ? (i + (int) chase) % 3 == 0 : ((int) (time * 6)) % 2 == 0;
+			boolean blink = ui.on(Option.FLASHES);
+			boolean lit = spinning ? !blink || (i + (int) chase) % 3 == 0 : !blink || ((int) (time * 6)) % 2 == 0;
 			g.setColor(lit ? (spinning ? YELLOW : win) : BULB_OFF);
 			g.fillOval(bx - 3, by - 3, 6, 6);
 		}
@@ -1612,7 +1642,7 @@ public final class GameRenderer
 			g.setClip(oldClip);
 			// a reel flashes as it clicks into place
 			double sinceStop = time - BossDrop.STOPS[i];
-			if (stopped && sinceStop < 0.35)
+			if (stopped && sinceStop < 0.35 && ui.on(Option.FLASHES))
 			{
 				Composite old = g.getComposite();
 				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.7 * (1 - sinceStop / 0.35))));
@@ -1620,11 +1650,14 @@ public final class GameRenderer
 				g.fill(r);
 				g.setComposite(old);
 			}
-			if (!stopped && i == drop.reelCount() - 1 && i > 0 && drop.isStopped(i - 1))
+			if (ui.on(Option.DROP_SHOW))
 			{
-				DropShow.drawAnticipation(g, r, drop);
+				if (!stopped && i == drop.reelCount() - 1 && i > 0 && drop.isStopped(i - 1))
+				{
+					DropShow.drawAnticipation(g, r, drop);
+				}
+				DropShow.drawReelLanding(g, r, drop, i, win);
 			}
-			DropShow.drawReelLanding(g, r, drop, i, win);
 			Stroke oldStroke = g.getStroke();
 			g.setStroke(new BasicStroke(stopped && !spinning ? 3f : 2f));
 			g.setColor(stopped && !spinning ? win : PANEL_EDGE_LIGHT);
@@ -1656,11 +1689,11 @@ public final class GameRenderer
 				ui.font(TextStyle.BOLD);
 				int ty = textTop + ui.metrics().getAscent() + 4;
 				AffineTransform before = g.getTransform();
-				double s = 1 + 0.25 * DropShow.beat(time);
+				double s = ui.on(Option.DROP_SHOW) ? 1 + 0.25 * DropShow.beat(time) : 1;
 				g.translate(cx, ty);
 				g.scale(s, s);
 				g.translate(-cx, -ty);
-				ui.centred("Here it comes...", cx, ty, ((int) (time * 8)) % 2 == 0 ? YELLOW : ORANGE);
+				ui.centred("Here it comes...", cx, ty, !ui.on(Option.FLASHES) || ((int) (time * 8)) % 2 == 0 ? YELLOW : ORANGE);
 				g.setTransform(before);
 				return;
 			}
@@ -1673,7 +1706,7 @@ public final class GameRenderer
 		// the prize name punches in big and settles
 		double since = time - BossDrop.STOPS[BossDrop.STOPS.length - 1];
 		int titleY = textTop + ui.metrics().getAscent();
-		double punch = 1 + 0.6 * Math.exp(-since * 6) * Math.abs(Math.cos(since * 11)) + 0.06 * DropShow.beat(time);
+		double punch = !ui.on(Option.DROP_SHOW) ? 1 : 1 + 0.6 * Math.exp(-since * 6) * Math.abs(Math.cos(since * 11)) + 0.06 * DropShow.beat(time);
 		AffineTransform beforeTitle = g.getTransform();
 		g.translate(cx, titleY);
 		g.scale(punch, punch);
@@ -1736,9 +1769,13 @@ public final class GameRenderer
 	{
 		Graphics2D g = ui.g;
 		int cx = (int) panel.getCenterX();
-		float size = (float) (16 * LevelUpShow.bannerScale(time));
+		boolean show = ui.on(Option.LEVEL_UP_SHOW);
+		float size = (float) (16 * (show ? LevelUpShow.bannerScale(time) : 2.2));
 		int y = Math.max(view.y + (int) size + 30, panel.y - 10);
-		LevelUpShow.drawSparks(g, cx, y - (int) (size / 3), time);
+		if (show)
+		{
+			LevelUpShow.drawSparks(g, cx, y - (int) (size / 3), time);
+		}
 		if (size < 4)
 		{
 			return;
@@ -1748,7 +1785,7 @@ public final class GameRenderer
 		g.setFont(font(ui.assets, TextStyle.BOLD).deriveFont(size));
 		String banner = "Level up!";
 		int textW = g.getFontMetrics().stringWidth(banner);
-		shadowText(g, banner, cx - textW / 2, y, LevelUpShow.bannerColour(time));
+		shadowText(g, banner, cx - textW / 2, y, show ? LevelUpShow.bannerColour(time) : GOLD);
 		g.setComposite(old);
 	}
 
@@ -1760,16 +1797,20 @@ public final class GameRenderer
 			return;
 		}
 		Graphics2D g = ui.g;
-		DropShow.drawShockwave(g, view, drop, rarityColour(drop.getRarity(), drop.getTime()));
+		boolean show = ui.on(Option.DROP_SHOW);
+		if (show)
+		{
+			DropShow.drawShockwave(g, view, drop, rarityColour(drop.getRarity(), drop.getTime()));
+		}
 		Composite old = g.getComposite();
 		int rarity = drop.getRarity().ordinal();
-		if (rarity >= BossDrop.Rarity.RARE.ordinal() && since < 0.45)
+		if (rarity >= BossDrop.Rarity.RARE.ordinal() && since < 0.45 && ui.on(Option.FLASHES))
 		{
 			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.7 * (1 - since / 0.45))));
 			g.setColor(WHITE);
 			g.fill(view);
 		}
-		int count = new int[]{18, 36, 70, 130}[rarity];
+		int count = show ? new int[]{18, 36, 70, 130}[rarity] : 0;
 		double cx = view.x + view.width / 2.0;
 		double cy = view.y + view.height / 2.0 - 30;
 		double gravity = 260;
@@ -1811,8 +1852,8 @@ public final class GameRenderer
 		g.setComposite(old);
 
 		// the banner bounces in above the panel
-		double bounce = 1 + 0.8 * Math.exp(-since * 6) * Math.abs(Math.cos(since * 14));
-		float size = (float) ((18 + 6 * rarity) * Math.min(1, since * 6) * bounce);
+		double bounce = show ? (1 + 0.8 * Math.exp(-since * 6) * Math.abs(Math.cos(since * 14))) * Math.min(1, since * 6) : 1;
+		float size = (float) ((18 + 6 * rarity) * bounce);
 		if (size < 4)
 		{
 			return;
@@ -1956,11 +1997,18 @@ public final class GameRenderer
 	{
 		final Graphics2D g;
 		final GameAssets assets;
+		final Options options;
 
-		Ui(Graphics2D g, GameAssets assets)
+		Ui(Graphics2D g, GameAssets assets, Options options)
 		{
 			this.g = g;
 			this.assets = assets;
+			this.options = options;
+		}
+
+		boolean on(Option option)
+		{
+			return options.isOn(option);
 		}
 
 		void font(TextStyle style)

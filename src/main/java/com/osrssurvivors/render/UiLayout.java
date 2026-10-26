@@ -5,6 +5,7 @@ import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.GearSet;
 import com.osrssurvivors.game.Location;
+import com.osrssurvivors.game.Option;
 import com.osrssurvivors.game.Passive;
 import com.osrssurvivors.game.Perk;
 import com.osrssurvivors.game.Pet;
@@ -30,8 +31,12 @@ public final class UiLayout
 		PETS,
 		/** A pet's card on the pets page; only there to be looked at. */
 		PET_CARD,
-		// developer tools, shown when the config option is on
-		DEV_END_RUN, DEV_LEVELS, DEV_CHAMPION, DEV_MAX_META, DEV_RESET_META, DEV_COINS
+		OPTIONS,
+		/** Turns the option with this ordinal on or off. */
+		TOGGLE_OPTION,
+		CLOSE_OPTIONS,
+		// developer tools, shown with ?dev
+		DEV_END_RUN, DEV_LEVELS, DEV_CHAMPION, DEV_MAX_META, DEV_RESET_META, DEV_COINS, DEV_UNLOCK_MAPS
 	}
 
 	/** Something on the pause screen that shows a tooltip when hovered: a slot, a passive or a pet. */
@@ -117,6 +122,9 @@ public final class UiLayout
 	/** Room for the weapon's name above the sections. */
 	static final int WEAPON_LINE_H = 22;
 	static final int DEV_BUTTON_W = 96;
+	/** One setting on the options page: its name and state, and a line describing it. */
+	static final int OPTION_H = 44;
+	static final int OPTIONS_W = 420;
 	static final int TITLE_BUTTON_W = 220;
 	/** Line under the menu title (tagline, loading status, hovered location's description). */
 	static final int SUBTITLE_H = 18;
@@ -141,6 +149,14 @@ public final class UiLayout
 	{
 		int w;
 		int h;
+		if (session.isOptionsOpen())
+		{
+			w = OPTIONS_W;
+			h = TITLE_H + SUBTITLE_H + Option.values().length * (OPTION_H + GAP) + BUTTON_H + PAD;
+			w = Math.min(w, view.width);
+			h = Math.min(h, view.height);
+			return new Rectangle(view.x + (view.width - w) / 2, view.y + (view.height - h) / 2, w, h);
+		}
 		switch (session.getPhase())
 		{
 			case LEVEL_UP:
@@ -172,7 +188,7 @@ public final class UiLayout
 				}
 				else
 				{
-					w = Math.max(TITLE_BUTTON_W + 40, session.isDevTools() ? 3 * DEV_BUTTON_W + 2 * GAP : 0) + 2 * PAD;
+					w = Math.max(TITLE_BUTTON_W + 40, session.isDevTools() ? 4 * DEV_BUTTON_W + 3 * GAP : 0) + 2 * PAD;
 					h = TITLE_H + 20 + SUBTITLE_H + mainButtons(session) * (BUTTON_H + GAP) + PAD;
 				}
 				break;
@@ -193,6 +209,20 @@ public final class UiLayout
 		}
 		List<Button> buttons = new ArrayList<>();
 		int bottom = panel.y + panel.height - PAD;
+		if (session.isOptionsOpen())
+		{
+			int y = panel.y + TITLE_H + SUBTITLE_H;
+			for (Option o : Option.values())
+			{
+				buttons.add(new Button(Action.TOGGLE_OPTION, o.ordinal(),
+					new Rectangle(panel.x + PAD, y, panel.width - 2 * PAD, OPTION_H), o.getTitle()));
+				y += OPTION_H + GAP;
+			}
+			int bw = Math.min(BUTTON_W, panel.width - 2 * PAD);
+			buttons.add(new Button(Action.CLOSE_OPTIONS, 0, new Rectangle(panel.x + (panel.width - bw) / 2, bottom - BUTTON_H, bw, BUTTON_H),
+				"Back"));
+			return buttons;
+		}
 		switch (session.getPhase())
 		{
 			case LEVEL_UP:
@@ -219,15 +249,16 @@ public final class UiLayout
 					session.getBossDrop() != null && session.getBossDrop().isClaimable() ? "Claim" : "Skip"));
 				break;
 			case PAUSED:
-				addPair(buttons, panel, bottom, Action.RESUME, "Resume (P)", Action.EXIT, "Save & exit");
+				addRow(buttons, panel, bottom, BUTTON_W, new Action[]{Action.RESUME, Action.OPTIONS, Action.EXIT},
+					"Resume (P)", "Options", "Save & exit");
 				if (session.isDevTools())
 				{
-					addRow(buttons, panel, bottom - BUTTON_H - GAP, Action.DEV_END_RUN, "End run",
-						Action.DEV_LEVELS, "+5 levels", Action.DEV_CHAMPION, "Champion now");
+					addRow(buttons, panel, bottom - BUTTON_H - GAP, DEV_BUTTON_W,
+						new Action[]{Action.DEV_END_RUN, Action.DEV_LEVELS, Action.DEV_CHAMPION}, "End run", "+5 levels", "Champion now");
 				}
 				break;
 			case GAME_OVER:
-				addPair(buttons, panel, bottom, Action.RESTART, "Play again (R)", Action.EXIT, "Exit");
+				addPair(buttons, panel, bottom, Action.RESTART, "Play again (R)", Action.EXIT, "Main menu");
 				break;
 			case TITLE:
 				if (session.getTitleScreen() == TitleScreen.LOCATIONS)
@@ -265,11 +296,12 @@ public final class UiLayout
 						"Pets (" + session.getMeta().getPets().size() + " / " + Pet.values().length + ")"));
 					y += BUTTON_H + GAP;
 				}
-				buttons.add(new Button(Action.EXIT, 0, new Rectangle(bx, y, bw, BUTTON_H), "Exit"));
+				buttons.add(new Button(Action.OPTIONS, 0, new Rectangle(bx, y, bw, BUTTON_H), "Options"));
 				if (session.isDevTools() && session.getMeta() != null)
 				{
-					addRow(buttons, panel, y + 2 * BUTTON_H + GAP, Action.DEV_MAX_META, "Max all",
-						Action.DEV_RESET_META, "Reset all", Action.DEV_COINS, "+1000 coins");
+					addRow(buttons, panel, y + 2 * BUTTON_H + GAP, DEV_BUTTON_W,
+						new Action[]{Action.DEV_MAX_META, Action.DEV_RESET_META, Action.DEV_COINS, Action.DEV_UNLOCK_MAPS},
+						"Max all", "Reset all", "+1000 coins", "Unlock maps");
 				}
 				break;
 			default:
@@ -372,16 +404,17 @@ public final class UiLayout
 		return n + (session.isDevTools() && session.getMeta() != null ? 1 : 0);
 	}
 
-	/** Three equal buttons side by side, their bottoms at {@code bottom}. */
-	private static void addRow(List<Button> buttons, Rectangle panel, int bottom, Action a, String aLabel,
-		Action b, String bLabel, Action c, String cLabel)
+	/** Equal buttons side by side, centred, their bottoms at {@code bottom}. */
+	private static void addRow(List<Button> buttons, Rectangle panel, int bottom, int maxWidth, Action[] actions, String... labels)
 	{
-		int w = Math.min(DEV_BUTTON_W, (panel.width - 2 * PAD - 2 * GAP) / 3);
-		int x = panel.x + (panel.width - 3 * w - 2 * GAP) / 2;
+		int n = actions.length;
+		int w = Math.min(maxWidth, (panel.width - 2 * PAD - (n - 1) * GAP) / n);
+		int x = panel.x + (panel.width - n * w - (n - 1) * GAP) / 2;
 		int y = bottom - BUTTON_H;
-		buttons.add(new Button(a, 0, new Rectangle(x, y, w, BUTTON_H), aLabel));
-		buttons.add(new Button(b, 0, new Rectangle(x + w + GAP, y, w, BUTTON_H), bLabel));
-		buttons.add(new Button(c, 0, new Rectangle(x + 2 * (w + GAP), y, w, BUTTON_H), cLabel));
+		for (int i = 0; i < n; i++)
+		{
+			buttons.add(new Button(actions[i], 0, new Rectangle(x + i * (w + GAP), y, w, BUTTON_H), labels[i]));
+		}
 	}
 
 	/** Left edge of the pause screen's right-hand side. */

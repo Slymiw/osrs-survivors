@@ -88,8 +88,13 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   others need `UNLOCK_SECONDS` (300) at difficulty − 1 on the map.
 - **Persistence** (`web.Saves`, browser local storage): `savedRun` (RunSave JSON), `bestTimes`,
   `profile` (MetaProgress), stored as JSON through `web.Json` (Gson needs reflection).
-- **Dev tools**: `index.html?dev` adds buttons: pause screen (end run, +5
-  levels, champion now) and main menu (max all, reset all, +1000 coins).
+- **Dev tools**: `index.html?dev` adds buttons: pause screen (end run, +5 levels with a reward
+  each, champion now) and main menu (max all, reset all, +1000 coins, unlock maps; the unlock is
+  kept in local storage until "Reset all").
+- **Options** (`Option`, `Options`, stored by `web.Saves`): screen flashes, level-up show
+  (`LevelUpShow`), boss drop show (`DropShow`). New flashing or big motion in the renderer must
+  check `ui.on(Option...)`. The options page is `GameSession.openOptions()` over the title or
+  pause screen; Esc closes it.
 - **Pause screen**: `UiLayout.loadoutSections/loadoutTiles` lay out tiles (abilities, prayers and
   skills, set bonuses, pets) with hover tooltips; main menu has a Pets page (`TitleScreen.PETS`).
 
