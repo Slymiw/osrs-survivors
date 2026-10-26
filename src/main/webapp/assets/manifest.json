@@ -1,0 +1,2298 @@
+{
+  "icons": {
+    "gear.ABYSSAL_TENTACLE": "i12006",
+    "gear.ABYSSAL_WHIP": "i4151",
+    "gear.ACCURSED_SCEPTRE": "i27665",
+    "gear.ADAMANT_DEFENDER": "i8849",
+    "gear.ADAMANT_FULL_HELM": "i1161",
+    "gear.ADAMANT_PLATEBODY": "i1123",
+    "gear.ADAMANT_PLATELEGS": "i1073",
+    "gear.ADAMANT_SCIMITAR": "i1331",
+    "gear.AHRIMS_HOOD": "i4708",
+    "gear.AHRIMS_ROBESKIRT": "i4714",
+    "gear.AHRIMS_ROBETOP": "i4712",
+    "gear.AHRIMS_STAFF": "i4710",
+    "gear.AMULET_OF_BLOOD_FURY": "i24780",
+    "gear.AMULET_OF_FURY": "i6585",
+    "gear.AMULET_OF_GLORY": "i1704",
+    "gear.AMULET_OF_POWER": "i1731",
+    "gear.AMULET_OF_RANCOUR": "i29801",
+    "gear.AMULET_OF_TORTURE": "i19553",
+    "gear.ANCESTRAL_HAT": "i21018",
+    "gear.ANCESTRAL_ROBE_BOTTOM": "i21024",
+    "gear.ANCESTRAL_ROBE_TOP": "i21021",
+    "gear.ANCIENT_STAFF": "i4675",
+    "gear.ARCANE_SPIRIT_SHIELD": "i12825",
+    "gear.ARCHERS_RING": "i6733",
+    "gear.ARMADYL_CHAINSKIRT": "i11830",
+    "gear.ARMADYL_CHESTPLATE": "i11828",
+    "gear.ARMADYL_CROSSBOW": "i11785",
+    "gear.ARMADYL_GODSWORD": "i11802",
+    "gear.ARMADYL_GODSWORD_OR": "i20368",
+    "gear.ARMADYL_HELMET": "i11826",
+    "gear.AVERNIC_DEFENDER": "i22322",
+    "gear.AVERNIC_TREADS": "i31088",
+    "gear.BANDOS_CHESTPLATE": "i11832",
+    "gear.BANDOS_TASSETS": "i11834",
+    "gear.BARROWS_GLOVES": "i7462",
+    "gear.BERSERKER_RING": "i6737",
+    "gear.BLACK_CHINCHOMPA": "i11959",
+    "gear.BLACK_DHIDE_BODY": "i2503",
+    "gear.BLACK_DHIDE_CHAPS": "i2497",
+    "gear.BLADE_OF_SAELDOR": "i23995",
+    "gear.BLUE_DHIDE_BODY": "i2499",
+    "gear.BLUE_DHIDE_CHAPS": "i2493",
+    "gear.BOOK_OF_LAW": "i12610",
+    "gear.BOW_OF_FAERDHINEN": "i25865",
+    "gear.BRONZE_DEFENDER": "i8844",
+    "gear.BRONZE_FULL_HELM": "i1155",
+    "gear.BRONZE_PLATEBODY": "i1117",
+    "gear.BRONZE_PLATELEGS": "i1075",
+    "gear.BRONZE_SCIMITAR": "i1321",
+    "gear.CLIMBING_BOOTS": "i3105",
+    "gear.COIF": "i1169",
+    "gear.COMBAT_BRACELET": "i11126",
+    "gear.CONFLICTION_GAUNTLETS": "i31106",
+    "gear.CRYSTAL_BODY": "i23975",
+    "gear.CRYSTAL_HELM": "i23971",
+    "gear.CRYSTAL_LEGS": "i23979",
+    "gear.DARK_BOW": "i11235",
+    "gear.DHAROKS_GREATAXE": "i4718",
+    "gear.DHAROKS_HELM": "i4716",
+    "gear.DHAROKS_PLATEBODY": "i4720",
+    "gear.DHAROKS_PLATELEGS": "i4722",
+    "gear.DINHS_BULWARK": "i21015",
+    "gear.DIZANAS_QUIVER": "i28951",
+    "gear.DRAGONFIRE_WARD": "i22002",
+    "gear.DRAGON_ARROWS": "i11212",
+    "gear.DRAGON_BOOTS": "i11840",
+    "gear.DRAGON_DEFENDER": "i12954",
+    "gear.DRAGON_FULL_HELM": "i11335",
+    "gear.DRAGON_HUNTER_CROSSBOW": "i21012",
+    "gear.DRAGON_HUNTER_CROSSBOW_T": "i25916",
+    "gear.DRAGON_PLATEBODY": "i21892",
+    "gear.DRAGON_PLATELEGS": "i4087",
+    "gear.DRAGON_SCIMITAR": "i4587",
+    "gear.DRAGON_WARHAMMER": "i13576",
+    "gear.ELDER_MAUL": "i21003",
+    "gear.ELIDINIS_WARD": "i25985",
+    "gear.ELYSIAN_SPIRIT_SHIELD": "i12817",
+    "gear.ETERNAL_BOOTS": "i13235",
+    "gear.EYE_OF_AYAK": "i31113",
+    "gear.FEROCIOUS_GLOVES": "i22981",
+    "gear.FIRE_CAPE": "i6570",
+    "gear.GHRAZI_RAPIER": "i22324",
+    "gear.GRANITE_MAUL": "i4153",
+    "gear.GREEN_DHIDE_BODY": "i1135",
+    "gear.GREEN_DHIDE_CHAPS": "i1099",
+    "gear.GUTHANS_CHAINSKIRT": "i4730",
+    "gear.GUTHANS_HELM": "i4724",
+    "gear.GUTHANS_PLATEBODY": "i4728",
+    "gear.GUTHANS_WARSPEAR": "i4726",
+    "gear.HARMONISED_NIGHTMARE_STAFF": "i24423",
+    "gear.HOLY_BLESSING": "i20220",
+    "gear.HOLY_SANGUINESTI_STAFF": "i25731",
+    "gear.IBANS_STAFF": "i1409",
+    "gear.ICE_ANCIENT_SCEPTRE": "i28262",
+    "gear.IMBUED_SARADOMIN_CAPE": "i21791",
+    "gear.INFERNAL_CAPE": "i21295",
+    "gear.INFERNAL_MAX_CAPE": "i21285",
+    "gear.INFINITY_BOTTOMS": "i6924",
+    "gear.INFINITY_HAT": "i6918",
+    "gear.INFINITY_TOP": "i6916",
+    "gear.INQUISITORS_GREAT_HELM": "i24419",
+    "gear.INQUISITORS_HAUBERK": "i24420",
+    "gear.INQUISITORS_MACE": "i24417",
+    "gear.INQUISITORS_PLATESKIRT": "i24421",
+    "gear.IRON_DEFENDER": "i8845",
+    "gear.IRON_FULL_HELM": "i1153",
+    "gear.IRON_PLATEBODY": "i1115",
+    "gear.IRON_PLATELEGS": "i1067",
+    "gear.IRON_SCIMITAR": "i1323",
+    "gear.KARILS_COIF": "i4732",
+    "gear.KARILS_CROSSBOW": "i4734",
+    "gear.KARILS_LEATHERSKIRT": "i4738",
+    "gear.KARILS_LEATHERTOP": "i4736",
+    "gear.KODAI_WAND": "i21006",
+    "gear.LEATHER_BODY": "i1129",
+    "gear.LEATHER_BOOTS": "i1061",
+    "gear.LEATHER_CHAPS": "i1095",
+    "gear.LEATHER_COWL": "i1167",
+    "gear.LEATHER_GLOVES": "i1059",
+    "gear.MAGES_BOOK": "i6889",
+    "gear.MAGIC_SHORTBOW": "i861",
+    "gear.MAGIC_SHORTBOW_I": "i12788",
+    "gear.MAGUS_RING": "i28313",
+    "gear.MALEDICTION_WARD": "i11924",
+    "gear.MAPLE_SHORTBOW": "i853",
+    "gear.MASORI_BODY": "i27229",
+    "gear.MASORI_CHAPS": "i27232",
+    "gear.MASORI_MASK": "i27226",
+    "gear.MASTER_WAND": "i6914",
+    "gear.MITHRIL_DEFENDER": "i8848",
+    "gear.MITHRIL_FULL_HELM": "i1159",
+    "gear.MITHRIL_PLATEBODY": "i1121",
+    "gear.MITHRIL_PLATELEGS": "i1071",
+    "gear.MITHRIL_SCIMITAR": "i1329",
+    "gear.MYSTIC_FIRE_STAFF": "i1401",
+    "gear.MYSTIC_HAT": "i4089",
+    "gear.MYSTIC_ROBE_BOTTOM": "i4093",
+    "gear.MYSTIC_ROBE_TOP": "i4091",
+    "gear.NECKLACE_OF_ANGUISH": "i19547",
+    "gear.NEITIZNOT_FACEGUARD": "i24271",
+    "gear.OAK_SHORTBOW": "i843",
+    "gear.OBSIDIAN_CAPE": "i6568",
+    "gear.OBSIDIAN_HELMET": "i21298",
+    "gear.OBSIDIAN_PLATEBODY": "i21301",
+    "gear.OBSIDIAN_PLATELEGS": "i21304",
+    "gear.OCCULT_NECKLACE": "i12002",
+    "gear.ODIUM_WARD": "i11926",
+    "gear.OSMUMTENS_FANG": "i26219",
+    "gear.PEGASIAN_BOOTS": "i13237",
+    "gear.PRIMORDIAL_BOOTS": "i13239",
+    "gear.RADAS_BLESSING_1": "i22941",
+    "gear.RADAS_BLESSING_4": "i22947",
+    "gear.RED_CAPE": "i1007",
+    "gear.RED_DHIDE_BODY": "i2501",
+    "gear.RED_DHIDE_CHAPS": "i2495",
+    "gear.RING_OF_RECOIL": "i2550",
+    "gear.RING_OF_SUFFERING": "i19550",
+    "gear.RING_OF_THE_GODS": "i13202",
+    "gear.RING_OF_WEALTH": "i2572",
+    "gear.ROBIN_HOOD_HAT": "i2581",
+    "gear.RUNE_CROSSBOW": "i9185",
+    "gear.RUNE_DEFENDER": "i8850",
+    "gear.RUNE_FULL_HELM": "i1163",
+    "gear.RUNE_PLATEBODY": "i1127",
+    "gear.RUNE_PLATELEGS": "i1079",
+    "gear.RUNE_SCIMITAR": "i1333",
+    "gear.SANGUINESTI_STAFF": "i22323",
+    "gear.SANGUINE_SCYTHE_OF_VITUR": "i25739",
+    "gear.SARADOMIN_SWORD": "i11838",
+    "gear.SCYTHE_OF_VITUR": "i22325",
+    "gear.SEERS_RING": "i6731",
+    "gear.SHORTBOW": "i841",
+    "gear.SOULREAPER_AXE": "i28338",
+    "gear.STAFF_OF_AIR": "i1381",
+    "gear.STAFF_OF_FIRE": "i1387",
+    "gear.STAFF_OF_THE_DEAD": "i11791",
+    "gear.STEEL_DEFENDER": "i8846",
+    "gear.STEEL_FULL_HELM": "i1157",
+    "gear.STEEL_PLATEBODY": "i1119",
+    "gear.STEEL_PLATELEGS": "i1069",
+    "gear.STEEL_SCIMITAR": "i1325",
+    "gear.STUDDED_BODY": "i1133",
+    "gear.STUDDED_CHAPS": "i1097",
+    "gear.TOME_OF_FIRE": "i20714",
+    "gear.TORAGS_HAMMERS": "i4747",
+    "gear.TORAGS_HELM": "i4745",
+    "gear.TORAGS_PLATEBODY": "i4749",
+    "gear.TORAGS_PLATELEGS": "i4751",
+    "gear.TORMENTED_BRACELET": "i19544",
+    "gear.TORVA_FULL_HELM": "i26382",
+    "gear.TORVA_PLATEBODY": "i26384",
+    "gear.TORVA_PLATELEGS": "i26386",
+    "gear.TOXIC_BLOWPIPE": "i12924",
+    "gear.TOXIC_STAFF_OF_THE_DEAD": "i12904",
+    "gear.TRIDENT_OF_THE_SEAS": "i11907",
+    "gear.TRIDENT_OF_THE_SWAMP": "i12899",
+    "gear.TRIDENT_OF_THE_SWAMP_E": "i22292",
+    "gear.TUMEKENS_SHADOW": "i27275",
+    "gear.TWISTED_BOW": "i20997",
+    "gear.TWISTED_BUCKLER": "i21000",
+    "gear.TZHAAR_KET_OM": "i6528",
+    "gear.ULTOR_RING": "i28307",
+    "gear.UNHOLY_BOOK": "i3842",
+    "gear.VENATOR_RING": "i28310",
+    "gear.VERACS_BRASSARD": "i4757",
+    "gear.VERACS_FLAIL": "i4755",
+    "gear.VERACS_HELM": "i4753",
+    "gear.VERACS_PLATESKIRT": "i4759",
+    "gear.VIRTUS_MASK": "i26241",
+    "gear.VIRTUS_ROBE_BOTTOM": "i26245",
+    "gear.VIRTUS_ROBE_TOP": "i26243",
+    "gear.VOID_KNIGHT_GLOVES": "i8842",
+    "gear.VOID_KNIGHT_ROBE": "i8840",
+    "gear.VOID_KNIGHT_TOP": "i8839",
+    "gear.VOID_MAGE_HELM": "i11663",
+    "gear.VOID_MELEE_HELM": "i11665",
+    "gear.VOID_RANGER_HELM": "i11664",
+    "gear.VOLATILE_NIGHTMARE_STAFF": "i24424",
+    "gear.WILLOW_SHORTBOW": "i849",
+    "gear.WIZARD_HAT": "i579",
+    "gear.WIZARD_ROBE": "i577",
+    "gear.WIZARD_SKIRT": "i1011",
+    "gear.YEW_SHORTBOW": "i857",
+    "gear.ZARYTE_CROSSBOW": "i26374",
+    "gear.ZARYTE_VAMBRACES": "i26235",
+    "gem.1": "i1623",
+    "gem.15": "i1631",
+    "gem.2": "i1621",
+    "gem.25": "i6571",
+    "gem.4": "i1619",
+    "gem.8": "i1617",
+    "location.AL_KHARID": "i1854",
+    "location.ARDOUGNE": "i8011",
+    "location.BARBARIAN_VILLAGE": "i24955",
+    "location.CANIFIS": "i4251",
+    "location.DRAYNOR": "i1550",
+    "location.FALADOR": "i8009",
+    "location.HERE": "i952",
+    "location.KARAMJA": "i1963",
+    "location.LUMBRIDGE": "i8008",
+    "location.VARROCK": "i8007",
+    "location.WILDERNESS": "i964",
+    "offer.coins": "i1002",
+    "offer.food": "i385",
+    "passive.AGILITY.0": "s204",
+    "passive.AGILITY.1": "s204",
+    "passive.AGILITY.2": "s204",
+    "passive.AGILITY.3": "s204",
+    "passive.AGILITY.4": "s204",
+    "passive.AGILITY.5": "s204",
+    "passive.AGILITY.6": "s204",
+    "passive.BLOOD_BARRAGE.0": "s333",
+    "passive.BLOOD_BARRAGE.1": "s333",
+    "passive.BLOOD_BARRAGE.2": "s334",
+    "passive.BLOOD_BARRAGE.3": "s335",
+    "passive.BLOOD_BARRAGE.4": "s336",
+    "passive.BLOOD_BARRAGE.5": "s336",
+    "passive.BONECRUSHER.0": "i13116",
+    "passive.BONECRUSHER.1": "i13116",
+    "passive.BONECRUSHER.2": "i13116",
+    "passive.BONECRUSHER.3": "i13116",
+    "passive.BONECRUSHER.4": "i13116",
+    "passive.CANNON.0": "i2",
+    "passive.CANNON.1": "i2",
+    "passive.CANNON.2": "i2",
+    "passive.CANNON.3": "i2",
+    "passive.CANNON.4": "i2",
+    "passive.CANNON.5": "i2",
+    "passive.CHINCHOMPAS.0": "i11959",
+    "passive.CHINCHOMPAS.1": "i11959",
+    "passive.CHINCHOMPAS.2": "i11959",
+    "passive.CHINCHOMPAS.3": "i11959",
+    "passive.CHINCHOMPAS.4": "i11959",
+    "passive.CHINCHOMPAS.5": "i11959",
+    "passive.DRAGONFIRE.0": "i11283",
+    "passive.DRAGONFIRE.1": "i11283",
+    "passive.DRAGONFIRE.2": "i11283",
+    "passive.DRAGONFIRE.3": "i11283",
+    "passive.DRAGONFIRE.4": "i11283",
+    "passive.GOD_SPELLS.0": "s61",
+    "passive.GOD_SPELLS.1": "s61",
+    "passive.GOD_SPELLS.2": "s60",
+    "passive.GOD_SPELLS.3": "s59",
+    "passive.GOD_SPELLS.4": "s59",
+    "passive.HITPOINTS.0": "s203",
+    "passive.HITPOINTS.1": "s203",
+    "passive.HITPOINTS.10": "s203",
+    "passive.HITPOINTS.11": "s203",
+    "passive.HITPOINTS.2": "s203",
+    "passive.HITPOINTS.3": "s203",
+    "passive.HITPOINTS.4": "s203",
+    "passive.HITPOINTS.5": "s203",
+    "passive.HITPOINTS.6": "s203",
+    "passive.HITPOINTS.7": "s203",
+    "passive.HITPOINTS.8": "s203",
+    "passive.HITPOINTS.9": "s203",
+    "passive.ICE_BARRAGE.0": "s325",
+    "passive.ICE_BARRAGE.1": "s325",
+    "passive.ICE_BARRAGE.2": "s328",
+    "passive.ICE_BARRAGE.3": "s328",
+    "passive.ICE_BARRAGE.4": "s328",
+    "passive.ICE_BARRAGE.5": "s328",
+    "passive.IMBUED_HEART.0": "i20724",
+    "passive.IMBUED_HEART.1": "i20724",
+    "passive.IMBUED_HEART.2": "i20724",
+    "passive.IMBUED_HEART.3": "i20724",
+    "passive.IMBUED_HEART.4": "i20724",
+    "passive.LAMP.0": "i2528",
+    "passive.LAMP.1": "i2528",
+    "passive.LAMP.2": "i2528",
+    "passive.LAMP.3": "i2528",
+    "passive.LAMP.4": "i2528",
+    "passive.LONGRANGE.0": "s200",
+    "passive.LONGRANGE.1": "s200",
+    "passive.LONGRANGE.2": "s200",
+    "passive.LONGRANGE.3": "s200",
+    "passive.LONGRANGE.4": "s200",
+    "passive.LONGRANGE.5": "s200",
+    "passive.MAGIC_PRAYER.0": "s134",
+    "passive.MAGIC_PRAYER.1": "s134",
+    "passive.MAGIC_PRAYER.2": "s503",
+    "passive.MAGIC_PRAYER.3": "s505",
+    "passive.MAGIC_PRAYER.4": "s1421",
+    "passive.MAGIC_PRAYER.5": "s1421",
+    "passive.MAGIC_PRAYER.6": "s1421",
+    "passive.MELEE_PRAYER.0": "s116",
+    "passive.MELEE_PRAYER.1": "s116",
+    "passive.MELEE_PRAYER.2": "s119",
+    "passive.MELEE_PRAYER.3": "s125",
+    "passive.MELEE_PRAYER.4": "s945",
+    "passive.MELEE_PRAYER.5": "s946",
+    "passive.MELEE_PRAYER.6": "s946",
+    "passive.MULTICOMBAT.0": "s46",
+    "passive.MULTICOMBAT.1": "s46",
+    "passive.MULTICOMBAT.2": "s46",
+    "passive.MULTICOMBAT.3": "s46",
+    "passive.MULTICOMBAT.4": "s46",
+    "passive.MULTICOMBAT.5": "s46",
+    "passive.OVERLOAD.0": "i11730",
+    "passive.OVERLOAD.1": "i11730",
+    "passive.OVERLOAD.2": "i11730",
+    "passive.OVERLOAD.3": "i11730",
+    "passive.OVERLOAD.4": "i11730",
+    "passive.PROTECTION.0": "s115",
+    "passive.PROTECTION.1": "s115",
+    "passive.PROTECTION.2": "s118",
+    "passive.PROTECTION.3": "s124",
+    "passive.PROTECTION.4": "s124",
+    "passive.PROTECT_MELEE.0": "s129",
+    "passive.PROTECT_MELEE.1": "s129",
+    "passive.PROTECT_MELEE.2": "s129",
+    "passive.PROTECT_MISSILES.0": "s128",
+    "passive.PROTECT_MISSILES.1": "s128",
+    "passive.PROTECT_MISSILES.2": "s128",
+    "passive.RANGED_PRAYER.0": "s133",
+    "passive.RANGED_PRAYER.1": "s133",
+    "passive.RANGED_PRAYER.2": "s502",
+    "passive.RANGED_PRAYER.3": "s504",
+    "passive.RANGED_PRAYER.4": "s1420",
+    "passive.RANGED_PRAYER.5": "s1420",
+    "passive.RANGED_PRAYER.6": "s1420",
+    "passive.RANGING_POTION.0": "i2444",
+    "passive.RANGING_POTION.1": "i2444",
+    "passive.RANGING_POTION.2": "i2444",
+    "passive.RANGING_POTION.3": "i2444",
+    "passive.RANGING_POTION.4": "i2444",
+    "passive.RAPID_HEAL.0": "s122",
+    "passive.RAPID_HEAL.1": "s122",
+    "passive.RAPID_HEAL.2": "s122",
+    "passive.RAPID_HEAL.3": "s122",
+    "passive.RAPID_HEAL.4": "s122",
+    "passive.REDEMPTION.0": "s130",
+    "passive.REDEMPTION.1": "s130",
+    "passive.REDEMPTION.2": "s130",
+    "passive.RETRIBUTION.0": "s131",
+    "passive.RETRIBUTION.1": "s131",
+    "passive.RETRIBUTION.2": "s131",
+    "passive.SLAYER.0": "i11864",
+    "passive.SLAYER.1": "i11864",
+    "passive.SLAYER.2": "i11864",
+    "passive.SLAYER.3": "i11864",
+    "passive.SLAYER.4": "i11864",
+    "passive.SPECIAL_ATTACK.0": "i1215",
+    "passive.SPECIAL_ATTACK.1": "i1215",
+    "passive.SPECIAL_ATTACK.2": "i1215",
+    "passive.SPECIAL_ATTACK.3": "i1215",
+    "passive.SPECIAL_ATTACK.4": "i1215",
+    "passive.SUPER_COMBAT.0": "i12695",
+    "passive.SUPER_COMBAT.1": "i12695",
+    "passive.SUPER_COMBAT.2": "i12695",
+    "passive.SUPER_COMBAT.3": "i12695",
+    "passive.SUPER_COMBAT.4": "i12695",
+    "passive.SWIFTNESS.0": "s197",
+    "passive.SWIFTNESS.1": "s197",
+    "passive.SWIFTNESS.2": "s197",
+    "passive.SWIFTNESS.3": "s197",
+    "passive.SWIFTNESS.4": "s197",
+    "passive.SWIFTNESS.5": "s197",
+    "passive.SWIFTNESS.6": "s197",
+    "passive.TELEKINETIC_GRAB.0": "s31",
+    "passive.TELEKINETIC_GRAB.1": "s31",
+    "passive.TELEKINETIC_GRAB.2": "s31",
+    "passive.TELEKINETIC_GRAB.3": "s31",
+    "passive.TELEKINETIC_GRAB.4": "s31",
+    "passive.TELEKINETIC_GRAB.5": "s31",
+    "passive.TELEKINETIC_GRAB.6": "s31",
+    "passive.THIEVING.0": "s206",
+    "passive.THIEVING.1": "s206",
+    "passive.THIEVING.2": "s206",
+    "passive.THIEVING.3": "s206",
+    "passive.THIEVING.4": "s206",
+    "passive.THRALLS.0": "s201",
+    "passive.THRALLS.1": "s201",
+    "passive.THRALLS.2": "s201",
+    "passive.THRALLS.3": "s201",
+    "passive.THRALLS.4": "s201",
+    "passive.VENGEANCE.0": "s564",
+    "passive.VENGEANCE.1": "s564",
+    "passive.VENGEANCE.2": "s564",
+    "passive.VENGEANCE.3": "s564",
+    "passive.VENGEANCE.4": "s564",
+    "perk.ARMOUR": "s199",
+    "perk.GREED": "i1004",
+    "perk.HASTE": "s197",
+    "perk.MAGNET": "s31",
+    "perk.MIGHT": "s198",
+    "perk.RECOVERY": "s122",
+    "perk.REROLL": "i405",
+    "perk.REVIVAL": "s130",
+    "perk.SPEED": "s204",
+    "perk.VITALITY": "s203",
+    "perk.WISDOM": "i2528",
+    "pet.BABY_MOLE": "i12646",
+    "pet.LIL_ZIK": "i22473",
+    "pet.OLMLET": "i20851",
+    "pet.PET_CHAOS_ELEMENTAL": "i11995",
+    "pet.PET_DARK_CORE": "i12816",
+    "pet.PRINCE_BLACK_DRAGON": "i12653",
+    "pet.TZREK_JAD": "i13225",
+    "pet.VORKI": "i21992",
+    "prize.coins": "i1004",
+    "prize.lamp": "i2528",
+    "spell.ACCURSED_SCEPTRE": "s51",
+    "spell.AHRIMS_STAFF": "s35",
+    "spell.ANCIENT_STAFF": "s48",
+    "spell.EYE_OF_AYAK": "s46",
+    "spell.HARMONISED_NIGHTMARE_STAFF": "s52",
+    "spell.HOLY_SANGUINESTI_STAFF": "s52",
+    "spell.IBANS_STAFF": "s44",
+    "spell.ICE_ANCIENT_SCEPTRE": "s328",
+    "spell.KODAI_WAND": "s328",
+    "spell.MASTER_WAND": "s40",
+    "spell.MYSTIC_FIRE_STAFF": "s44",
+    "spell.SANGUINESTI_STAFF": "s52",
+    "spell.STAFF_OF_AIR": "s15",
+    "spell.STAFF_OF_FIRE": "s32",
+    "spell.STAFF_OF_THE_DEAD": "s48",
+    "spell.TOXIC_STAFF_OF_THE_DEAD": "s51",
+    "spell.TRIDENT_OF_THE_SEAS": "s38",
+    "spell.TRIDENT_OF_THE_SWAMP": "s51",
+    "spell.TRIDENT_OF_THE_SWAMP_E": "s51",
+    "spell.TUMEKENS_SHADOW": "s46",
+    "spell.VOLATILE_NIGHTMARE_STAFF": "s52",
+    "ui.BORDER_BOTTOM_LEFT": "s312",
+    "ui.BORDER_BOTTOM_RIGHT": "s313",
+    "ui.BORDER_TOP_LEFT": "s310",
+    "ui.BORDER_TOP_RIGHT": "s311",
+    "ui.BUTTON_BOTTOM": "s920",
+    "ui.BUTTON_BOTTOM_LEFT": "s915",
+    "ui.BUTTON_BOTTOM_RIGHT": "s916",
+    "ui.BUTTON_LEFT": "s917",
+    "ui.BUTTON_RIGHT": "s919",
+    "ui.BUTTON_TOP": "s918",
+    "ui.BUTTON_TOP_LEFT": "s913",
+    "ui.BUTTON_TOP_RIGHT": "s914",
+    "ui.CANNON": "i6",
+    "ui.CANNONBALL": "i2",
+    "ui.CASKET": "i405",
+    "ui.CHINCHOMPA": "i10034",
+    "ui.ENEMY_SPELL": "s21",
+    "ui.EQUIPMENT_SLOT": "s170",
+    "ui.HEALTH_BACK": "s2177",
+    "ui.HEALTH_FRONT": "s2176",
+    "ui.HITSPLAT_DAMAGE": "s1359",
+    "ui.ICE_SPELL": "s328",
+    "ui.ORB_EMPTY": "s1059",
+    "ui.ORB_FRAME": "s1071",
+    "ui.ORB_HP_FILL": "s1060",
+    "ui.ORB_HP_ICON": "s1067",
+    "ui.SPECIAL_HITSPLAT": "s1359",
+    "ui.SPELL_PROJECTILE": "s15",
+    "ui.XP_SKILL_ICON": "s202"
+  },
+  "npcs": {
+    "CHICKEN": {
+      "model": "npc.CHICKEN",
+      "walk": 5385,
+      "idle": 5386,
+      "scale": 1.0
+    },
+    "RAT": {
+      "model": "npc.RAT",
+      "walk": 137,
+      "idle": 140,
+      "scale": 1.0
+    },
+    "GOBLIN": {
+      "model": "npc.GOBLIN",
+      "walk": 6180,
+      "idle": 6181,
+      "scale": 1.0
+    },
+    "MAN": {
+      "model": "npc.MAN",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "MONKEY": {
+      "model": "npc.MONKEY",
+      "walk": 219,
+      "idle": 222,
+      "scale": 1.0
+    },
+    "CRAWLING_HAND": {
+      "model": "npc.CRAWLING_HAND",
+      "walk": 1589,
+      "idle": 1588,
+      "scale": 1.0
+    },
+    "COW": {
+      "model": "npc.COW",
+      "walk": 5848,
+      "idle": 5852,
+      "scale": 1.0
+    },
+    "GIANT_SPIDER": {
+      "model": "npc.GIANT_SPIDER",
+      "walk": 5325,
+      "idle": 5326,
+      "scale": 1.0
+    },
+    "ZOMBIE": {
+      "model": "npc.ZOMBIE",
+      "walk": 298,
+      "idle": 301,
+      "scale": 1.0
+    },
+    "SKELETON": {
+      "model": "npc.SKELETON",
+      "walk": 259,
+      "idle": 262,
+      "scale": 1.0
+    },
+    "GUARD": {
+      "model": "npc.GUARD",
+      "walk": 6486,
+      "idle": 6487,
+      "scale": 1.0
+    },
+    "DWARF": {
+      "model": "npc.DWARF",
+      "walk": 98,
+      "idle": 101,
+      "scale": 1.0
+    },
+    "BARBARIAN": {
+      "model": "npc.BARBARIAN",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "SCORPION": {
+      "model": "npc.SCORPION",
+      "walk": 6253,
+      "idle": 6252,
+      "scale": 1.0
+    },
+    "BANDIT": {
+      "model": "npc.BANDIT",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "WOLF": {
+      "model": "npc.WOLF",
+      "walk": 6556,
+      "idle": 6580,
+      "scale": 1.0
+    },
+    "GHOUL": {
+      "model": "npc.GHOUL",
+      "walk": 819,
+      "idle": 1275,
+      "scale": 1.0
+    },
+    "JUNGLE_SPIDER": {
+      "model": "npc.JUNGLE_SPIDER",
+      "walk": 5325,
+      "idle": 5326,
+      "scale": 1.0
+    },
+    "REVENANT_IMP": {
+      "model": "npc.REVENANT_IMP",
+      "walk": 168,
+      "idle": 171,
+      "scale": 1.0
+    },
+    "DARK_WIZARD": {
+      "model": "npc.DARK_WIZARD",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "CHAOS_DRUID": {
+      "model": "npc.CHAOS_DRUID",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "SKELETON_MAGE": {
+      "model": "npc.SKELETON_MAGE",
+      "walk": 5479,
+      "idle": 5483,
+      "scale": 1.0
+    },
+    "ARCHER": {
+      "model": "npc.ARCHER",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "WHITE_KNIGHT": {
+      "model": "npc.WHITE_KNIGHT",
+      "walk": 2562,
+      "idle": 2561,
+      "scale": 1.0
+    },
+    "BLACK_KNIGHT": {
+      "model": "npc.BLACK_KNIGHT",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "ICE_WARRIOR": {
+      "model": "npc.ICE_WARRIOR",
+      "walk": 841,
+      "idle": 842,
+      "scale": 1.0
+    },
+    "KALPHITE_WORKER": {
+      "model": "npc.KALPHITE_WORKER",
+      "walk": 6220,
+      "idle": 6218,
+      "scale": 1.0
+    },
+    "BANSHEE": {
+      "model": "npc.BANSHEE",
+      "walk": 1521,
+      "idle": 1522,
+      "scale": 1.0
+    },
+    "CROCODILE": {
+      "model": "npc.CROCODILE",
+      "walk": 2036,
+      "idle": 2037,
+      "scale": 1.0
+    },
+    "HILL_GIANT": {
+      "model": "npc.HILL_GIANT",
+      "walk": 4649,
+      "idle": 4650,
+      "scale": 1.0
+    },
+    "MOSS_GIANT": {
+      "model": "npc.MOSS_GIANT",
+      "walk": 127,
+      "idle": 130,
+      "scale": 1.0
+    },
+    "ICE_GIANT": {
+      "model": "npc.ICE_GIANT",
+      "walk": 4669,
+      "idle": 4670,
+      "scale": 1.0
+    },
+    "JOGRE": {
+      "model": "npc.JOGRE",
+      "walk": 127,
+      "idle": 130,
+      "scale": 1.0
+    },
+    "WEREWOLF": {
+      "model": "npc.WEREWOLF",
+      "walk": 6541,
+      "idle": 6539,
+      "scale": 1.0
+    },
+    "FERAL_VAMPYRE": {
+      "model": "npc.FERAL_VAMPYRE",
+      "walk": 819,
+      "idle": 808,
+      "scale": 1.0
+    },
+    "KALPHITE_SOLDIER": {
+      "model": "npc.KALPHITE_SOLDIER",
+      "walk": 6220,
+      "idle": 6218,
+      "scale": 1.0
+    },
+    "FIRE_GIANT": {
+      "model": "npc.FIRE_GIANT",
+      "walk": 4660,
+      "idle": 4662,
+      "scale": 1.0
+    },
+    "BLOODVELD": {
+      "model": "npc.BLOODVELD",
+      "walk": 1549,
+      "idle": 1551,
+      "scale": 1.0
+    },
+    "LESSER_DEMON": {
+      "model": "npc.LESSER_DEMON",
+      "walk": 63,
+      "idle": 66,
+      "scale": 1.0
+    },
+    "GREATER_DEMON": {
+      "model": "npc.GREATER_DEMON",
+      "walk": 63,
+      "idle": 66,
+      "scale": 1.0
+    },
+    "REVENANT_KNIGHT": {
+      "model": "npc.REVENANT_KNIGHT",
+      "walk": 1205,
+      "idle": 813,
+      "scale": 1.0
+    },
+    "ABYSSAL_DEMON": {
+      "model": "npc.ABYSSAL_DEMON",
+      "walk": 1534,
+      "idle": 1536,
+      "scale": 1.0
+    },
+    "GREEN_DRAGON": {
+      "model": "npc.GREEN_DRAGON",
+      "walk": 79,
+      "idle": 90,
+      "scale": 0.75
+    },
+    "BLACK_DEMON": {
+      "model": "npc.BLACK_DEMON",
+      "walk": 63,
+      "idle": 66,
+      "scale": 1.0
+    },
+    "CHAOS_ELEMENTAL": {
+      "model": "npc.CHAOS_ELEMENTAL",
+      "walk": 3145,
+      "idle": 3144,
+      "scale": 1.0
+    },
+    "GIANT_MOLE": {
+      "model": "npc.GIANT_MOLE",
+      "walk": 3313,
+      "idle": 3309,
+      "scale": 1.0
+    },
+    "SARACHNIS": {
+      "model": "npc.SARACHNIS",
+      "walk": 8319,
+      "idle": 8320,
+      "scale": 0.6
+    },
+    "DAGANNOTH_REX": {
+      "model": "npc.DAGANNOTH_REX",
+      "walk": 2849,
+      "idle": 2850,
+      "scale": 1.0
+    },
+    "SCORPIA": {
+      "model": "npc.SCORPIA",
+      "walk": 6262,
+      "idle": 6252,
+      "scale": 0.6
+    },
+    "KALPHITE_QUEEN": {
+      "model": "npc.KALPHITE_QUEEN",
+      "walk": 6238,
+      "idle": 6239,
+      "scale": 0.6
+    },
+    "KING_BLACK_DRAGON": {
+      "model": "npc.KING_BLACK_DRAGON",
+      "walk": 4635,
+      "idle": 90,
+      "scale": 0.6
+    },
+    "GENERAL_GRAARDOR": {
+      "model": "npc.GENERAL_GRAARDOR",
+      "walk": 7016,
+      "idle": 7017,
+      "scale": 0.75
+    },
+    "COMMANDER_ZILYANA": {
+      "model": "npc.COMMANDER_ZILYANA",
+      "walk": 6965,
+      "idle": 6966,
+      "scale": 1.0
+    },
+    "KRIL_TSUTSAROTH": {
+      "model": "npc.KRIL_TSUTSAROTH",
+      "walk": 4070,
+      "idle": 6935,
+      "scale": 0.6
+    },
+    "KREEARRA": {
+      "model": "npc.KREEARRA",
+      "walk": 6977,
+      "idle": 6976,
+      "scale": 0.6
+    },
+    "CERBERUS": {
+      "model": "npc.CERBERUS",
+      "walk": 4488,
+      "idle": 4484,
+      "scale": 0.6
+    },
+    "ZULRAH": {
+      "model": "npc.ZULRAH",
+      "walk": 5070,
+      "idle": 5070,
+      "scale": 0.6
+    },
+    "VORKATH": {
+      "model": "npc.VORKATH",
+      "walk": 7947,
+      "idle": 7948,
+      "scale": 0.42857142857142855
+    },
+    "TZTOK_JAD": {
+      "model": "npc.TZTOK_JAD",
+      "walk": 2651,
+      "idle": 2650,
+      "scale": 0.6
+    },
+    "CORPOREAL_BEAST": {
+      "model": "npc.CORPOREAL_BEAST",
+      "walk": 1684,
+      "idle": 1678,
+      "scale": 0.6
+    },
+    "ALCHEMICAL_HYDRA": {
+      "model": "npc.ALCHEMICAL_HYDRA",
+      "walk": 8232,
+      "idle": 8233,
+      "scale": 0.5
+    },
+    "THE_NIGHTMARE": {
+      "model": "npc.THE_NIGHTMARE",
+      "walk": 8592,
+      "idle": 8593,
+      "scale": 0.6
+    },
+    "PHANTOM_MUSPAH": {
+      "model": "npc.PHANTOM_MUSPAH",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
+    },
+    "DUKE_SUCELLUS": {
+      "model": "npc.DUKE_SUCELLUS",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.42857142857142855
+    },
+    "VARDORVIS": {
+      "model": "npc.VARDORVIS",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "THE_LEVIATHAN": {
+      "model": "npc.THE_LEVIATHAN",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.42857142857142855
+    },
+    "THE_WHISPERER": {
+      "model": "npc.THE_WHISPERER",
+      "walk": -1,
+      "idle": -1,
+      "scale": 1.0
+    },
+    "ARAXXOR": {
+      "model": "npc.ARAXXOR",
+      "walk": 11474,
+      "idle": 11473,
+      "scale": 0.42857142857142855
+    },
+    "NEX": {
+      "model": "npc.NEX",
+      "walk": 9175,
+      "idle": 9177,
+      "scale": 1.0
+    },
+    "VERZIK_VITUR": {
+      "model": "npc.VERZIK_VITUR",
+      "walk": 8121,
+      "idle": 8120,
+      "scale": 0.42857142857142855
+    },
+    "YAMA": {
+      "model": "npc.YAMA",
+      "walk": -1,
+      "idle": -1,
+      "scale": 0.6
+    }
+  },
+  "player": {
+    "kits": {
+      "8": "kit.HAIR",
+      "11": "kit.JAW",
+      "4": "kit.TORSO",
+      "6": "kit.ARMS",
+      "9": "kit.HANDS",
+      "7": "kit.LEGS",
+      "10": "kit.BOOTS"
+    },
+    "gear": {
+      "BRONZE_SCIMITAR": {
+        "model": "gear.BRONZE_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "IRON_SCIMITAR": {
+        "model": "gear.IRON_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "STEEL_SCIMITAR": {
+        "model": "gear.STEEL_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "MITHRIL_SCIMITAR": {
+        "model": "gear.MITHRIL_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "ADAMANT_SCIMITAR": {
+        "model": "gear.ADAMANT_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "TZHAAR_KET_OM": {
+        "model": "gear.TZHAAR_KET_OM",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 1665
+      },
+      "RUNE_SCIMITAR": {
+        "model": "gear.RUNE_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "GRANITE_MAUL": {
+        "model": "gear.GRANITE_MAUL",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 1665
+      },
+      "DRAGON_SCIMITAR": {
+        "model": "gear.DRAGON_SCIMITAR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "DRAGON_WARHAMMER": {
+        "model": "gear.DRAGON_WARHAMMER",
+        "slot": 3,
+        "hides": [],
+        "attack": 401
+      },
+      "DHAROKS_GREATAXE": {
+        "model": "gear.DHAROKS_GREATAXE",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 2066
+      },
+      "TORAGS_HAMMERS": {
+        "model": "gear.TORAGS_HAMMERS",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 2068
+      },
+      "ABYSSAL_WHIP": {
+        "model": "gear.ABYSSAL_WHIP",
+        "slot": 3,
+        "hides": [],
+        "attack": 1658
+      },
+      "SARADOMIN_SWORD": {
+        "model": "gear.SARADOMIN_SWORD",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 390
+      },
+      "VERACS_FLAIL": {
+        "model": "gear.VERACS_FLAIL",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 401
+      },
+      "GUTHANS_WARSPEAR": {
+        "model": "gear.GUTHANS_WARSPEAR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 2062
+      },
+      "GHRAZI_RAPIER": {
+        "model": "gear.GHRAZI_RAPIER",
+        "slot": 3,
+        "hides": [],
+        "attack": 8145
+      },
+      "BLADE_OF_SAELDOR": {
+        "model": "gear.BLADE_OF_SAELDOR",
+        "slot": 3,
+        "hides": [],
+        "attack": 390
+      },
+      "OSMUMTENS_FANG": {
+        "model": "gear.OSMUMTENS_FANG",
+        "slot": 3,
+        "hides": [],
+        "attack": 386
+      },
+      "INQUISITORS_MACE": {
+        "model": "gear.INQUISITORS_MACE",
+        "slot": 3,
+        "hides": [],
+        "attack": 401
+      },
+      "ARMADYL_GODSWORD": {
+        "model": "gear.ARMADYL_GODSWORD",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 390
+      },
+      "SCYTHE_OF_VITUR": {
+        "model": "gear.SCYTHE_OF_VITUR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 8056
+      },
+      "SOULREAPER_AXE": {
+        "model": "gear.SOULREAPER_AXE",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 395
+      },
+      "ELDER_MAUL": {
+        "model": "gear.ELDER_MAUL",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 1665
+      },
+      "SHORTBOW": {
+        "model": "gear.SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "OAK_SHORTBOW": {
+        "model": "gear.OAK_SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "WILLOW_SHORTBOW": {
+        "model": "gear.WILLOW_SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "MAPLE_SHORTBOW": {
+        "model": "gear.MAPLE_SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "YEW_SHORTBOW": {
+        "model": "gear.YEW_SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "MAGIC_SHORTBOW": {
+        "model": "gear.MAGIC_SHORTBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "KARILS_CROSSBOW": {
+        "model": "gear.KARILS_CROSSBOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 2075
+      },
+      "RUNE_CROSSBOW": {
+        "model": "gear.RUNE_CROSSBOW",
+        "slot": 3,
+        "hides": [],
+        "attack": 4230
+      },
+      "DARK_BOW": {
+        "model": "gear.DARK_BOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "ARMADYL_CROSSBOW": {
+        "model": "gear.ARMADYL_CROSSBOW",
+        "slot": 3,
+        "hides": [],
+        "attack": 4230
+      },
+      "DRAGON_HUNTER_CROSSBOW": {
+        "model": "gear.DRAGON_HUNTER_CROSSBOW",
+        "slot": 3,
+        "hides": [],
+        "attack": 4230
+      },
+      "BLACK_CHINCHOMPA": {
+        "model": "gear.BLACK_CHINCHOMPA",
+        "slot": 3,
+        "hides": [],
+        "attack": 2779
+      },
+      "TOXIC_BLOWPIPE": {
+        "model": "gear.TOXIC_BLOWPIPE",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 5061
+      },
+      "BOW_OF_FAERDHINEN": {
+        "model": "gear.BOW_OF_FAERDHINEN",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "ZARYTE_CROSSBOW": {
+        "model": "gear.ZARYTE_CROSSBOW",
+        "slot": 3,
+        "hides": [],
+        "attack": 4230
+      },
+      "TWISTED_BOW": {
+        "model": "gear.TWISTED_BOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "STAFF_OF_AIR": {
+        "model": "gear.STAFF_OF_AIR",
+        "slot": 3,
+        "hides": [],
+        "attack": 1162
+      },
+      "STAFF_OF_FIRE": {
+        "model": "gear.STAFF_OF_FIRE",
+        "slot": 3,
+        "hides": [],
+        "attack": 1162
+      },
+      "MYSTIC_FIRE_STAFF": {
+        "model": "gear.MYSTIC_FIRE_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1162
+      },
+      "IBANS_STAFF": {
+        "model": "gear.IBANS_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 708
+      },
+      "ANCIENT_STAFF": {
+        "model": "gear.ANCIENT_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1979
+      },
+      "MASTER_WAND": {
+        "model": "gear.MASTER_WAND",
+        "slot": 3,
+        "hides": [],
+        "attack": 727
+      },
+      "AHRIMS_STAFF": {
+        "model": "gear.AHRIMS_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "TRIDENT_OF_THE_SEAS": {
+        "model": "gear.TRIDENT_OF_THE_SEAS",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "STAFF_OF_THE_DEAD": {
+        "model": "gear.STAFF_OF_THE_DEAD",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "TRIDENT_OF_THE_SWAMP": {
+        "model": "gear.TRIDENT_OF_THE_SWAMP",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "TOXIC_STAFF_OF_THE_DEAD": {
+        "model": "gear.TOXIC_STAFF_OF_THE_DEAD",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "SANGUINESTI_STAFF": {
+        "model": "gear.SANGUINESTI_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "KODAI_WAND": {
+        "model": "gear.KODAI_WAND",
+        "slot": 3,
+        "hides": [],
+        "attack": 727
+      },
+      "HARMONISED_NIGHTMARE_STAFF": {
+        "model": "gear.HARMONISED_NIGHTMARE_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "VOLATILE_NIGHTMARE_STAFF": {
+        "model": "gear.VOLATILE_NIGHTMARE_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "EYE_OF_AYAK": {
+        "model": "gear.EYE_OF_AYAK",
+        "slot": 3,
+        "hides": [],
+        "attack": 727
+      },
+      "ACCURSED_SCEPTRE": {
+        "model": "gear.ACCURSED_SCEPTRE",
+        "slot": 3,
+        "hides": [],
+        "attack": 727
+      },
+      "TUMEKENS_SHADOW": {
+        "model": "gear.TUMEKENS_SHADOW",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 9493
+      },
+      "ABYSSAL_TENTACLE": {
+        "model": "gear.ABYSSAL_TENTACLE",
+        "slot": 3,
+        "hides": [],
+        "attack": 1658
+      },
+      "ARMADYL_GODSWORD_OR": {
+        "model": "gear.ARMADYL_GODSWORD_OR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 390
+      },
+      "SANGUINE_SCYTHE_OF_VITUR": {
+        "model": "gear.SANGUINE_SCYTHE_OF_VITUR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 8056
+      },
+      "MAGIC_SHORTBOW_I": {
+        "model": "gear.MAGIC_SHORTBOW_I",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 426
+      },
+      "DRAGON_HUNTER_CROSSBOW_T": {
+        "model": "gear.DRAGON_HUNTER_CROSSBOW_T",
+        "slot": 3,
+        "hides": [],
+        "attack": 4230
+      },
+      "ICE_ANCIENT_SCEPTRE": {
+        "model": "gear.ICE_ANCIENT_SCEPTRE",
+        "slot": 3,
+        "hides": [],
+        "attack": 1979
+      },
+      "TRIDENT_OF_THE_SWAMP_E": {
+        "model": "gear.TRIDENT_OF_THE_SWAMP_E",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "HOLY_SANGUINESTI_STAFF": {
+        "model": "gear.HOLY_SANGUINESTI_STAFF",
+        "slot": 3,
+        "hides": [],
+        "attack": 1167
+      },
+      "BRONZE_FULL_HELM": {
+        "model": "gear.BRONZE_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "IRON_FULL_HELM": {
+        "model": "gear.IRON_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "STEEL_FULL_HELM": {
+        "model": "gear.STEEL_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "MITHRIL_FULL_HELM": {
+        "model": "gear.MITHRIL_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "ADAMANT_FULL_HELM": {
+        "model": "gear.ADAMANT_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "RUNE_FULL_HELM": {
+        "model": "gear.RUNE_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "DHAROKS_HELM": {
+        "model": "gear.DHAROKS_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          8,
+          11
+        ]
+      },
+      "GUTHANS_HELM": {
+        "model": "gear.GUTHANS_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "VERACS_HELM": {
+        "model": "gear.VERACS_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "TORAGS_HELM": {
+        "model": "gear.TORAGS_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "VOID_MELEE_HELM": {
+        "model": "gear.VOID_MELEE_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "DRAGON_FULL_HELM": {
+        "model": "gear.DRAGON_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "NEITIZNOT_FACEGUARD": {
+        "model": "gear.NEITIZNOT_FACEGUARD",
+        "slot": 0,
+        "hides": [
+          8,
+          8,
+          11
+        ]
+      },
+      "INQUISITORS_GREAT_HELM": {
+        "model": "gear.INQUISITORS_GREAT_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "TORVA_FULL_HELM": {
+        "model": "gear.TORVA_FULL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "OBSIDIAN_HELMET": {
+        "model": "gear.OBSIDIAN_HELMET",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "BRONZE_PLATEBODY": {
+        "model": "gear.BRONZE_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "IRON_PLATEBODY": {
+        "model": "gear.IRON_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "STEEL_PLATEBODY": {
+        "model": "gear.STEEL_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "MITHRIL_PLATEBODY": {
+        "model": "gear.MITHRIL_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "ADAMANT_PLATEBODY": {
+        "model": "gear.ADAMANT_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "RUNE_PLATEBODY": {
+        "model": "gear.RUNE_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "DHAROKS_PLATEBODY": {
+        "model": "gear.DHAROKS_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "GUTHANS_PLATEBODY": {
+        "model": "gear.GUTHANS_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "VERACS_BRASSARD": {
+        "model": "gear.VERACS_BRASSARD",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "TORAGS_PLATEBODY": {
+        "model": "gear.TORAGS_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "DRAGON_PLATEBODY": {
+        "model": "gear.DRAGON_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "BANDOS_CHESTPLATE": {
+        "model": "gear.BANDOS_CHESTPLATE",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "INQUISITORS_HAUBERK": {
+        "model": "gear.INQUISITORS_HAUBERK",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "TORVA_PLATEBODY": {
+        "model": "gear.TORVA_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "OBSIDIAN_PLATEBODY": {
+        "model": "gear.OBSIDIAN_PLATEBODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "BRONZE_PLATELEGS": {
+        "model": "gear.BRONZE_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "IRON_PLATELEGS": {
+        "model": "gear.IRON_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "STEEL_PLATELEGS": {
+        "model": "gear.STEEL_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "MITHRIL_PLATELEGS": {
+        "model": "gear.MITHRIL_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "ADAMANT_PLATELEGS": {
+        "model": "gear.ADAMANT_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "RUNE_PLATELEGS": {
+        "model": "gear.RUNE_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "DHAROKS_PLATELEGS": {
+        "model": "gear.DHAROKS_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "GUTHANS_CHAINSKIRT": {
+        "model": "gear.GUTHANS_CHAINSKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "VERACS_PLATESKIRT": {
+        "model": "gear.VERACS_PLATESKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "TORAGS_PLATELEGS": {
+        "model": "gear.TORAGS_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "DRAGON_PLATELEGS": {
+        "model": "gear.DRAGON_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "BANDOS_TASSETS": {
+        "model": "gear.BANDOS_TASSETS",
+        "slot": 7,
+        "hides": []
+      },
+      "INQUISITORS_PLATESKIRT": {
+        "model": "gear.INQUISITORS_PLATESKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "TORVA_PLATELEGS": {
+        "model": "gear.TORVA_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "OBSIDIAN_PLATELEGS": {
+        "model": "gear.OBSIDIAN_PLATELEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "LEATHER_COWL": {
+        "model": "gear.LEATHER_COWL",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "COIF": {
+        "model": "gear.COIF",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "ROBIN_HOOD_HAT": {
+        "model": "gear.ROBIN_HOOD_HAT",
+        "slot": 0,
+        "hides": []
+      },
+      "KARILS_COIF": {
+        "model": "gear.KARILS_COIF",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8
+        ]
+      },
+      "VOID_RANGER_HELM": {
+        "model": "gear.VOID_RANGER_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "ARMADYL_HELMET": {
+        "model": "gear.ARMADYL_HELMET",
+        "slot": 0,
+        "hides": [
+          8,
+          8,
+          11
+        ]
+      },
+      "MASORI_MASK": {
+        "model": "gear.MASORI_MASK",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "CRYSTAL_HELM": {
+        "model": "gear.CRYSTAL_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8
+        ]
+      },
+      "LEATHER_BODY": {
+        "model": "gear.LEATHER_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "STUDDED_BODY": {
+        "model": "gear.STUDDED_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "GREEN_DHIDE_BODY": {
+        "model": "gear.GREEN_DHIDE_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "BLUE_DHIDE_BODY": {
+        "model": "gear.BLUE_DHIDE_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "RED_DHIDE_BODY": {
+        "model": "gear.RED_DHIDE_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "BLACK_DHIDE_BODY": {
+        "model": "gear.BLACK_DHIDE_BODY",
+        "slot": 4,
+        "hides": []
+      },
+      "KARILS_LEATHERTOP": {
+        "model": "gear.KARILS_LEATHERTOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "ARMADYL_CHESTPLATE": {
+        "model": "gear.ARMADYL_CHESTPLATE",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "MASORI_BODY": {
+        "model": "gear.MASORI_BODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "CRYSTAL_BODY": {
+        "model": "gear.CRYSTAL_BODY",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "LEATHER_CHAPS": {
+        "model": "gear.LEATHER_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "STUDDED_CHAPS": {
+        "model": "gear.STUDDED_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "GREEN_DHIDE_CHAPS": {
+        "model": "gear.GREEN_DHIDE_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "BLUE_DHIDE_CHAPS": {
+        "model": "gear.BLUE_DHIDE_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "RED_DHIDE_CHAPS": {
+        "model": "gear.RED_DHIDE_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "BLACK_DHIDE_CHAPS": {
+        "model": "gear.BLACK_DHIDE_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "KARILS_LEATHERSKIRT": {
+        "model": "gear.KARILS_LEATHERSKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "ARMADYL_CHAINSKIRT": {
+        "model": "gear.ARMADYL_CHAINSKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "MASORI_CHAPS": {
+        "model": "gear.MASORI_CHAPS",
+        "slot": 7,
+        "hides": []
+      },
+      "CRYSTAL_LEGS": {
+        "model": "gear.CRYSTAL_LEGS",
+        "slot": 7,
+        "hides": []
+      },
+      "WIZARD_HAT": {
+        "model": "gear.WIZARD_HAT",
+        "slot": 0,
+        "hides": []
+      },
+      "MYSTIC_HAT": {
+        "model": "gear.MYSTIC_HAT",
+        "slot": 0,
+        "hides": [
+          8
+        ]
+      },
+      "INFINITY_HAT": {
+        "model": "gear.INFINITY_HAT",
+        "slot": 0,
+        "hides": [
+          8
+        ]
+      },
+      "AHRIMS_HOOD": {
+        "model": "gear.AHRIMS_HOOD",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "VOID_MAGE_HELM": {
+        "model": "gear.VOID_MAGE_HELM",
+        "slot": 0,
+        "hides": [
+          8,
+          8
+        ]
+      },
+      "ANCESTRAL_HAT": {
+        "model": "gear.ANCESTRAL_HAT",
+        "slot": 0,
+        "hides": [
+          8,
+          8,
+          11
+        ]
+      },
+      "VIRTUS_MASK": {
+        "model": "gear.VIRTUS_MASK",
+        "slot": 0,
+        "hides": [
+          8,
+          11,
+          8,
+          11
+        ]
+      },
+      "WIZARD_ROBE": {
+        "model": "gear.WIZARD_ROBE",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "MYSTIC_ROBE_TOP": {
+        "model": "gear.MYSTIC_ROBE_TOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "INFINITY_TOP": {
+        "model": "gear.INFINITY_TOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "AHRIMS_ROBETOP": {
+        "model": "gear.AHRIMS_ROBETOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "ANCESTRAL_ROBE_TOP": {
+        "model": "gear.ANCESTRAL_ROBE_TOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "VIRTUS_ROBE_TOP": {
+        "model": "gear.VIRTUS_ROBE_TOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "WIZARD_SKIRT": {
+        "model": "gear.WIZARD_SKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "MYSTIC_ROBE_BOTTOM": {
+        "model": "gear.MYSTIC_ROBE_BOTTOM",
+        "slot": 7,
+        "hides": []
+      },
+      "INFINITY_BOTTOMS": {
+        "model": "gear.INFINITY_BOTTOMS",
+        "slot": 7,
+        "hides": []
+      },
+      "AHRIMS_ROBESKIRT": {
+        "model": "gear.AHRIMS_ROBESKIRT",
+        "slot": 7,
+        "hides": []
+      },
+      "ANCESTRAL_ROBE_BOTTOM": {
+        "model": "gear.ANCESTRAL_ROBE_BOTTOM",
+        "slot": 7,
+        "hides": []
+      },
+      "VIRTUS_ROBE_BOTTOM": {
+        "model": "gear.VIRTUS_ROBE_BOTTOM",
+        "slot": 7,
+        "hides": []
+      },
+      "VOID_KNIGHT_TOP": {
+        "model": "gear.VOID_KNIGHT_TOP",
+        "slot": 4,
+        "hides": [
+          6
+        ]
+      },
+      "VOID_KNIGHT_ROBE": {
+        "model": "gear.VOID_KNIGHT_ROBE",
+        "slot": 7,
+        "hides": []
+      },
+      "BRONZE_DEFENDER": {
+        "model": "gear.BRONZE_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "IRON_DEFENDER": {
+        "model": "gear.IRON_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "STEEL_DEFENDER": {
+        "model": "gear.STEEL_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "MITHRIL_DEFENDER": {
+        "model": "gear.MITHRIL_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "ADAMANT_DEFENDER": {
+        "model": "gear.ADAMANT_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "RUNE_DEFENDER": {
+        "model": "gear.RUNE_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "DRAGON_DEFENDER": {
+        "model": "gear.DRAGON_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "AVERNIC_DEFENDER": {
+        "model": "gear.AVERNIC_DEFENDER",
+        "slot": 5,
+        "hides": []
+      },
+      "DINHS_BULWARK": {
+        "model": "gear.DINHS_BULWARK",
+        "slot": 5,
+        "hides": []
+      },
+      "UNHOLY_BOOK": {
+        "model": "gear.UNHOLY_BOOK",
+        "slot": 5,
+        "hides": []
+      },
+      "BOOK_OF_LAW": {
+        "model": "gear.BOOK_OF_LAW",
+        "slot": 5,
+        "hides": []
+      },
+      "ODIUM_WARD": {
+        "model": "gear.ODIUM_WARD",
+        "slot": 5,
+        "hides": []
+      },
+      "DRAGONFIRE_WARD": {
+        "model": "gear.DRAGONFIRE_WARD",
+        "slot": 5,
+        "hides": []
+      },
+      "TWISTED_BUCKLER": {
+        "model": "gear.TWISTED_BUCKLER",
+        "slot": 5,
+        "hides": []
+      },
+      "MAGES_BOOK": {
+        "model": "gear.MAGES_BOOK",
+        "slot": 5,
+        "hides": []
+      },
+      "TOME_OF_FIRE": {
+        "model": "gear.TOME_OF_FIRE",
+        "slot": 5,
+        "hides": []
+      },
+      "MALEDICTION_WARD": {
+        "model": "gear.MALEDICTION_WARD",
+        "slot": 5,
+        "hides": []
+      },
+      "ARCANE_SPIRIT_SHIELD": {
+        "model": "gear.ARCANE_SPIRIT_SHIELD",
+        "slot": 5,
+        "hides": []
+      },
+      "ELIDINIS_WARD": {
+        "model": "gear.ELIDINIS_WARD",
+        "slot": 5,
+        "hides": []
+      },
+      "RED_CAPE": {
+        "model": "gear.RED_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "OBSIDIAN_CAPE": {
+        "model": "gear.OBSIDIAN_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "FIRE_CAPE": {
+        "model": "gear.FIRE_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "IMBUED_SARADOMIN_CAPE": {
+        "model": "gear.IMBUED_SARADOMIN_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "INFERNAL_CAPE": {
+        "model": "gear.INFERNAL_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "AMULET_OF_POWER": {
+        "model": "gear.AMULET_OF_POWER",
+        "slot": 2,
+        "hides": []
+      },
+      "AMULET_OF_GLORY": {
+        "model": "gear.AMULET_OF_GLORY",
+        "slot": 2,
+        "hides": []
+      },
+      "AMULET_OF_FURY": {
+        "model": "gear.AMULET_OF_FURY",
+        "slot": 2,
+        "hides": []
+      },
+      "AMULET_OF_BLOOD_FURY": {
+        "model": "gear.AMULET_OF_BLOOD_FURY",
+        "slot": 2,
+        "hides": []
+      },
+      "AMULET_OF_TORTURE": {
+        "model": "gear.AMULET_OF_TORTURE",
+        "slot": 2,
+        "hides": []
+      },
+      "NECKLACE_OF_ANGUISH": {
+        "model": "gear.NECKLACE_OF_ANGUISH",
+        "slot": 2,
+        "hides": []
+      },
+      "OCCULT_NECKLACE": {
+        "model": "gear.OCCULT_NECKLACE",
+        "slot": 2,
+        "hides": []
+      },
+      "LEATHER_GLOVES": {
+        "model": "gear.LEATHER_GLOVES",
+        "slot": 9,
+        "hides": []
+      },
+      "COMBAT_BRACELET": {
+        "model": "gear.COMBAT_BRACELET",
+        "slot": 9,
+        "hides": []
+      },
+      "VOID_KNIGHT_GLOVES": {
+        "model": "gear.VOID_KNIGHT_GLOVES",
+        "slot": 9,
+        "hides": []
+      },
+      "BARROWS_GLOVES": {
+        "model": "gear.BARROWS_GLOVES",
+        "slot": 9,
+        "hides": []
+      },
+      "FEROCIOUS_GLOVES": {
+        "model": "gear.FEROCIOUS_GLOVES",
+        "slot": 9,
+        "hides": []
+      },
+      "ZARYTE_VAMBRACES": {
+        "model": "gear.ZARYTE_VAMBRACES",
+        "slot": 9,
+        "hides": []
+      },
+      "TORMENTED_BRACELET": {
+        "model": "gear.TORMENTED_BRACELET",
+        "slot": 9,
+        "hides": []
+      },
+      "LEATHER_BOOTS": {
+        "model": "gear.LEATHER_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "CLIMBING_BOOTS": {
+        "model": "gear.CLIMBING_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "DRAGON_BOOTS": {
+        "model": "gear.DRAGON_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "PRIMORDIAL_BOOTS": {
+        "model": "gear.PRIMORDIAL_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "PEGASIAN_BOOTS": {
+        "model": "gear.PEGASIAN_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "ETERNAL_BOOTS": {
+        "model": "gear.ETERNAL_BOOTS",
+        "slot": 10,
+        "hides": []
+      },
+      "RING_OF_RECOIL": {},
+      "RING_OF_WEALTH": {},
+      "BERSERKER_RING": {},
+      "ARCHERS_RING": {},
+      "SEERS_RING": {},
+      "RING_OF_SUFFERING": {},
+      "ULTOR_RING": {},
+      "VENATOR_RING": {},
+      "MAGUS_RING": {},
+      "HOLY_BLESSING": {},
+      "RADAS_BLESSING_1": {},
+      "DRAGON_ARROWS": {},
+      "RADAS_BLESSING_4": {},
+      "INFERNAL_MAX_CAPE": {
+        "model": "gear.INFERNAL_MAX_CAPE",
+        "slot": 1,
+        "hides": []
+      },
+      "AMULET_OF_RANCOUR": {
+        "model": "gear.AMULET_OF_RANCOUR",
+        "slot": 2,
+        "hides": []
+      },
+      "CONFLICTION_GAUNTLETS": {
+        "model": "gear.CONFLICTION_GAUNTLETS",
+        "slot": 9,
+        "hides": []
+      },
+      "AVERNIC_TREADS": {
+        "model": "gear.AVERNIC_TREADS",
+        "slot": 10,
+        "hides": []
+      },
+      "RING_OF_THE_GODS": {},
+      "DIZANAS_QUIVER": {},
+      "ELYSIAN_SPIRIT_SHIELD": {
+        "model": "gear.ELYSIAN_SPIRIT_SHIELD",
+        "slot": 5,
+        "hides": []
+      }
+    },
+    "punch": 422,
+    "ready": 808,
+    "walk": 819
+  },
+  "itemOffset": 2048,
+  "modelsVersion": 1
+}

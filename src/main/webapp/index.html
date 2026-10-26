@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSRS Survivors</title>
+<style>
+	:root {
+		--background: #000;
+		--text: #ff981f;
+		--shadow: #000;
+	}
+	html, body {
+		margin: 0;
+		height: 100%;
+		background: var(--background);
+		overflow: hidden;
+	}
+	canvas {
+		display: block;
+		width: 100vw;
+		height: 100vh;
+		image-rendering: pixelated;
+		outline: none;
+	}
+	#status {
+		position: fixed;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 16px;
+		text-align: center;
+		color: var(--text);
+		text-shadow: 1px 1px 0 var(--shadow);
+		font: 16px sans-serif;
+		pointer-events: none;
+	}
+	#status[hidden] {
+		display: none;
+	}
+</style>
+</head>
+<body>
+<canvas id="game" tabindex="0"></canvas>
+<div id="status">Loading...</div>
+<script>
+	// The game (game.js, compiled from Java by TeaVM) reads everything through window.OSRS.
+	(function () {
+		var statusLine = document.getElementById("status");
+		function status(text) {
+			statusLine.hidden = !text;
+			statusLine.textContent = text || "";
+		}
+
+		function bytes(base64) {
+			var raw = atob(base64);
+			var out = new Uint8Array(raw.length);
+			for (var i = 0; i < raw.length; i++) {
+				out[i] = raw.charCodeAt(i);
+			}
+			return out;
+		}
+
+		function gunzip(data) {
+			var stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("gzip"));
+			return new Response(stream).arrayBuffer().then(function (buffer) {
+				return new Int8Array(buffer);
+			});
+		}
+
+		function picture(base64) {
+			var image = new Image();
+			image.src = "data:image/png;base64," + base64;
+			return image.decode().then(function () {
+				return image;
+			});
+		}
+
+		// map locations are scripts that call OSRS_LOCATION once loaded (this also works from file://)
+		var pending = {};
+		window.OSRS_LOCATION = function (name, ground, data) {
+			var done = pending[name];
+			delete pending[name];
+			if (!done) {
+				return;
+			}
+			Promise.all([picture(ground), gunzip(bytes(data))]).then(function (loaded) {
+				done(loaded[0], loaded[1], null);
+			}, function (e) {
+				done(null, null, String(e));
+			});
+		};
+
+		function loadLocation(name, done) {
+			pending[name] = done;
+			var script = document.createElement("script");
+			script.src = "assets/loc/" + name + ".js";
+			script.onerror = function () {
+				delete pending[name];
+				done(null, null, "assets/loc/" + name + ".js is missing");
+			};
+			document.head.appendChild(script);
+		}
+
+		window.OSRS = {
+			status: status,
+			images: {},
+			manifest: null,
+			models: null,
+			loadLocation: loadLocation
+		};
+
+		function start() {
+			var data = window.OSRS_DATA;
+			if (!data) {
+				status("The game's artwork (assets/data.js) is missing. Export it with: ./gradlew exportAssets");
+				return;
+			}
+			window.OSRS.manifest = data.manifest;
+			var fonts = [["RuneScape", data.fonts.regular], ["RuneScape Bold", data.fonts.bold], ["RuneScape Small", data.fonts.small]]
+				.map(function (f) {
+					var face = new FontFace(f[0], bytes(f[1]).buffer);
+					document.fonts.add(face);
+					return face.load();
+				});
+			var images = Object.keys(data.images).map(function (name) {
+				return picture(data.images[name]).then(function (image) {
+					window.OSRS.images[name] = image;
+				});
+			});
+			var models = gunzip(bytes(data.models)).then(function (m) {
+				window.OSRS.models = m;
+			});
+			Promise.all(fonts.concat(images, [models])).then(function () {
+				// the data is decoded; let go of the encoded copy
+				window.OSRS_DATA = null;
+				main([]);
+				document.getElementById("game").focus();
+			}, function (e) {
+				status("Couldn't load the game: " + e);
+			});
+		}
+
+		window.addEventListener("load", start);
+	})();
+</script>
+<script src="assets/data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

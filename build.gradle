@@ -1,0 +1,107 @@
+// OSRS Survivors in the browser. The game (src/main/java: game, render, web) is compiled to
+// JavaScript by TeaVM; java.awt drawing is provided by a Canvas2D shim (src/shim). The artwork in
+// src/main/webapp/assets is exported from a local OSRS cache by `exportAssets` (src/export) and
+// committed, so `dist` builds the playable page without a cache. See README.md.
+
+plugins {
+	id 'java'
+	id 'org.teavm' version '0.16.0'
+}
+
+repositories {
+	mavenLocal()
+	maven {
+		url = 'https://repo.runelite.net'
+		content {
+			includeGroupByRegex("net\\.runelite.*")
+		}
+	}
+	mavenCentral()
+}
+
+def runeLiteVersion = 'latest.release'
+
+sourceSets {
+	// replacements for java.awt, written as TeaVM classlib classes (org.teavm.classlib.java.awt.TColor
+	// stands in for java.awt.Color)
+	shim
+	// runs on the JVM: reads the OSRS cache and writes the artwork the page needs
+	export {
+		compileClasspath += main.output
+		runtimeClasspath += main.output
+	}
+	test {
+		compileClasspath += export.output
+		runtimeClasspath += export.output
+	}
+}
+
+configurations {
+	testImplementation.extendsFrom exportImplementation
+}
+
+dependencies {
+	shimImplementation teavm.libs.jso
+	shimImplementation teavm.libs.jsoApis
+	implementation files(sourceSets.shim.output)
+	implementation teavm.libs.jso
+	implementation teavm.libs.jsoApis
+
+	// the cache reader, gameval ids and the game fonts
+	exportImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	exportImplementation group: 'net.runelite', name: 'cache', version: runeLiteVersion
+
+	testImplementation 'junit:junit:4.12'
+}
+
+group = 'com.osrssurvivors'
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+	// tests draw only into off-screen images; never open a window
+	systemProperty 'java.awt.headless', 'true'
+}
+
+teavm {
+	js {
+		mainClass = 'com.osrssurvivors.web.WebMain'
+		obfuscated = true
+		optimization = org.teavm.gradle.api.OptimizationLevel.AGGRESSIVE
+		targetFileName = 'game.js'
+	}
+}
+
+def cacheDir = providers.gradleProperty('cacheDir')
+	.orElse(System.getProperty('user.home') + '/.runelite/jagexcache/oldschool/LIVE')
+def assetsDir = file('src/main/webapp/assets')
+
+tasks.register('exportAssets', JavaExec) {
+	group = 'build'
+	description = 'Exports sprites, item icons, models, animations, maps and fonts from a local OSRS cache into src/main/webapp/assets.'
+	classpath = sourceSets.export.runtimeClasspath
+	mainClass = 'com.osrssurvivors.WebExport'
+	maxHeapSize = '2g'
+	args cacheDir.get(), assetsDir.path
+}
+
+// the playable page: index.html, game.js and the committed artwork
+tasks.register('dist', Sync) {
+	group = 'build'
+	description = 'Assembles the playable page in build/dist.'
+	dependsOn 'generateJavaScript'
+	doFirst {
+		if (!new File(assetsDir, 'data.js').exists()) {
+			throw new GradleException("The artwork is missing; export it from an OSRS cache with: ./gradlew exportAssets")
+		}
+	}
+	from('src/main/webapp') {
+		exclude 'assets/manifest.json'
+	}
+	from(layout.buildDirectory.dir('generated/teavm/js')) {
+		include 'game.js'
+	}
+	into layout.buildDirectory.dir('dist')
+}
