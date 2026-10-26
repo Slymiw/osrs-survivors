@@ -157,7 +157,6 @@ public class MetaTest
 	{
 		Map<Location, Double> best = new EnumMap<>(Location.class);
 		assertTrue(Location.LUMBRIDGE.isUnlocked(best));
-		assertTrue(Location.HERE.isUnlocked(best));
 		assertFalse(Location.VARROCK.isUnlocked(best));
 		best.put(Location.LUMBRIDGE, Location.UNLOCK_SECONDS - 1);
 		assertFalse(Location.VARROCK.isUnlocked(best));
@@ -165,8 +164,6 @@ public class MetaTest
 		assertTrue(Location.VARROCK.isUnlocked(best));
 		assertTrue(Location.DRAYNOR.isUnlocked(best));
 		assertFalse("two steps up stays shut", Location.FALADOR.isUnlocked(best));
-		best.put(Location.HERE, 9999.0);
-		assertFalse("where you stand doesn't count", Location.FALADOR.isUnlocked(best));
 	}
 
 	@Test

@@ -138,7 +138,6 @@ final class ExportTables
 		LOCATION_ICONS.put(Location.KARAMJA, ItemID.BANANA);
 		LOCATION_ICONS.put(Location.CANIFIS, ItemID.ECTOPHIAL);
 		LOCATION_ICONS.put(Location.WILDERNESS, ItemID.SKULL);
-		LOCATION_ICONS.put(Location.HERE, ItemID.SPADE);
 	}
 
 	/** The item whose icon is used for a sprite, or -1 when it is an interface sprite. */

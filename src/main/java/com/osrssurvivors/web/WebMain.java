@@ -38,8 +38,7 @@ import org.teavm.jso.typedarrays.Int8Array;
  * The browser glue: owns the {@link GameSession},
  * advances and draws it every animation frame into the page's canvas, routes keys and clicks to
  * it, loads map locations, and keeps the saved run, best times and profile in local storage.
- * The start menu shows straight away; "Where you stand" becomes the plain field, as there is
- * no character to stand anywhere.
+ * The start menu shows straight away, over a plain field.
  */
 public final class WebMain
 {
@@ -109,7 +108,6 @@ public final class WebMain
 			Browser.status("Couldn't read the game's artwork: " + e.getMessage());
 			return;
 		}
-		Location.HERE.retitle("Open field", "A plain field of grass with nothing in the way.");
 		HTMLCanvasElement canvas = (HTMLCanvasElement) HTMLDocument.current().getElementById("game");
 		new WebMain(canvas, assets, Browser.hasParam("dev")).start();
 		Browser.status(null);
@@ -504,17 +502,11 @@ public final class WebMain
 	// ---------------------------------------------------------------- runs and locations
 
 	/**
-	 * Starts a run in a location, continuing {@code save} if not null. The open field starts at
-	 * once; map locations load their data first, with a loading line on the menu.
+	 * Starts a run in a location, continuing {@code save} if not null. A location loads its data
+	 * the first time, with a loading line on the menu.
 	 */
 	private void startRun(GameSession menu, Location location, RunSave save)
 	{
-		if (!location.isOnMap())
-		{
-			assets.setArea(null);
-			begin(menu, new GameSession(new Random(), Arena.open(GameSession.OPEN_TILES_X, GameSession.OPEN_TILES_Y), Location.HERE), save);
-			return;
-		}
 		MapArea area = areas.get(location);
 		if (area != null)
 		{

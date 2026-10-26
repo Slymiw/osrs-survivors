@@ -107,6 +107,8 @@ public final class GameSession
 	private int rerollsLeft;
 	private int revivesLeft;
 	private boolean devTools;
+	/** See {@link #getLevelUpTime()}. */
+	private double levelUpTime = -1;
 	private double retributionTimer;
 	private int bonusCoins;
 	/** Coins paid out when the run ended; -1 while it goes on. */
@@ -123,10 +125,10 @@ public final class GameSession
 		this(random, Arena.open(OPEN_TILES_X, OPEN_TILES_Y));
 	}
 
-	/** A run in the area where the player stands. */
+	/** A run on an arena with no map (the menu's backdrop, and tests), with Lumbridge's monsters. */
 	public GameSession(Random random, Arena arena)
 	{
-		this(random, arena, Location.HERE);
+		this(random, arena, Location.LUMBRIDGE);
 	}
 
 	public GameSession(Random random, Arena arena, Location location)
@@ -180,6 +182,7 @@ public final class GameSession
 		bonusCoins = 0;
 		coinsEarned = -1;
 		bossDrop = null;
+		levelUpTime = -1;
 		applyBuild();
 		player.health = player.maxHealth;
 	}
@@ -284,11 +287,8 @@ public final class GameSession
 		{
 			s.runPets.add(pet.name());
 		}
-		if (location.isOnMap())
-		{
-			s.x = player.x;
-			s.y = player.y;
-		}
+		s.x = player.x;
+		s.y = player.y;
 		for (Map.Entry<Slot, Gear> e : build.getWorn().entrySet())
 		{
 			s.gear.put(e.getKey().name(), e.getValue().name());
@@ -347,7 +347,7 @@ public final class GameSession
 		spawner.resume(elapsed);
 		applyBuild();
 		player.health = save.health > 0 ? Math.min(player.maxHealth, save.health) : player.maxHealth;
-		if (location.isOnMap() && save.x >= 0 && save.y >= 0 && save.x < arena.getWidth() && save.y < arena.getHeight()
+		if (save.x >= 0 && save.y >= 0 && save.x < arena.getWidth() && save.y < arena.getHeight()
 			&& arena.isWalkable(Arena.tileOf(save.x), Arena.tileOf(save.y))
 			&& !arena.isSolidBox(save.x, save.y, Player.COLLISION_RADIUS))
 		{
@@ -411,6 +411,11 @@ public final class GameSession
 	/** Advances the simulation by a frame's worth of real time. Does nothing unless running. */
 	public void advance(double frameSeconds)
 	{
+		if (levelUpTime >= 0 && frameSeconds > 0)
+		{
+			// the level-up show plays in real time over the paused game
+			levelUpTime += Math.min(frameSeconds, MAX_FRAME);
+		}
 		if (phase == Phase.BOSS_DROP && bossDrop != null && frameSeconds > 0)
 		{
 			// the reels spin in real time while the game waits
@@ -467,12 +472,14 @@ public final class GameSession
 		}
 	}
 
-	/** Developer tool: gains levels, each offering an upgrade once the game resumes. */
+	/** Developer tool: gains levels and offers an upgrade for each, starting now. */
 	public void devGrantLevels(int levels)
 	{
 		if (phase == Phase.RUNNING || phase == Phase.PAUSED)
 		{
 			progression.grantLevels(levels);
+			applyBuild();
+			levelUp();
 		}
 	}
 
@@ -638,7 +645,7 @@ public final class GameSession
 		}
 		else if (progression.getPendingLevelUps() > 0)
 		{
-			offerChoices(false);
+			levelUp();
 		}
 		else
 		{
@@ -1097,7 +1104,7 @@ public final class GameSession
 			{
 				// every level makes attacks a little faster straight away
 				applyBuild();
-				offerChoices(false);
+				levelUp();
 			}
 		}
 	}
@@ -1225,6 +1232,22 @@ public final class GameSession
 			choices.add(Offer.coins(fillerCoins()));
 		}
 		phase = Phase.LEVEL_UP;
+	}
+
+	/** Offers the next level's upgrades and starts the level-up show. */
+	private void levelUp()
+	{
+		levelUpTime = 0;
+		offerChoices(false);
+	}
+
+	/**
+	 * Real seconds since the latest level-up screen opened (for its animation), or -1 if there
+	 * hasn't been one this run.
+	 */
+	public double getLevelUpTime()
+	{
+		return levelUpTime;
 	}
 
 	/** Coins in a filler pouch: more the longer the run has gone. */

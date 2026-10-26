@@ -158,6 +158,14 @@ public class SessionStateTest
 		int level = s.getProgression().getLevel();
 		s.devGrantLevels(5);
 		assertEquals(level + 5, s.getProgression().getLevel());
+		// each granted level offers its reward straight away, with the level-up show
+		for (int i = 0; i < 5; i++)
+		{
+			assertEquals("reward " + i, Phase.LEVEL_UP, s.getPhase());
+			assertEquals(0, s.getLevelUpTime(), 1e-9);
+			s.chooseUpgrade(0);
+		}
+		assertEquals(Phase.RUNNING, s.getPhase());
 		s.devEndRun();
 		assertEquals(Phase.GAME_OVER, s.getPhase());
 		assertTrue("the run paid out", meta.coins > 0);

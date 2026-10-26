@@ -74,7 +74,7 @@ public class EnemyTest
 	{
 		Player p = new Player(1200, 900);
 		Arena arena = Arena.open(GameSession.OPEN_TILES_X, GameSession.OPEN_TILES_Y);
-		Spawner spawner = new Spawner(new Random(3), Location.HERE);
+		Spawner spawner = new Spawner(new Random(3), Location.LUMBRIDGE);
 		List<Enemy> enemies = new ArrayList<>();
 		double distance = Math.hypot(800, 480) / 2 + Spawner.OFFSCREEN_MARGIN;
 		for (int i = 0; i < 50; i++)
@@ -93,7 +93,7 @@ public class EnemyTest
 	{
 		Player p = new Player(Player.RADIUS, Player.RADIUS);
 		Arena arena = Arena.open(GameSession.OPEN_TILES_X, GameSession.OPEN_TILES_Y);
-		Spawner spawner = new Spawner(new Random(5), Location.HERE);
+		Spawner spawner = new Spawner(new Random(5), Location.LUMBRIDGE);
 		List<Enemy> enemies = new ArrayList<>();
 		for (int i = 0; i < 50; i++)
 		{
@@ -110,11 +110,11 @@ public class EnemyTest
 	{
 		assertTrue(Spawner.interval(60) < Spawner.interval(0));
 		assertEquals(Spawner.MIN_INTERVAL, Spawner.interval(10_000), EPS);
-		assertTrue(Spawner.createEnemy(EnemyKind.RAT, 0, 0, 120, 0, Location.HERE, false).maxHealth > Spawner.createEnemy(EnemyKind.RAT, 0, 0, 0, 0, Location.HERE, false).maxHealth);
+		assertTrue(Spawner.createEnemy(EnemyKind.RAT, 0, 0, 120, 0, Location.LUMBRIDGE, false).maxHealth > Spawner.createEnemy(EnemyKind.RAT, 0, 0, 0, 0, Location.LUMBRIDGE, false).maxHealth);
 
 		Player p = new Player(1200, 900);
 		Arena arena = Arena.open(GameSession.OPEN_TILES_X, GameSession.OPEN_TILES_Y);
-		Spawner spawner = new Spawner(new Random(1), Location.HERE);
+		Spawner spawner = new Spawner(new Random(1), Location.LUMBRIDGE);
 		List<Enemy> enemies = new ArrayList<>();
 		for (int i = 0; i < 1000; i++)
 		{

@@ -84,7 +84,7 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   `getChanges()` tells `WebMain` when to store it). Runs pay `GameSession.coinsSoFar()` on
   death (constants `COINS_PER_*`). Perks/pets apply through `Build.setMeta/setPets`.
   `GameSession.setMeta` restarts the session, so call it before `load(save)`.
-- **Location unlocks**: `Location.isUnlocked(bestTimes)`: difficulty 1 and HERE always open;
+- **Location unlocks**: `Location.isUnlocked(bestTimes)`: difficulty 1 always open;
   others need `UNLOCK_SECONDS` (300) at difficulty − 1 on the map.
 - **Persistence** (`web.Saves`, browser local storage): `savedRun` (RunSave JSON), `bestTimes`,
   `profile` (MetaProgress), stored as JSON through `web.Json` (Gson needs reflection).

@@ -100,7 +100,7 @@ public class SaveTest
 		RunSave save = new RunSave();
 		save.level = 7;
 		save.elapsed = 272.9;
-		assertEquals("Where you stand, level 7, 4:32", save.summary());
+		assertNull("the open field is gone", save.location());
 		save.location = Location.VARROCK.name();
 		assertEquals("Varrock, level 7, 4:32", save.summary());
 	}

@@ -12,7 +12,7 @@ your browser's local storage.
 
 The start menu offers:
 
-- **New run**: pick a location. Lumbridge and the Open field are open from the start; each
+- **New run**: pick a location. Lumbridge is open from the start; each
   harder place opens once you survive 5:00 somewhere one difficulty below.
 - **Continue**: the saved run, in the place it was saved.
 - **Upgrades**: spend coins on permanent upgrades.

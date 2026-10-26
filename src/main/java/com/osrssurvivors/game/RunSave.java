@@ -44,7 +44,7 @@ public final class RunSave
 		return version >= 1 && version <= CURRENT_VERSION;
 	}
 
-	/** The saved run's location; {@link Location#HERE} when unknown. */
+	/** The saved run's location; null when unknown (such as the open field, which is gone). */
 	public Location location()
 	{
 		if (location != null)
@@ -57,7 +57,7 @@ public final class RunSave
 				}
 			}
 		}
-		return Location.HERE;
+		return null;
 	}
 
 	/** Short description for the continue button, e.g. "Varrock, level 7, 4:32". */

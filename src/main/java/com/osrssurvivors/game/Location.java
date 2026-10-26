@@ -9,7 +9,7 @@ import java.util.Random;
 /**
  * Places to fight. Each is a real spot on the game's map (rebuilt from the client's own map
  * data) with its own monsters, which join one after another as the run goes on, and a
- * difficulty that toughens them. {@link #HERE} is wherever the player is standing.
+ * difficulty that toughens them.
  */
 public enum Location
 {
@@ -55,10 +55,7 @@ public enum Location
 		at(0, EnemyKind.SKELETON, 3), at(30, EnemyKind.CHAOS_DRUID, 2), at(60, EnemyKind.ZOMBIE, 2),
 		at(90, EnemyKind.REVENANT_IMP, 2), at(120, EnemyKind.HILL_GIANT, 1.5), at(240, EnemyKind.GREEN_DRAGON, 1),
 		at(360, EnemyKind.REVENANT_KNIGHT, 1), at(420, EnemyKind.GREATER_DEMON, 0.8), at(600, EnemyKind.BLACK_DEMON, 0.6),
-		at(840, EnemyKind.CHAOS_ELEMENTAL, 0.3)),
-	HERE("Where you stand", "Fight in the area around your character.", -1, -1, 2,
-		at(0, EnemyKind.RAT, 3), at(45, EnemyKind.ZOMBIE, 2), at(120, EnemyKind.SKELETON, 2),
-		at(240, EnemyKind.MOSS_GIANT, 1.2), at(360, EnemyKind.GREATER_DEMON, 0.8), at(540, EnemyKind.GREEN_DRAGON, 0.6));
+		at(840, EnemyKind.CHAOS_ELEMENTAL, 0.3));
 
 	/** Arena edge length, in tiles, for map locations. */
 	public static final int SIZE = 96;
@@ -78,8 +75,8 @@ public enum Location
 		}
 	}
 
-	private String title;
-	private String blurb;
+	private final String title;
+	private final String blurb;
 	private final int worldX;
 	private final int worldY;
 	private final int difficulty;
@@ -113,17 +110,7 @@ public enum Location
 		return blurb;
 	}
 
-	/**
-	 * Replaces the card text. For builds where {@link #HERE} can't capture the player's
-	 * surroundings and is played on the plain field instead (the browser version).
-	 */
-	public void retitle(String title, String blurb)
-	{
-		this.title = title;
-		this.blurb = blurb;
-	}
-
-	/** World tile at the arena's centre; -1 for {@link #HERE}. */
+	/** World tile at the arena's centre. */
 	public int getWorldX()
 	{
 		return worldX;
@@ -140,29 +127,24 @@ public enum Location
 		return difficulty;
 	}
 
-	public boolean isOnMap()
-	{
-		return worldX >= 0;
-	}
-
 	/** Survival time at the difficulty below that opens up the next difficulty. */
 	public static final double UNLOCK_SECONDS = 300;
 
 	/**
-	 * Whether this location can be picked, given the best times so far. Where you stand and the
-	 * easiest places are always open; each harder place opens once you have survived
+	 * Whether this location can be picked, given the best times so far. The easiest places are
+	 * always open; each harder place opens once you have survived
 	 * {@link #UNLOCK_SECONDS} in a place one difficulty below.
 	 */
 	public boolean isUnlocked(Map<Location, Double> bestTimes)
 	{
-		if (!isOnMap() || difficulty <= 1)
+		if (difficulty <= 1)
 		{
 			return true;
 		}
 		for (Map.Entry<Location, Double> e : bestTimes.entrySet())
 		{
 			Location l = e.getKey();
-			if (l.isOnMap() && l.difficulty == difficulty - 1 && e.getValue() != null && e.getValue() >= UNLOCK_SECONDS)
+			if (l.difficulty == difficulty - 1 && e.getValue() != null && e.getValue() >= UNLOCK_SECONDS)
 			{
 				return true;
 			}

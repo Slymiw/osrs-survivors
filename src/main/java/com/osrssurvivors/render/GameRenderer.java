@@ -146,9 +146,15 @@ public final class GameRenderer
 				g.fill(view);
 				BossDrop drop = session.getPhase() == Phase.BOSS_DROP ? session.getBossDrop() : null;
 				Rectangle panel = drop == null ? null : UiLayout.panel(view, session);
+				double levelUp = session.getPhase() == Phase.LEVEL_UP && !session.isCasketOpen() ? session.getLevelUpTime() : -1;
+				Rectangle levelPanel = LevelUpShow.isPlaying(levelUp) ? UiLayout.panel(view, session) : null;
 				if (drop != null)
 				{
 					drawDropBackdrop(ui, view, drop);
+				}
+				if (levelPanel != null)
+				{
+					LevelUpShow.drawBehind(g, view, levelPanel, levelUp);
 				}
 				AffineTransform plain = g.getTransform();
 				if (panel != null)
@@ -156,11 +162,19 @@ public final class GameRenderer
 					// the machine pumps with a heartbeat and shakes as the reels land
 					g.transform(DropShow.transform(drop, panel));
 				}
+				if (levelPanel != null)
+				{
+					g.transform(LevelUpShow.transform(levelPanel, levelUp));
+				}
 				drawMenu(ui, view, session, mouse);
 				g.setTransform(plain);
 				if (drop != null)
 				{
 					drawCelebration(ui, view, drop);
+				}
+				if (levelPanel != null)
+				{
+					drawLevelUpBanner(ui, view, levelPanel, levelUp);
 				}
 			}
 		}
@@ -962,7 +976,9 @@ public final class GameRenderer
 			{
 				g.drawImage(icon, ox + (fill.getWidth() - icon.getWidth()) / 2, oy + (fill.getHeight() - icon.getHeight()) / 2, null);
 			}
-			ui.centred(hp, x + (ox - x) / 2 + 2, oy + fill.getHeight() / 2 + ui.metrics().getAscent() / 2, hpColor);
+			// the number's tab is the lower part of the frame, below the orb's middle
+			int tabMiddle = y + frame.getHeight() * 5 / 8;
+			ui.centred(hp, x + (ox - x) / 2 + 2, tabMiddle + ui.metrics().getAscent() / 2, hpColor);
 			return x + frame.getWidth();
 		}
 		int w = 120;
@@ -1119,7 +1135,19 @@ public final class GameRenderer
 		if (session.getPhase() == Phase.TITLE && session.getTitleScreen() == TitleScreen.MAIN)
 		{
 			ui.font(TextStyle.SMALL);
-			ui.centredFit(CREDITS, view.x + view.width / 2, view.y + view.height - 6, view.width - 32, HINT);
+			int cx = view.x + view.width / 2;
+			int bottom = view.y + view.height - 6;
+			if (ui.metrics().stringWidth(CREDITS) <= view.width - 32)
+			{
+				ui.centred(CREDITS, cx, bottom, HINT);
+			}
+			else
+			{
+				// narrow screens: one sentence per line
+				int split = CREDITS.indexOf(". ") + 1;
+				ui.centred(CREDITS.substring(0, split), cx, bottom - ui.metrics().getHeight(), HINT);
+				ui.centred(CREDITS.substring(split + 1), cx, bottom, HINT);
+			}
 		}
 	}
 
@@ -1402,7 +1430,7 @@ public final class GameRenderer
 		int line = ui.metrics().getHeight();
 		if (y + line <= r.y + r.height - 2)
 		{
-			String difficulty = !unlocked ? "Locked" : location.isOnMap() ? "Difficulty " + location.getDifficulty() + "/5" : "Your surroundings";
+			String difficulty = !unlocked ? "Locked" : "Difficulty " + location.getDifficulty() + "/5";
 			ui.text(fit(difficulty, ui.metrics(), width), x, y + line, unlocked ? YELLOW : RED);
 		}
 		if (best != null && y + line * 2 <= r.y + r.height - 2)
@@ -1703,6 +1731,27 @@ public final class GameRenderer
 	 * The win: a white flash as the last reel lands, then a fountain of coins and sparks that
 	 * grows with the drop's rarity, and the banner bouncing in over the panel.
 	 */
+	/** "Level up!" bouncing above the level-up panel, with sparks bursting from behind it. */
+	private static void drawLevelUpBanner(Ui ui, Rectangle view, Rectangle panel, double time)
+	{
+		Graphics2D g = ui.g;
+		int cx = (int) panel.getCenterX();
+		float size = (float) (16 * LevelUpShow.bannerScale(time));
+		int y = Math.max(view.y + (int) size + 30, panel.y - 10);
+		LevelUpShow.drawSparks(g, cx, y - (int) (size / 3), time);
+		if (size < 4)
+		{
+			return;
+		}
+		Composite old = g.getComposite();
+		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, LevelUpShow.bannerAlpha(time)));
+		g.setFont(font(ui.assets, TextStyle.BOLD).deriveFont(size));
+		String banner = "Level up!";
+		int textW = g.getFontMetrics().stringWidth(banner);
+		shadowText(g, banner, cx - textW / 2, y, LevelUpShow.bannerColour(time));
+		g.setComposite(old);
+	}
+
 	private static void drawCelebration(Ui ui, Rectangle view, BossDrop drop)
 	{
 		double since = drop.getTime() - BossDrop.STOPS[BossDrop.STOPS.length - 1];

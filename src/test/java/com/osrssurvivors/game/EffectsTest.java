@@ -105,23 +105,25 @@ public class EffectsTest
 	public void tougherKindsJoinOverTime()
 	{
 		Random r = new Random(9);
+		Set<EnemyKind> early = EnumSet.noneOf(EnemyKind.class);
 		for (int i = 0; i < 500; i++)
 		{
-			assertEquals(EnemyKind.RAT, Location.HERE.choose(10, r));
+			early.add(Location.LUMBRIDGE.choose(10, r));
 		}
+		assertEquals(EnumSet.of(EnemyKind.CHICKEN, EnemyKind.RAT), early);
 		Set<EnemyKind> late = EnumSet.noneOf(EnemyKind.class);
-		for (int i = 0; i < 2000; i++)
+		for (int i = 0; i < 4000; i++)
 		{
-			late.add(Location.HERE.choose(600, r));
+			late.add(Location.LUMBRIDGE.choose(900, r));
 		}
-		assertEquals(EnumSet.copyOf(Location.HERE.getKinds()), late);
+		assertEquals(EnumSet.copyOf(Location.LUMBRIDGE.getKinds()), late);
 	}
 
 	@Test
 	public void kindsChangeStats()
 	{
-		Enemy rat = Spawner.createEnemy(EnemyKind.RAT, 0, 0, 0, 0, Location.HERE, false);
-		Enemy giant = Spawner.createEnemy(EnemyKind.MOSS_GIANT, 0, 0, 0, 0, Location.HERE, false);
+		Enemy rat = Spawner.createEnemy(EnemyKind.RAT, 0, 0, 0, 0, Location.LUMBRIDGE, false);
+		Enemy giant = Spawner.createEnemy(EnemyKind.MOSS_GIANT, 0, 0, 0, 0, Location.LUMBRIDGE, false);
 		assertTrue(giant.maxHealth > rat.maxHealth * 5);
 		assertTrue(rat.speed > giant.speed);
 		assertTrue(giant.radius > rat.radius);
@@ -132,7 +134,7 @@ public class EffectsTest
 	public void bigEnemiesStopFurtherAway()
 	{
 		Player player = new Player(0, 0);
-		Enemy giant = Spawner.createEnemy(EnemyKind.MOSS_GIANT, 200, 0, 0, 0, Location.HERE, false);
+		Enemy giant = Spawner.createEnemy(EnemyKind.MOSS_GIANT, 200, 0, 0, 0, Location.LUMBRIDGE, false);
 		for (int i = 0; i < 600; i++)
 		{
 			giant.pursue(player.x, player.y, giant.radius + Player.RADIUS, GameSession.STEP);

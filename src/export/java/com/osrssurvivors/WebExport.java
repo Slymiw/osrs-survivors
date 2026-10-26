@@ -1084,10 +1084,6 @@ public final class WebExport
 		StoreMapSource source = new StoreMapSource();
 		for (Location location : Location.values())
 		{
-			if (!location.isOnMap())
-			{
-				continue;
-			}
 			AreaBuilder.BuiltArea built = AreaBuilder.build(source, location.getWorldX(), location.getWorldY(), Location.SIZE);
 			if (built == null)
 			{

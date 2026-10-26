@@ -109,7 +109,8 @@ final class Saves
 					s.runPets.add(Json.string(p));
 				}
 			}
-			return s.version == RunSave.CURRENT_VERSION ? s : null;
+			// runs in places that no longer exist (the open field) can't be continued
+			return s.version == RunSave.CURRENT_VERSION && s.location() != null ? s : null;
 		}
 		catch (RuntimeException e)
 		{
