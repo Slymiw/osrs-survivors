@@ -214,6 +214,9 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   flat XP curve.
 ## Testing gotchas
 
+- index.html waits for each picture's `onload`, never `image.decode()`: Android Chrome and Edge
+  rejected decode() with "the source image cannot be decoded" when ~400 ran at once (desktop and
+  headless emulation didn't), so the game never started on phones.
 - Phones can be emulated headless: `Emulation.setDeviceMetricsOverride` (mobile, scale 3) and
   `Emulation.setTouchEmulationEnabled` (makes `pointer: coarse` match), then `Input.dispatchTouchEvent`
   gives the page touch pointer events. Overrides last only while the DevTools connection is open:

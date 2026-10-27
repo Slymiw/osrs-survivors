@@ -90,11 +90,22 @@
 			});
 		}
 
+		// Waits for load, not image.decode(): Android's Chrome rejects decode() ("the source image
+		// cannot be decoded") when hundreds run at once; loaded, a picture decodes when first drawn.
 		function picture(base64) {
-			var image = new Image();
-			image.src = "data:image/png;base64," + base64;
-			return image.decode().then(function () {
-				return image;
+			return new Promise(function (resolve, reject) {
+				var image = new Image();
+				image.onload = function () {
+					if (image.naturalWidth > 0) {
+						resolve(image);
+					} else {
+						reject(new Error("a picture is empty"));
+					}
+				};
+				image.onerror = function () {
+					reject(new Error("a picture couldn't be read"));
+				};
+				image.src = "data:image/png;base64," + base64;
 			});
 		}
 
