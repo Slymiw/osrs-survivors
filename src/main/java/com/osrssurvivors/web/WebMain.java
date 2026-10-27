@@ -452,8 +452,9 @@ public final class WebMain
 			setDirection(code, false);
 			return;
 		}
-		if (e.isCtrlKey() || e.isAltKey() || e.isMetaKey())
+		if (e.isCtrlKey() || e.isAltKey() || e.isMetaKey() || Browser.typing())
 		{
+			// keys typed into the bug report are its own
 			return;
 		}
 		if (setDirection(code, true))
@@ -1180,6 +1181,9 @@ public final class WebMain
 			case FULLSCREEN:
 				// already done, in the browser's event (see fullscreenNow)
 				break;
+			case REPORT_BUG:
+				reportBug(s, view);
+				break;
 			case RESTART:
 				s.restart();
 				break;
@@ -1303,6 +1307,40 @@ public final class WebMain
 				return true;
 		}
 		return session != s;
+	}
+
+	// ---------------------------------------------------------------- bug reports
+
+	/**
+	 * Opens the bug report form with what the game knows: the version, where the player is, how
+	 * the screen is laid out, and (if they keep it ticked) their save code, so the run can be loaded.
+	 */
+	private void reportBug(GameSession s, Rectangle view)
+	{
+		// the save code should hold the run as it is now
+		saveIfInProgress();
+		storeMetaIfChanged();
+		StringBuilder d = new StringBuilder();
+		d.append("Version ").append(Changelog.VERSION).append('\n');
+		d.append("Screen: ").append(s.getPhase());
+		if (s.getPhase() == Phase.TITLE)
+		{
+			d.append(" / ").append(s.getTitleScreen());
+		}
+		d.append(s.isOptionsOpen() ? " (options open)" : "").append('\n');
+		if (s.getPhase() != Phase.TITLE && s.getLocation() != null)
+		{
+			int seconds = (int) s.getElapsed();
+			d.append("Run: ").append(s.getLocation().getTitle()).append(", ").append(seconds / 60).append(':')
+				.append(seconds % 60 < 10 ? "0" : "").append(seconds % 60).append(", level ").append(s.getProgression().getLevel())
+				.append(", ").append(s.getKills()).append(" kills, ")
+				.append(s.getWeapon().getGear() == null ? "fists" : s.getWeapon().getGear().getTitle()).append('\n');
+		}
+		d.append("Layout: ").append(touch ? "touch" : "mouse").append(", ").append(view.width).append('x').append(view.height)
+			.append(" game pixels at ").append(pixelScale).append("x\n");
+		Browser.openBugReport(d.toString(), SaveCode.encode(Saves.exportContents()));
+		// the form takes the button coming up
+		mouseDown = false;
 	}
 
 	// ---------------------------------------------------------------- save codes

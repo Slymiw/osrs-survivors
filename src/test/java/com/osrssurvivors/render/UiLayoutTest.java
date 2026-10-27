@@ -107,8 +107,9 @@ public class UiLayoutTest
 			s.openOptions();
 			assertTrue(s.isOptionsOpen());
 			List<UiLayout.Button> buttons = UiLayout.buttons(FIXED, s);
-			// each volume has a minus button, its bar and a plus button
-			assertEquals(Option.values().length + 3 * Volume.values().length + 1, buttons.size());
+			// each volume has a minus button, its bar and a plus button; then report a bug and back
+			assertEquals(Option.values().length + 3 * Volume.values().length + 2, buttons.size());
+			assertEquals(UiLayout.Action.REPORT_BUG, buttons.get(buttons.size() - 2).action);
 			Rectangle panel = UiLayout.panel(FIXED, s);
 			for (UiLayout.Button b : buttons)
 			{

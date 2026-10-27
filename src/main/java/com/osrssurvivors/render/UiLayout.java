@@ -45,6 +45,8 @@ public final class UiLayout
 		/** The volume with this ordinal's bar: clicked, it sets the level where it was clicked ({@link #volumeAt}). */
 		VOLUME_BAR,
 		CLOSE_OPTIONS,
+		/** Opens the bug report form (index.html), from the options page. */
+		REPORT_BUG,
 		/** Opens the changelog. */
 		CHANGELOG,
 		/** Opens the save code page; on it, copies this device's code or loads one from another device. */
@@ -575,9 +577,7 @@ public final class UiLayout
 					y += rowH + GAP;
 				}
 			}
-			int bw = Math.min(BUTTON_W, panel.width - 2 * PAD);
-			buttons.add(new Button(Action.CLOSE_OPTIONS, 0, new Rectangle(panel.x + (panel.width - bw) / 2, bottom - bh, bw, bh),
-				"Back"));
+			addPair(buttons, panel, bottom, bh, Action.REPORT_BUG, "Report a bug", Action.CLOSE_OPTIONS, "Back");
 			return buttons;
 		}
 		switch (session.getPhase())

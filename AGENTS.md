@@ -153,6 +153,13 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   FNV-1a checksum. Copy uses `Browser.copyText` (falls back to a prompt showing the code), load
   uses `window.prompt`/`confirm`, then `Saves.importContents` and `WebMain.showMenu`. Bump the
   `v`/prefix only if the stored formats change incompatibly. No server, no accounts.
+- **Bug reports** (options page `REPORT_BUG`, index.html `OSRS.bugReport` and `#report`): a DOM
+  form over the canvas (what happened, contact, save code tick) posts to a Google Form with
+  `fetch` no-cors (Google never lets the page read the answer, so reaching it counts as sent; one
+  a minute). `BUG_REPORT` at the top of index.html holds the form's `/formResponse` address and
+  its three `entry.<n>` ids; empty, only "Copy report" works. `WebMain.reportBug` writes the game
+  part (version, screen, run, layout); the page adds browser, window and the last 8 errors.
+  Keys typed in the form never reach the game (`Browser.typing`, and the form stops them).
 - **Dev tools**: `index.html?dev` adds buttons: pause screen (end run, +5 levels with a reward
   each, champion now) and main menu (max all, reset all, +1000 coins, unlock maps; the unlock is
   kept in local storage until "Reset all").

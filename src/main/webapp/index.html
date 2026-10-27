@@ -60,11 +60,112 @@
 	#status[hidden] {
 		display: none;
 	}
+	/* the bug report: a stone panel over the game, in the game's colours */
+	#report {
+		position: fixed;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 16px;
+		background: rgba(0, 0, 0, 0.6);
+		font: 14px sans-serif;
+	}
+	#report[hidden] {
+		display: none;
+	}
+	#report form {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 460px;
+		max-height: 100%;
+		overflow-y: auto;
+		padding: 14px 16px;
+		background: #3e3529;
+		border: 2px solid #181410;
+		outline: 1px solid #6e624e;
+		color: #f0e8d2;
+	}
+	#report h2 {
+		margin: 0 0 8px;
+		color: #ff981f;
+		font: 22px "RuneScape Bold", sans-serif;
+		text-align: center;
+	}
+	#report label {
+		display: block;
+		margin: 10px 0 4px;
+		color: #ffff00;
+		font: 16px "RuneScape", sans-serif;
+	}
+	#report textarea, #report input[type=text] {
+		box-sizing: border-box;
+		width: 100%;
+		padding: 6px;
+		background: #2d271e;
+		border: 1px solid #181410;
+		color: #fff;
+		/* 16px keeps phones from zooming into the box */
+		font: 16px sans-serif;
+	}
+	#report textarea {
+		min-height: 90px;
+		resize: vertical;
+	}
+	#report .tick {
+		display: flex;
+		gap: 8px;
+		align-items: flex-start;
+		color: #c8bea0;
+	}
+	#report .tick input {
+		margin-top: 3px;
+	}
+	#report .buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 14px;
+	}
+	#report button {
+		flex: 1 1 100px;
+		min-height: 40px;
+		background: #4e4437;
+		border: 1px solid #181410;
+		color: #ff981f;
+		font: 18px "RuneScape Bold", sans-serif;
+	}
+	#report button:disabled {
+		color: #78705f;
+	}
+	#report .note {
+		min-height: 18px;
+		margin-top: 8px;
+		color: #fff;
+		text-align: center;
+	}
 </style>
 </head>
 <body>
 <canvas id="game" tabindex="0"></canvas>
 <div id="status">Loading...</div>
+<div id="report" hidden>
+	<form>
+		<h2>Report a bug</h2>
+		<label for="report-what">What happened? What did you expect?</label>
+		<textarea id="report-what" maxlength="4000" placeholder="e.g. I tapped the bag tab during a level-up and..."></textarea>
+		<label for="report-contact">How can I reply? (optional: Discord, email, RuneScape name)</label>
+		<input type="text" id="report-contact" maxlength="200" autocomplete="off">
+		<label class="tick"><input type="checkbox" id="report-save" checked>Include my save code, so the run can be loaded
+			(coins, upgrades, pets, best times and the saved run; nothing personal)</label>
+		<div class="buttons">
+			<button type="submit" id="report-send">Send</button>
+			<button type="button" id="report-copy">Copy report</button>
+			<button type="button" id="report-cancel">Cancel</button>
+		</div>
+		<div class="note" id="report-note"></div>
+	</form>
+</div>
 <script>
 	// The game (game.js, compiled from Java by TeaVM) reads everything through window.OSRS.
 	(function () {
@@ -352,8 +453,136 @@
 			}
 		});
 
+		// Bug reports go to a Google Form: no server, and players need no account. Set FORM to the
+		// form's address ending in /formResponse, and each field to its "entry.<number>" (from the
+		// form's "Get pre-filled link"). Left empty, the report can only be copied.
+		var BUG_REPORT = {
+			form: "",
+			what: "",
+			contact: "",
+			details: ""
+		};
+		// the last few errors, for bug reports
+		var errors = [];
+		function noteError(text) {
+			errors.push(new Date().toISOString().slice(11, 19) + " " + String(text).slice(0, 400));
+			if (errors.length > 8) {
+				errors.shift();
+			}
+		}
+		window.addEventListener("error", function (e) {
+			noteError(e.message + (e.filename ? " (" + e.filename.split("/").pop() + ":" + e.lineno + ")" : ""));
+		});
+		window.addEventListener("unhandledrejection", function (e) {
+			noteError("Unhandled: " + (e.reason && e.reason.message || e.reason));
+		});
+		var consoleError = console.error;
+		console.error = function () {
+			noteError(Array.prototype.join.call(arguments, " "));
+			consoleError.apply(console, arguments);
+		};
+
+		var bugReport = (function () {
+			var box = document.getElementById("report");
+			var what = document.getElementById("report-what");
+			var contact = document.getElementById("report-contact");
+			var withSave = document.getElementById("report-save");
+			var send = document.getElementById("report-send");
+			var note = document.getElementById("report-note");
+			var details = "";
+			var saveCode = "";
+			var lastSent = 0;
+			var ready = !!(BUG_REPORT.form && BUG_REPORT.what && BUG_REPORT.details);
+
+			function device() {
+				var s = window.screen || {};
+				return "Browser: " + navigator.userAgent + "\n"
+					+ "Window: " + innerWidth + "x" + innerHeight + " at " + (window.devicePixelRatio || 1) + "x, screen "
+					+ s.width + "x" + s.height + (fullscreen.active() ? ", full screen" : "") + "\n"
+					+ "Page: " + location.href.split("#")[0] + "\n";
+			}
+
+			function report() {
+				return details + device()
+					+ "Errors: " + (errors.length ? "\n" + errors.join("\n") : "none") + "\n"
+					+ (withSave.checked && saveCode ? "Save code: " + saveCode + "\n" : "");
+			}
+
+			function close() {
+				box.hidden = true;
+				document.getElementById("game").focus();
+			}
+
+			function copy() {
+				var text = "What happened:\n" + what.value + "\n\nReply to: " + (contact.value || "-") + "\n\n" + report();
+				var shown = function () {
+					note.textContent = "Copied. Paste it wherever you can reach the developer.";
+				};
+				if (navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(text).then(shown, function () {
+						window.prompt("Copy this report:", text);
+					});
+				} else {
+					window.prompt("Copy this report:", text);
+				}
+			}
+
+			box.querySelector("form").addEventListener("submit", function (e) {
+				e.preventDefault();
+				if (!what.value.trim()) {
+					note.textContent = "Say what happened first.";
+					what.focus();
+					return;
+				}
+				if (Date.now() - lastSent < 60000) {
+					note.textContent = "Thanks! One report a minute, please.";
+					return;
+				}
+				var body = new URLSearchParams();
+				body.append(BUG_REPORT.what, what.value);
+				body.append(BUG_REPORT.details, report());
+				if (BUG_REPORT.contact) {
+					body.append(BUG_REPORT.contact, contact.value);
+				}
+				send.disabled = true;
+				note.textContent = "Sending...";
+				// Google doesn't let pages read its answer (no-cors), so getting there counts as sent
+				fetch(BUG_REPORT.form, {method: "POST", mode: "no-cors", body: body}).then(function () {
+					lastSent = Date.now();
+					what.value = "";
+					note.textContent = "Sent. Thank you!";
+					setTimeout(close, 1200);
+				}, function () {
+					note.textContent = "Couldn't send (are you online?). Copy the report instead.";
+				}).then(function () {
+					send.disabled = !ready;
+				});
+			});
+			document.getElementById("report-copy").addEventListener("click", copy);
+			document.getElementById("report-cancel").addEventListener("click", close);
+			box.addEventListener("keydown", function (e) {
+				// the game doesn't see keys typed here
+				e.stopPropagation();
+				if (e.key === "Escape") {
+					close();
+				}
+			});
+
+			return {
+				open: function (gameDetails, code) {
+					details = gameDetails;
+					saveCode = code;
+					send.disabled = !ready;
+					note.textContent = ready ? "" : "Sending isn't set up yet: copy the report instead.";
+					box.hidden = false;
+					what.focus();
+				}
+			};
+		})();
+
 		window.OSRS = {
 			status: status,
+			bugReport: bugReport,
 			images: {},
 			manifest: null,
 			models: null,

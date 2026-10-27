@@ -19,7 +19,9 @@ The start menu offers:
 - **Pets**: the pets you've won from champions.
 - **Options**: master, combat and interface volume, and screen flashes, the level-up and boss
   drop animations and screen shake (turn any off for a calmer screen), and full screen where
-  the browser allows it. Also on the pause screen. Kept in your browser.
+  the browser allows it. Also on the pause screen. Kept in your browser. **Report a bug** is
+  there too: say what happened and send it (no account needed); the game adds its version,
+  your device and screen, recent errors and, if you leave it ticked, your save code.
 - **Save code (other devices)**: *Copy my code* puts your progress (coins, upgrades, pets, best
   times and saved run) on the clipboard as one line of text; on another device, *Load a code*
   and paste it. Loading asks first, then replaces that browser's progress. Options stay per device.

@@ -104,6 +104,17 @@ final class Browser
 	@JSBody(params = "callback", script = "window.OSRS.trapBack(callback);")
 	static native void trapBack(BackPressed callback);
 
+	/**
+	 * Opens the bug report form over the game (index.html): what happened, a way to reply, and
+	 * whether to include the save code; sent to the Google Form set up there, or copied.
+	 */
+	@JSBody(params = {"details", "saveCode"}, script = "window.OSRS.bugReport.open(details, saveCode);")
+	static native void openBugReport(String details, String saveCode);
+
+	/** Whether the player is typing into the page (the bug report), so keys aren't the game's. */
+	@JSBody(script = "var e = document.activeElement; return !!e && (e.tagName === 'TEXTAREA' || e.tagName === 'INPUT');")
+	static native boolean typing();
+
 	/** Catches the back button again after it was let through (it is armed once per page of the game left open). */
 	@JSBody(script = "window.OSRS.armBack();")
 	static native void armBack();
