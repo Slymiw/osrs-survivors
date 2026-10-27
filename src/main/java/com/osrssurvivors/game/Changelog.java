@@ -47,7 +47,8 @@ public final class Changelog
 	public static final List<Release> RELEASES = Collections.unmodifiableList(Arrays.asList(
 		new Release("0.9.1", "2026-10-27", "Bug reports",
 			note("Found a bug? Options > Report a bug sends it straight to the developer.", null),
-			note("Fixed: the game wouldn't start in Android's Chrome and Edge.", null)),
+			note("Fixed: the game wouldn't start in Android's Chrome and Edge.", null),
+			note("Long notes on this page wrap instead of being cut off on small screens.", null)),
 		new Release("0.9","2026-10-27", "Phones and tablets",
 			note("Play on a phone: drag anywhere to move, let go to stand still.", null),
 			note("Big buttons to tap, a pause button, and menus that fit upright or sideways.", null),

@@ -186,8 +186,11 @@ public final class UiLayout
 	static final int CHANGELOG_MAX_H = 600;
 	/** A release card's heading row (picture, version, headline, date). */
 	public static final int RELEASE_HEAD = 40;
-	/** One note's row on a release card. */
+	/** One note's row on a release card, and what each further line of a wrapped note adds. */
 	public static final int NOTE_H = 24;
+	public static final int NOTE_LINE_H = 12;
+	/** Where a note's text starts on its card: after the 12-pixel margin, its 20-pixel picture and a gap. */
+	public static final int NOTE_TEXT_LEFT = 42;
 	static final int RELEASE_PAD = 8;
 	/** The changelog's scrollbar: its width and the gap between it and the cards. */
 	static final int SCROLLBAR_W = 8;
@@ -821,7 +824,7 @@ public final class UiLayout
 		for (int i = 0; i < Changelog.RELEASES.size(); i++)
 		{
 			Changelog.Release r = Changelog.RELEASES.get(i);
-			int h = releaseHeight(r);
+			int h = releaseHeight(r, port.width);
 			if (y + h > port.y && y < port.y + port.height)
 			{
 				cards.add(new ReleaseCard(new Rectangle(port.x, y, port.width, h), r, i == 0));
@@ -864,7 +867,7 @@ public final class UiLayout
 		{
 			return null;
 		}
-		int content = changelogHeight();
+		int content = changelogHeight(changelogViewport(view, session).width);
 		int h = Math.max(SCROLL_THUMB_MIN, Math.min(track.height, track.height * track.height / content));
 		int max = maxChangelogScroll(view, session);
 		int y = track.y + (int) Math.round((track.height - h) * (double) changelogScroll(view, session) / max);
@@ -875,7 +878,7 @@ public final class UiLayout
 	public static int maxChangelogScroll(Rectangle view, GameSession session)
 	{
 		Rectangle port = changelogViewport(view, session);
-		return port == null ? 0 : Math.max(0, changelogHeight() - port.height);
+		return port == null ? 0 : Math.max(0, changelogHeight(port.width) - port.height);
 	}
 
 	/** The session's scroll, kept within the list (the window may have grown since it was set). */
@@ -884,20 +887,108 @@ public final class UiLayout
 		return Math.max(0, Math.min(maxChangelogScroll(view, session), (int) Math.round(session.getChangelogScroll())));
 	}
 
-	/** Height of every release card stacked with gaps between. */
-	static int changelogHeight()
+	/** Height of every release card {@code width} wide, stacked with gaps between. */
+	static int changelogHeight(int width)
 	{
 		int h = 0;
 		for (Changelog.Release r : Changelog.RELEASES)
 		{
-			h += releaseHeight(r) + GAP;
+			h += releaseHeight(r, width) + GAP;
 		}
 		return Math.max(0, h - GAP);
 	}
 
-	private static int releaseHeight(Changelog.Release r)
+	private static int releaseHeight(Changelog.Release r, int width)
 	{
-		return RELEASE_HEAD + r.notes.size() * NOTE_H + RELEASE_PAD;
+		int h = RELEASE_HEAD + RELEASE_PAD;
+		for (Changelog.Note note : r.notes)
+		{
+			h += noteHeight(note, width);
+		}
+		return h;
+	}
+
+	/**
+	 * How the changelog's notes measure their text: set by the renderer from its fonts, so long
+	 * notes wrap where they will be drawn; until then (and in tests) a guess from the length.
+	 */
+	public interface NoteFonts
+	{
+		/** Width in the regular font, which a note uses when it fits on one line. */
+		int regular(String text);
+
+		/** Width in the small font, which a longer note wraps in. */
+		int small(String text);
+	}
+
+	private static NoteFonts noteFonts = new NoteFonts()
+	{
+		@Override
+		public int regular(String text)
+		{
+			return text.length() * 6;
+		}
+
+		@Override
+		public int small(String text)
+		{
+			return text.length() * 5;
+		}
+	};
+
+	public static void setNoteFonts(NoteFonts fonts)
+	{
+		noteFonts = fonts;
+	}
+
+	/** Room for a note's text on a release card {@code cardWidth} wide, beside its picture. */
+	public static int noteTextWidth(int cardWidth)
+	{
+		return cardWidth - NOTE_TEXT_LEFT - 10;
+	}
+
+	/**
+	 * A note's lines on a card {@code cardWidth} wide: the whole note when it fits in the regular
+	 * font, else the small font's words wrapped to the width (one line of it if that fits).
+	 */
+	public static List<String> noteLines(Changelog.Note note, int cardWidth)
+	{
+		int width = noteTextWidth(cardWidth);
+		if (noteFonts.regular(note.text) <= width)
+		{
+			return Collections.singletonList(note.text);
+		}
+		List<String> lines = new ArrayList<>();
+		StringBuilder line = new StringBuilder();
+		for (String word : note.text.split(" "))
+		{
+			String tried = line.length() == 0 ? word : line + " " + word;
+			if (line.length() > 0 && noteFonts.small(tried) > width)
+			{
+				lines.add(line.toString());
+				line.setLength(0);
+				line.append(word);
+			}
+			else
+			{
+				line.setLength(0);
+				line.append(tried);
+			}
+		}
+		lines.add(line.toString());
+		return lines;
+	}
+
+	/** Whether a note is drawn in the small font (it didn't fit on one line in the regular one). */
+	public static boolean noteSmall(Changelog.Note note, int cardWidth)
+	{
+		return noteFonts.regular(note.text) > noteTextWidth(cardWidth);
+	}
+
+	/** A note's row: one line high, and a small line taller for each line it wraps onto. */
+	public static int noteHeight(Changelog.Note note, int cardWidth)
+	{
+		return NOTE_H + (noteLines(note, cardWidth).size() - 1) * NOTE_LINE_H;
 	}
 
 	/** Height of the options page with setting rows {@code rowH} high in {@code cols} columns. */

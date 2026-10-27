@@ -201,6 +201,25 @@ public final class GameRenderer
 				? RenderingHints.VALUE_TEXT_ANTIALIAS_OFF : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 			Ui ui = new Ui(g, assets, session.getOptions(),
 				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime(), mouse, mouseDown, session.isTouch());
+			// the changelog's layout wraps its notes by the fonts they're drawn in
+			ui.font(TextStyle.REGULAR);
+			FontMetrics regular = ui.metrics();
+			ui.font(TextStyle.SMALL);
+			FontMetrics small = ui.metrics();
+			UiLayout.setNoteFonts(new UiLayout.NoteFonts()
+			{
+				@Override
+				public int regular(String text)
+				{
+					return regular.stringWidth(text);
+				}
+
+				@Override
+				public int small(String text)
+				{
+					return small.stringWidth(text);
+				}
+			});
 			new World(view, session, assets, fx).draw(g);
 			if (session.getPhase() != Phase.TITLE)
 			{
@@ -2347,15 +2366,17 @@ public final class GameRenderer
 				g.setColor(GOLD);
 				g.fillOval(ax + NOTE_ART / 2 - 3, cy - 3, 6, 6);
 			}
-			int tx = ax + NOTE_ART + 10;
-			int width = r.x + r.width - 10 - tx;
-			ui.font(TextStyle.REGULAR);
-			if (ui.metrics().stringWidth(note.text) > width)
+			// one line in the regular font, or wrapped in the small one (the card is sized for it)
+			int tx = r.x + UiLayout.NOTE_TEXT_LEFT;
+			int width = UiLayout.noteTextWidth(r.width);
+			ui.font(UiLayout.noteSmall(note, r.width) ? TextStyle.SMALL : TextStyle.REGULAR);
+			int lineY = cy + ui.metrics().getAscent() / 2 - 1;
+			for (String line : UiLayout.noteLines(note, r.width))
 			{
-				ui.font(TextStyle.SMALL);
+				ui.text(fit(line, ui.metrics(), width), tx, lineY, NOTE_TEXT);
+				lineY += UiLayout.NOTE_LINE_H;
 			}
-			ui.text(fit(note.text, ui.metrics(), width), tx, cy + ui.metrics().getAscent() / 2 - 1, NOTE_TEXT);
-			y += UiLayout.NOTE_H;
+			y += UiLayout.noteHeight(note, r.width);
 		}
 	}
 

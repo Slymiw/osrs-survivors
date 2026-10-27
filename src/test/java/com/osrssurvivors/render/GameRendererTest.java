@@ -413,6 +413,8 @@ public class GameRendererTest
 			UiLayout.Button back = UiLayout.buttons(view, s).get(0);
 			assertTrue(panel.contains(back.bounds));
 			assertTrue("list above the button at " + view, port.y + port.height <= back.bounds.y);
+			// drawing gives the layout the fonts its notes wrap in, as the game's first frame does
+			draw(s, view, new FakeAssets(), null);
 			int max = UiLayout.maxChangelogScroll(view, s);
 			List<Changelog.Release> seen = new ArrayList<>();
 			for (int scroll = 0; ; scroll = Math.min(max, scroll + Math.max(1, port.height / 2)))
