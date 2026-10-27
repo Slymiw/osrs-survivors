@@ -227,16 +227,23 @@ public class DropTest
 	@Test
 	public void megararesMatchTheStyleAndAreUnique()
 	{
-		assertEquals("one megarare per style", Style.values().length, BossDrop.MEGARARES.size());
+		assertEquals(java.util.Arrays.asList(Gear.SCYTHE_OF_VITUR, Gear.OBLIGATOR, Gear.TWISTED_BOW, Gear.TUMEKENS_SHADOW),
+			BossDrop.MEGARARES);
 		for (Style style : Style.values())
 		{
 			long count = BossDrop.MEGARARES.stream().filter(g -> g.getStyle() == style).count();
-			assertEquals(1, count);
+			assertTrue("at least one megarare for " + style, count >= 1);
 		}
 		for (Gear g : BossDrop.MEGARARES)
 		{
 			assertTrue(g + " stays out of the upgrade chains", g.isUnique());
 			assertEquals(Slot.WEAPON, g.getSlot());
+			// clearly better than the best plain weapon of the style (on paper; a volley like the
+			// Ascension crossbows' needs extra power to keep up in play, so the margin is smaller here)
+			Gear best = Gear.chain(Slot.WEAPON, g.getStyle()).get(Gear.chain(Slot.WEAPON, g.getStyle()).size() - 1);
+			double mine = g.getDamage() * g.getVolley() / g.getCooldown();
+			double theirs = best.getDamage() * best.getVolley() / best.getCooldown();
+			assertTrue(g + " out-damages " + best, mine > theirs * 1.15);
 		}
 	}
 }

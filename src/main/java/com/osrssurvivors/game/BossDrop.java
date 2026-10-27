@@ -20,7 +20,7 @@ public final class BossDrop
 		UNCOMMON("Nice drop!"),
 		RARE("Rare drop!"),
 		JACKPOT("New pet!"),
-		/** Rarer than a pet: one of the Fractured Archive's weapons. */
+		/** Rarer than a pet: the scythe, the twisted bow, Tumeken's shadow or the obligator. */
 		MEGARARE("Megarare!");
 
 		private final String banner;
@@ -136,9 +136,9 @@ public final class BossDrop
 	static final List<Gear> ITEMS = Collections.unmodifiableList(Arrays.asList(Gear.INFERNAL_MAX_CAPE, Gear.AMULET_OF_RANCOUR,
 		Gear.CONFLICTION_GAUNTLETS, Gear.AVERNIC_TREADS, Gear.RING_OF_THE_GODS, Gear.DIZANAS_QUIVER, Gear.ELYSIAN_SPIRIT_SHIELD,
 		Gear.RONDACHE, Gear.IMBUED_ANCIENT_CAPE));
-	/** Megarare weapons, one per style; a casket only offers the one for the player's style. */
-	static final List<Gear> MEGARARES = Collections.unmodifiableList(Arrays.asList(Gear.OBLIGATOR, Gear.ASCENSION_CROSSBOWS,
-		Gear.ZORYAS_TOME));
+	/** Megarare weapons, at least one per style; a casket only offers those for the player's style. */
+	static final List<Gear> MEGARARES = Collections.unmodifiableList(Arrays.asList(Gear.SCYTHE_OF_VITUR, Gear.OBLIGATOR,
+		Gear.TWISTED_BOW, Gear.TUMEKENS_SHADOW));
 
 	/** About one casket in 250: a megarare outclasses everything, so it should feel like one. */
 	static final double MEGARARE_CHANCE = 0.004;

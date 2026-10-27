@@ -97,6 +97,8 @@ public final class Abilities
 	private double bloodTimer = 3;
 	private double godTimer = 1.5;
 	private double dragonfireTimer = 2;
+	/** Hitpoints Blood Barrage asked to heal this step; the session heals them within its drain limit. */
+	double drained;
 	private double orbit;
 	private double championMultiplier = 1;
 
@@ -130,6 +132,7 @@ public final class Abilities
 		List<Effects.Hitsplat> hitsplats, List<Effects.Burst> bursts, Random random)
 	{
 		championMultiplier = build.championMultiplier();
+		drained = 0;
 		double dealt = 0;
 		dealt += cannon(dt, build.rank(Passive.CANNON), player, power, enemies, strikes, hitsplats);
 		dealt += thralls(dt, build.rank(Passive.THRALLS), player, power, enemies, strikes, hitsplats);
@@ -169,8 +172,9 @@ public final class Abilities
 			}
 			c.fireTimer = CANNON_FIRE_RATE;
 			c.aim = Math.atan2(target.y - c.y, target.x - c.x);
-			dealt += hit(target, power * 0.45 * (1 + 0.15 * (rank - 1)), hitsplats);
-			strikes.add(new Strike(c.x, c.y, target.x, target.y, null, Strike.Source.CANNON));
+			Strike shot = new Strike(c.x, c.y, target.x, target.y, null, Strike.Source.CANNON);
+			dealt += hit(target, power * 0.45 * (1 + 0.15 * (rank - 1)), hitsplats, shot.flight);
+			strikes.add(shot);
 		}
 		cannons.removeIf(c -> c.remaining <= 0);
 		return dealt;
@@ -217,8 +221,9 @@ public final class Abilities
 			t.cooldown = THRALL_COOLDOWN;
 			t.attacking = true;
 			t.facing = Math.atan2(target.y - t.y, target.x - t.x);
-			dealt += hit(target, power * 0.7, hitsplats);
-			strikes.add(new Strike(t.x, t.y, target.x, target.y, null, Strike.Source.THRALL));
+			Strike shot = new Strike(t.x, t.y, target.x, target.y, null, Strike.Source.THRALL);
+			dealt += hit(target, power * 0.7, hitsplats, shot.flight);
+			strikes.add(shot);
 		}
 		return dealt;
 	}
@@ -284,15 +289,16 @@ public final class Abilities
 		Enemy target = near.get(random == null ? 0 : random.nextInt(near.size()));
 		double damage = power * 1.1 * (1 + 0.2 * (rank - 1));
 		double dealt = 0;
+		Strike lob = new Strike(player.x, player.y, target.x, target.y, null, Strike.Source.CHINCHOMPA);
 		for (Enemy e : enemies)
 		{
 			if (!e.isDead() && dist2(e, target.x, target.y) <= CHINCHOMPA_RADIUS * CHINCHOMPA_RADIUS)
 			{
-				dealt += hit(e, damage, hitsplats);
+				dealt += hit(e, damage, hitsplats, lob.flight);
 			}
 		}
-		strikes.add(new Strike(player.x, player.y, target.x, target.y, null, Strike.Source.CHINCHOMPA));
-		bursts.add(new Effects.Burst(Effects.Burst.Type.EXPLOSION, target.x, target.y, CHINCHOMPA_RADIUS));
+		strikes.add(lob);
+		bursts.add(new Effects.Burst(Effects.Burst.Type.EXPLOSION, target.x, target.y, CHINCHOMPA_RADIUS, lob.flight));
 		return dealt;
 	}
 
@@ -324,7 +330,7 @@ public final class Abilities
 				dealt += hit(e, damage, hitsplats);
 			}
 		}
-		player.heal(dealt * BLOOD_HEAL);
+		drained += dealt * BLOOD_HEAL;
 		bursts.add(new Effects.Burst(Effects.Burst.Type.BLOOD, best.x, best.y, radius));
 		return dealt;
 	}
@@ -408,7 +414,7 @@ public final class Abilities
 		for (int i = 1; i <= 3; i++)
 		{
 			double d = DRAGONFIRE_RANGE * i / 3.5;
-			bursts.add(new Effects.Burst(Effects.Burst.Type.EXPLOSION, player.x + Math.cos(aim) * d, player.y + Math.sin(aim) * d,
+			bursts.add(new Effects.Burst(Effects.Burst.Type.DRAGONFIRE, player.x + Math.cos(aim) * d, player.y + Math.sin(aim) * d,
 				14 + 12 * i));
 		}
 		return dealt;
@@ -442,9 +448,15 @@ public final class Abilities
 
 	private double hit(Enemy e, double damage, List<Effects.Hitsplat> hitsplats)
 	{
+		return hit(e, damage, hitsplats, 0);
+	}
+
+	/** Deals damage now; the hitsplat and flash wait {@code delay} seconds for the missile to land. */
+	private double hit(Enemy e, double damage, List<Effects.Hitsplat> hitsplats, double delay)
+	{
 		double amount = damage * (e.champion ? championMultiplier : 1);
-		e.damage(amount);
-		hitsplats.add(new Effects.Hitsplat(e, (int) Math.round(amount), false));
+		e.damage(amount, delay);
+		hitsplats.add(new Effects.Hitsplat(e, (int) Math.round(amount), false, delay));
 		return amount;
 	}
 

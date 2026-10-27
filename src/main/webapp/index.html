@@ -78,6 +78,8 @@
 		}
 
 		// map locations are scripts that call OSRS_LOCATION once loaded (this also works from file://)
+		// replaced with a build number by `gradlew dist`, so an update never runs with cached scripts
+		var BUILD = "@BUILD@";
 		var pending = {};
 		window.OSRS_LOCATION = function (name, ground, data) {
 			var done = pending[name];
@@ -95,7 +97,7 @@
 		function loadLocation(name, done) {
 			pending[name] = done;
 			var script = document.createElement("script");
-			script.src = "assets/loc/" + name + ".js";
+			script.src = "assets/loc/" + name + ".js?v=" + BUILD;
 			script.onerror = function () {
 				delete pending[name];
 				done(null, null, "assets/loc/" + name + ".js is missing");
@@ -103,12 +105,168 @@
 			document.head.appendChild(script);
 		}
 
+		// Sound: the game hands over samples (decoded from the OSRS sound effects in assets/sounds.js)
+		// and plays them through two buses, effects and interface, under a master volume and a
+		// limiter. Browsers only allow sound after the player presses something, so the context
+		// starts on the first key or click. Everything here fails quietly: no sound, no harm.
+		var audio = (function () {
+			var ctx = null;
+			var master = null;
+			var buses = {};
+			var buffers = {};
+			var voices = {};
+			var nextVoice = 1;
+			var volumes = [0.36, 0.64, 0.64];
+
+			function unlock() {
+				try {
+					if (!ctx) {
+						var Context = window.AudioContext || window.webkitAudioContext;
+						if (!Context) {
+							return;
+						}
+						ctx = new Context();
+						var limiter = ctx.createDynamicsCompressor();
+						limiter.threshold.value = -10;
+						limiter.knee.value = 6;
+						limiter.ratio.value = 12;
+						limiter.attack.value = 0.003;
+						limiter.release.value = 0.15;
+						limiter.connect(ctx.destination);
+						master = ctx.createGain();
+						master.connect(limiter);
+						buses[0] = ctx.createGain();
+						buses[1] = ctx.createGain();
+						buses[0].connect(master);
+						buses[1].connect(master);
+						apply();
+					}
+					if (ctx.state === "suspended") {
+						ctx.resume();
+					}
+				} catch (e) {
+					ctx = null;
+				}
+			}
+
+			function apply() {
+				if (!ctx) {
+					return;
+				}
+				var t = ctx.currentTime;
+				master.gain.setTargetAtTime(volumes[0], t, 0.02);
+				buses[0].gain.setTargetAtTime(volumes[1], t, 0.02);
+				buses[1].gain.setTargetAtTime(volumes[2], t, 0.02);
+			}
+
+			["pointerdown", "keydown", "touchstart"].forEach(function (type) {
+				window.addEventListener(type, unlock, true);
+			});
+			document.addEventListener("visibilitychange", function () {
+				if (!ctx) {
+					return;
+				}
+				try {
+					if (document.visibilityState === "hidden") {
+						ctx.suspend();
+					} else {
+						ctx.resume();
+					}
+				} catch (e) {
+				}
+			});
+
+			return {
+				ready: function () {
+					return !!ctx && ctx.state === "running";
+				},
+				now: function () {
+					return ctx ? ctx.currentTime : 0;
+				},
+				has: function (id) {
+					return !!buffers[id];
+				},
+				/** The sound's cache file, from assets/sounds.js, or null. */
+				raw: function (id) {
+					var sounds = window.OSRS_SOUNDS;
+					var text = sounds && sounds.data[id];
+					return text ? bytes(text) : null;
+				},
+				/** Keeps samples (copied out of the game's array) as a playable buffer. */
+				add: function (id, samples, rate) {
+					if (!ctx || samples.length === 0) {
+						return;
+					}
+					try {
+						var buffer = ctx.createBuffer(1, samples.length, rate);
+						buffer.copyToChannel(samples, 0);
+						buffers[id] = buffer;
+					} catch (e) {
+					}
+				},
+				volumes: function (m, effects, ui) {
+					volumes = [m, effects, ui];
+					apply();
+				},
+				/** Starts a sound; returns a number to stop it with, or 0 if it couldn't play. */
+				play: function (id, bus, gain, rate, pan, delay) {
+					var buffer = buffers[id];
+					if (!ctx || !buffer || ctx.state !== "running") {
+						return 0;
+					}
+					try {
+						var source = ctx.createBufferSource();
+						source.buffer = buffer;
+						source.playbackRate.value = rate;
+						var level = ctx.createGain();
+						level.gain.value = gain;
+						source.connect(level);
+						var out = level;
+						if (pan !== 0 && ctx.createStereoPanner) {
+							var panner = ctx.createStereoPanner();
+							panner.pan.value = pan;
+							level.connect(panner);
+							out = panner;
+						}
+						out.connect(buses[bus] || buses[0]);
+						var voice = nextVoice++;
+						voices[voice] = {source: source, level: level};
+						source.onended = function () {
+							delete voices[voice];
+							try {
+								source.disconnect();
+								level.disconnect();
+							} catch (e) {
+							}
+						};
+						source.start(ctx.currentTime + Math.max(0, delay));
+						return voice;
+					} catch (e) {
+						return 0;
+					}
+				},
+				/** Fades a sound out quickly (to make room for a more important one). */
+				stop: function (voice) {
+					var v = voices[voice];
+					if (!v || !ctx) {
+						return;
+					}
+					try {
+						v.level.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+						v.source.stop(ctx.currentTime + 0.08);
+					} catch (e) {
+					}
+				}
+			};
+		})();
+
 		window.OSRS = {
 			status: status,
 			images: {},
 			manifest: null,
 			models: null,
-			loadLocation: loadLocation
+			loadLocation: loadLocation,
+			audio: audio
 		};
 
 		function start() {
@@ -145,7 +303,9 @@
 		window.addEventListener("load", start);
 	})();
 </script>
-<script src="assets/data.js"></script>
-<script src="game.js"></script>
+<script src="assets/data.js?v=@BUILD@"></script>
+<!-- the sound effects; the game plays silently without them -->
+<script src="assets/sounds.js?v=@BUILD@" onerror="window.OSRS_SOUNDS = null"></script>
+<script src="game.js?v=@BUILD@"></script>
 </body>
 </html>

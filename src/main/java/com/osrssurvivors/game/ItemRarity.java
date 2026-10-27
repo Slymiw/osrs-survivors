@@ -2,8 +2,8 @@ package com.osrssurvivors.game;
 
 /**
  * How rare a piece of gear is, shown on its cards and tooltips. Chain items rank by how far up
- * their slot's chain they sit; boss drops and combination weapons are legendary; the Fractured
- * Archive's weapons, rarest of all, are megarare.
+ * their slot's chain they sit; boss drops and combination weapons are legendary; the best weapons
+ * of all (scythe, twisted bow, Tumeken's shadow, obligator), only from a casket, are megarare.
  */
 public enum ItemRarity
 {

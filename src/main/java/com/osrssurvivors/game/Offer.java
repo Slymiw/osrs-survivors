@@ -3,8 +3,9 @@ package com.osrssurvivors.game;
 import java.util.Objects;
 
 /**
- * One choice on the level-up screen: a piece of gear, the next rank of a passive, or a filler
- * (a potion, food, a coin pouch) when there aren't enough upgrades left.
+ * One choice on the level-up screen: a piece of gear (worn at once, or put in the bag when it is
+ * for another combat style), the next rank of a passive, or a filler (a potion, food, a coin
+ * pouch) when there aren't enough upgrades left. Potions and food go in the bag.
  */
 public final class Offer
 {
@@ -13,34 +14,31 @@ public final class Offer
 		GEAR, PASSIVE, FOOD, COINS, BOOST
 	}
 
-	/** Fraction of max hitpoints a food offer restores. */
-	public static final double FOOD_HEAL = 0.5;
-
 	private final Kind kind;
 	private final Gear gear;
 	private final Passive passive;
 	private final Boost boost;
-	/** Passive rank gained, 1-based, or coins in a pouch. */
+	private final Food food;
+	/** Passive rank gained (1-based), coins in a pouch, or pieces of food. */
 	private final int rank;
+	/** Gear that goes in the bag rather than being worn. */
+	private final boolean stored;
 
-	private Offer(Kind kind, Gear gear, Passive passive, int rank)
-	{
-		this(kind, gear, passive, null, rank);
-	}
-
-	private Offer(Kind kind, Gear gear, Passive passive, Boost boost, int rank)
+	private Offer(Kind kind, Gear gear, Passive passive, Boost boost, Food food, int rank, boolean stored)
 	{
 		this.kind = kind;
 		this.gear = gear;
 		this.passive = passive;
 		this.boost = boost;
+		this.food = food;
 		this.rank = rank;
+		this.stored = stored;
 	}
 
-	/** A potion dose; {@code dose} is which dose this would be, 1-based. */
-	public static Offer boost(Boost boost, int dose)
+	/** A four-dose potion for the bag. */
+	public static Offer boost(Boost boost)
 	{
-		return new Offer(Kind.BOOST, null, null, boost, dose);
+		return new Offer(Kind.BOOST, null, null, boost, null, Boost.DOSES, false);
 	}
 
 	/** The potion for {@link Kind#BOOST}, else null. */
@@ -49,24 +47,32 @@ public final class Offer
 		return boost;
 	}
 
+	/** Gear worn as soon as it is taken. */
 	public static Offer gear(Gear gear)
 	{
-		return new Offer(Kind.GEAR, gear, null, 0);
+		return new Offer(Kind.GEAR, gear, null, null, null, 0, false);
+	}
+
+	/** Gear for another combat style, put in the bag to switch to later. */
+	public static Offer stored(Gear gear)
+	{
+		return new Offer(Kind.GEAR, gear, null, null, null, 0, true);
 	}
 
 	public static Offer passive(Passive passive, int rank)
 	{
-		return new Offer(Kind.PASSIVE, null, passive, rank);
+		return new Offer(Kind.PASSIVE, null, passive, null, null, rank, false);
 	}
 
-	public static Offer food()
+	/** {@code count} pieces of food for the bag. */
+	public static Offer food(Food food, int count)
 	{
-		return new Offer(Kind.FOOD, null, null, 0);
+		return new Offer(Kind.FOOD, null, null, null, food, count, false);
 	}
 
 	public static Offer coins(int amount)
 	{
-		return new Offer(Kind.COINS, null, null, amount);
+		return new Offer(Kind.COINS, null, null, null, null, amount, false);
 	}
 
 	public Kind getKind()
@@ -80,13 +86,25 @@ public final class Offer
 		return gear;
 	}
 
+	/** True for gear that goes in the bag instead of being worn. */
+	public boolean isStored()
+	{
+		return stored;
+	}
+
 	/** The passive for {@link Kind#PASSIVE}, else null. */
 	public Passive getPassive()
 	{
 		return passive;
 	}
 
-	/** The rank gained for {@link Kind#PASSIVE}, 1-based. */
+	/** The food for {@link Kind#FOOD}, else null. */
+	public Food getFood()
+	{
+		return food;
+	}
+
+	/** The rank gained for {@link Kind#PASSIVE}, 1-based; pieces of food for {@link Kind#FOOD}. */
 	public int getRank()
 	{
 		return rank;
@@ -96,6 +114,22 @@ public final class Offer
 	public int getCoins()
 	{
 		return kind == Kind.COINS ? rank : 0;
+	}
+
+	/** Free bag slots taking this offer needs. */
+	int bagSlots()
+	{
+		switch (kind)
+		{
+			case GEAR:
+				return stored ? 1 : 0;
+			case FOOD:
+				return 1;
+			case BOOST:
+				return 1;
+			default:
+				return 0;
+		}
 	}
 
 	public String getTitle()
@@ -111,8 +145,13 @@ public final class Offer
 			case BOOST:
 				return boost.getTitle();
 			default:
-				return "Shark";
+				return rank > 1 ? rank + " " + plural(food.getTitle()) : food.getTitle();
 		}
+	}
+
+	private static String plural(String title)
+	{
+		return title.endsWith("fish") ? title : title + "s";
 	}
 
 	public String getDescription()
@@ -120,15 +159,15 @@ public final class Offer
 		switch (kind)
 		{
 			case GEAR:
-				return gear.describe();
+				return gear.describe() + (stored ? ". Goes in your bag" : "");
 			case PASSIVE:
 				return passive.getEffect();
 			case COINS:
 				return "+" + rank + " coins, kept when the run ends";
 			case BOOST:
-				return boost.getEffect() + (rank > 1 ? " (dose " + rank + ")" : "") + ". Lasts the run";
+				return boost.getEffect() + " for " + (int) Boost.DOSE_SECONDS + " s a dose, " + Boost.DOSES + " doses. Drink from your bag";
 			default:
-				return "Heal " + Math.round(FOOD_HEAL * 100) + "% of your hitpoints";
+				return food.getEffect() + ". Eat from your bag";
 		}
 	}
 
@@ -140,13 +179,14 @@ public final class Offer
 			return false;
 		}
 		Offer other = (Offer) o;
-		return kind == other.kind && gear == other.gear && passive == other.passive && boost == other.boost && rank == other.rank;
+		return kind == other.kind && gear == other.gear && passive == other.passive && boost == other.boost && food == other.food
+			&& rank == other.rank && stored == other.stored;
 	}
 
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(kind, gear, passive, boost, rank);
+		return Objects.hash(kind, gear, passive, boost, food, rank, stored);
 	}
 
 	@Override

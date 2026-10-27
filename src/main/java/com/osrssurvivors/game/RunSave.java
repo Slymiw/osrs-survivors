@@ -7,12 +7,13 @@ import java.util.Map;
 
 /**
  * A run's progress in a plain, JSON-friendly form: where, time, kills, level, hitpoints, the
- * build and the player's position. Version 1 saves (no location or position) still load;
- * version 2 positions are on the smaller arenas of the time and are moved onto the bigger ones.
+ * build, the bag and the player's position. Version 1 saves (no location or position) still load;
+ * version 2 positions are on the smaller arenas of the time and are moved onto the bigger ones;
+ * before version 4 potions lasted the run, and their doses come back as potions in the bag.
  */
 public final class RunSave
 {
-	public static final int CURRENT_VERSION = 3;
+	public static final int CURRENT_VERSION = 4;
 
 	public int version = CURRENT_VERSION;
 	/** Location name, or null for older saves. */
@@ -30,8 +31,12 @@ public final class RunSave
 	public Map<String, String> gear = new LinkedHashMap<>();
 	/** Passive name to rank. */
 	public Map<String, Integer> passives = new LinkedHashMap<>();
-	/** Potion name to doses taken. */
+	/** Before version 4: potion name to doses taken (they lasted the run). */
 	public Map<String, Integer> boosts = new LinkedHashMap<>();
+	/** Potion name to the seconds it still works. */
+	public Map<String, Double> potions = new LinkedHashMap<>();
+	/** The bag, slot by slot: {@code Item} keys, "" for an empty slot. */
+	public List<String> bag = new ArrayList<>();
 	public int championsSlain;
 	/** Rerolls and revivals left; null in older saves (then the run gets its full share). */
 	public Integer rerolls;

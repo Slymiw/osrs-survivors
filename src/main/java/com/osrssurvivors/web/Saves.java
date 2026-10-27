@@ -4,6 +4,7 @@ import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
 import com.osrssurvivors.game.Option;
 import com.osrssurvivors.game.Options;
+import com.osrssurvivors.game.Volume;
 import com.osrssurvivors.game.RunSave;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -64,7 +65,8 @@ final class Saves
 		m.put("y", save.y);
 		m.put("gear", save.gear);
 		m.put("passives", save.passives);
-		m.put("boosts", save.boosts);
+		m.put("potions", save.potions);
+		m.put("bag", save.bag);
 		m.put("championsSlain", save.championsSlain);
 		m.put("rerolls", save.rerolls);
 		m.put("revives", save.revives);
@@ -108,6 +110,20 @@ final class Saves
 			if (boosts != null)
 			{
 				boosts.forEach((k, v) -> s.boosts.put(k, Json.integer(v, 0)));
+			}
+			Map<String, Object> potions = Json.object(m.get("potions"));
+			if (potions != null)
+			{
+				potions.forEach((k, v) -> s.potions.put(k, Json.number(v, 0)));
+			}
+			List<Object> bag = Json.array(m.get("bag"));
+			if (bag != null)
+			{
+				for (Object item : bag)
+				{
+					String key = Json.string(item);
+					s.bag.add(key == null ? "" : key);
+				}
 			}
 			s.championsSlain = Json.integer(m.get("championsSlain"), 0);
 			s.rerolls = m.get("rerolls") instanceof Number ? Json.integer(m.get("rerolls"), 0) : null;
@@ -220,6 +236,19 @@ final class Saves
 				}
 			}
 		}
+		Map<String, Object> volumes = m == null ? null : Json.object(m.get("volumes"));
+		if (volumes != null)
+		{
+			for (Volume v : Volume.values())
+			{
+				Object level = volumes.get(v.name());
+				if (level instanceof Number)
+				{
+					options.setVolume(v, ((Number) level).intValue());
+				}
+			}
+		}
+		options.setMuted(m != null && Boolean.TRUE.equals(m.get("muted")));
 		return options;
 	}
 
@@ -230,8 +259,15 @@ final class Saves
 		{
 			off.add(o.name());
 		}
+		Map<String, Object> volumes = new LinkedHashMap<>();
+		for (Volume v : Volume.values())
+		{
+			volumes.put(v.name(), options.getVolume(v));
+		}
 		Map<String, Object> m = new LinkedHashMap<>();
 		m.put("off", off);
+		m.put("volumes", volumes);
+		m.put("muted", options.isMuted());
 		Browser.setItem(OPTIONS_KEY, Json.write(m));
 	}
 

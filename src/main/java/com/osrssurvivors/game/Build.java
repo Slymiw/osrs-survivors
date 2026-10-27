@@ -1,8 +1,10 @@
 package com.osrssurvivors.game;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,11 +39,13 @@ public final class Build
 	static final double MELEE_STAGGER = 0.6;
 	/** Melee: damage reduction from fighting up close in heavier armour. */
 	static final double MELEE_GUARD = 0.14;
+	/** Extra XP per rank of the Lamp of Knowledge. */
+	static final double LAMP_XP = 0.05;
 
 	private final Map<Slot, Gear> worn = new EnumMap<>(Slot.class);
 	private final Map<Passive, Integer> ranks = new EnumMap<>(Passive.class);
-	/** Potion doses taken this run. */
-	private final Map<Boost, Integer> doses = new EnumMap<>(Boost.class);
+	/** Potions working now, with the seconds they have left. */
+	private final Map<Boost, Double> potions = new EnumMap<>(Boost.class);
 	/** Bumped on every gear change so renderers can tell when the character's look changed. */
 	private int gearVersion;
 	/** Permanent upgrades; null for none. */
@@ -81,15 +85,42 @@ public final class Build
 		return weapon == null ? Style.MELEE : weapon.getStyle();
 	}
 
-	/** Puts on an item, replacing whatever was in its slot. Two-handed weapons remove the shield. */
-	void equip(Gear gear)
+	/**
+	 * Puts on an item, replacing whatever was in its slot. A two-handed weapon takes the shield
+	 * off, and a shield takes off a two-handed weapon. Returns what was taken off.
+	 */
+	List<Gear> equip(Gear gear)
 	{
-		worn.put(gear.getSlot(), gear);
-		if (gear.getSlot() == Slot.WEAPON && gear.isTwoHanded())
+		List<Gear> off = new ArrayList<>();
+		Gear old = worn.put(gear.getSlot(), gear);
+		if (old != null && old != gear)
 		{
-			worn.remove(Slot.SHIELD);
+			off.add(old);
+		}
+		Gear weapon = worn.get(Slot.WEAPON);
+		if (gear.getSlot() == Slot.WEAPON && gear.isTwoHanded() && worn.containsKey(Slot.SHIELD))
+		{
+			off.add(worn.remove(Slot.SHIELD));
+		}
+		else if (gear.getSlot() == Slot.SHIELD && weapon != null && weapon.isTwoHanded())
+		{
+			off.add(worn.remove(Slot.WEAPON));
 		}
 		gearVersion++;
+		return off;
+	}
+
+	/** The pieces {@link #equip} would take off, without putting it on. */
+	int wouldTakeOff(Gear gear)
+	{
+		int n = worn.get(gear.getSlot()) != null && worn.get(gear.getSlot()) != gear ? 1 : 0;
+		Gear weapon = worn.get(Slot.WEAPON);
+		if (gear.getSlot() == Slot.WEAPON && gear.isTwoHanded() && worn.containsKey(Slot.SHIELD)
+			|| gear.getSlot() == Slot.SHIELD && weapon != null && weapon.isTwoHanded())
+		{
+			n++;
+		}
+		return n;
 	}
 
 	void addRank(Passive p)
@@ -97,26 +128,49 @@ public final class Build
 		ranks.merge(p, 1, Integer::sum);
 	}
 
-	void addDose(Boost b)
+	/** A dose of a potion: it works for {@link Boost#DOSE_SECONDS} from now. */
+	void drink(Boost b)
 	{
-		doses.merge(b, 1, Integer::sum);
+		potions.put(b, Boost.DOSE_SECONDS);
 	}
 
-	public int doses(Boost b)
+	/** Restores a potion still working in a saved run. */
+	void restorePotion(Boost b, double seconds)
 	{
-		return doses.getOrDefault(b, 0);
+		if (seconds > 0)
+		{
+			potions.put(b, Math.min(Boost.DOSE_SECONDS, seconds));
+		}
 	}
 
-	public Map<Boost, Integer> getDoses()
+	/**
+	 * Runs the potions' clocks down. Returns true when one ran out, so the numbers derived from
+	 * them need working out again.
+	 */
+	boolean tickPotions(double dt)
 	{
-		return Collections.unmodifiableMap(doses);
+		boolean expired = potions.entrySet().removeIf(e -> e.getValue() <= dt);
+		potions.replaceAll((b, left) -> left - dt);
+		return expired;
+	}
+
+	/** Whether a potion is working now. */
+	public boolean has(Boost b)
+	{
+		return potions.containsKey(b);
+	}
+
+	/** Potions working now, with the seconds they have left. */
+	public Map<Boost, Double> getPotions()
+	{
+		return Collections.unmodifiableMap(potions);
 	}
 
 	void clear()
 	{
 		worn.clear();
 		ranks.clear();
-		doses.clear();
+		potions.clear();
 		level = 1;
 		gearVersion++;
 	}
@@ -203,7 +257,8 @@ public final class Build
 		{
 			base *= 0.9;
 		}
-		base *= levelHaste() * Math.pow(0.97, perk(Perk.HASTE)) * (pet(Pet.TZREK_JAD) ? 0.96 : 1) * (pet(Pet.AKKHITO) ? 0.98 : 1);
+		base *= levelHaste() * Math.pow(0.97, perk(Perk.HASTE)) * (pet(Pet.TZREK_JAD) ? 0.96 : 1) * (pet(Pet.AKKHITO) ? 0.98 : 1)
+			* (has(Boost.LIQUID_ADRENALINE) ? Boost.HASTE : 1);
 		return Math.max(MIN_COOLDOWN, base * Math.pow(0.92, rank(Passive.SWIFTNESS)));
 	}
 
@@ -304,7 +359,7 @@ public final class Build
 		switch (style)
 		{
 			case MELEE:
-				bonus += 0.05 * rank(Passive.MELEE_PRAYER) + 0.04 * rank(Passive.SUPER_COMBAT) + Boost.DAMAGE * doses(Boost.DIVINE_SUPER_COMBAT);
+				bonus += 0.05 * rank(Passive.MELEE_PRAYER) + 0.04 * rank(Passive.SUPER_COMBAT) + (has(Boost.DIVINE_SUPER_COMBAT) ? Boost.DAMAGE : 0);
 				bonus += hasSet(GearSet.INQUISITOR) ? 0.15 : 0;
 				if (hasSet(GearSet.OBSIDIAN))
 				{
@@ -312,21 +367,21 @@ public final class Build
 				}
 				break;
 			case RANGED:
-				bonus += 0.05 * rank(Passive.RANGED_PRAYER) + 0.04 * rank(Passive.RANGING_POTION) + Boost.DAMAGE * doses(Boost.DIVINE_RANGING);
+				bonus += 0.05 * rank(Passive.RANGED_PRAYER) + 0.04 * rank(Passive.RANGING_POTION) + (has(Boost.DIVINE_RANGING) ? Boost.DAMAGE : 0);
 				if (hasSet(GearSet.CRYSTAL))
 				{
 					bonus += worn.get(Slot.WEAPON) == Gear.BOW_OF_FAERDHINEN ? 0.4 : 0.1;
 				}
 				break;
 			default:
-				bonus += 0.05 * rank(Passive.MAGIC_PRAYER) + 0.04 * rank(Passive.IMBUED_HEART) + Boost.DAMAGE * doses(Boost.DIVINE_MAGIC);
+				bonus += 0.05 * rank(Passive.MAGIC_PRAYER) + 0.04 * rank(Passive.IMBUED_HEART) + (has(Boost.DIVINE_MAGIC) ? Boost.DAMAGE : 0);
 				bonus += hasSet(GearSet.AHRIM) ? 0.2 : 0;
 				bonus += hasSet(GearSet.VIRTUS) ? 0.12 : 0;
 				break;
 		}
 		bonus += hasSet(GearSet.VOID) ? 0.2 : 0;
 		bonus += 0.04 * rank(Passive.OVERLOAD) + 0.04 * perk(Perk.MIGHT) + (pet(Pet.PET_CHAOS_ELEMENTAL) ? 0.05 : 0)
-			+ (pet(Pet.TEKTINY) ? 0.03 : 0) + (pet(Pet.MIMI) ? 0.03 : 0);
+			+ (pet(Pet.TEKTINY) ? 0.03 : 0) + (pet(Pet.MIMI) ? 0.03 : 0) + (has(Boost.SMELLING_SALTS) ? Boost.ANY_DAMAGE : 0);
 		return 1 + bonus;
 	}
 
@@ -366,7 +421,8 @@ public final class Build
 	public double defence()
 	{
 		double d = (hasSet(GearSet.TORAG) ? 40 : 0) + (hasSet(GearSet.OBSIDIAN) ? 20 : 0);
-		d += 6 * perk(Perk.ARMOUR) + (pet(Pet.PRINCE_BLACK_DRAGON) ? 12 : 0) + (pet(Pet.VANGUARD) ? 8 : 0) + (pet(Pet.DORK) ? 6 : 0);
+		d += 6 * perk(Perk.ARMOUR) + (pet(Pet.PRINCE_BLACK_DRAGON) ? 12 : 0) + (pet(Pet.VANGUARD) ? 8 : 0) + (pet(Pet.DORK) ? 6 : 0)
+			+ (has(Boost.SUPER_DEFENCE) ? Boost.DEFENCE : 0);
 		for (Gear g : worn.values())
 		{
 			d += g.getDefence();
@@ -380,7 +436,7 @@ public final class Build
 		double d = defence();
 		double fromArmour = d / (d + DEFENCE_SCALE);
 		return Math.min(MAX_REDUCTION, fromArmour + 0.05 * rank(Passive.PROTECTION) + (getStyle() == Style.MELEE ? MELEE_GUARD : 0)
-			+ Boost.REDUCTION * doses(Boost.ANTIFIRE));
+			+ (has(Boost.ANTIFIRE) ? Boost.REDUCTION : 0));
 	}
 
 	/** Extra reduction against monsters touching the player (Protect from Melee). */
@@ -397,14 +453,14 @@ public final class Build
 
 	public double maxHealth()
 	{
-		return Player.BASE_MAX_HEALTH + 20 * rank(Passive.HITPOINTS) + 10 * perk(Perk.VITALITY) + (pet(Pet.BABI) ? 10 : 0)
-			+ Boost.HITPOINTS * doses(Boost.SARADOMIN_BREW);
+		double hp = Player.BASE_MAX_HEALTH + 20 * rank(Passive.HITPOINTS) + 10 * perk(Perk.VITALITY) + (pet(Pet.BABI) ? 10 : 0);
+		return has(Boost.SARADOMIN_BREW) ? hp * (1 + Boost.HITPOINTS) : hp;
 	}
 
 	public double speed()
 	{
 		double bonus = 0.08 * rank(Passive.AGILITY) + 0.04 * perk(Perk.SPEED) + (pet(Pet.BABY_MOLE) ? 0.06 : 0) + (pet(Pet.VESPINA) ? 0.04 : 0)
-			+ Boost.SPEED * doses(Boost.STAMINA);
+			+ (has(Boost.STAMINA) ? Boost.SPEED : 0);
 		for (Gear g : worn.values())
 		{
 			bonus += g.getSpeedBonus();
@@ -424,14 +480,14 @@ public final class Build
 
 	public double xpMultiplier()
 	{
-		return 1 + 0.2 * rank(Passive.LAMP) + 0.06 * perk(Perk.WISDOM) + (pet(Pet.LIL_ZIK) ? 0.08 : 0) + (pet(Pet.TUMEKENS_GUARDIAN) ? 0.05 : 0);
+		return 1 + LAMP_XP * rank(Passive.LAMP) + 0.06 * perk(Perk.WISDOM) + (pet(Pet.LIL_ZIK) ? 0.08 : 0) + (pet(Pet.TUMEKENS_GUARDIAN) ? 0.05 : 0);
 	}
 
 	public double regenPerSecond()
 	{
 		return Player.BASE_REGEN + 0.6 * rank(Passive.RAPID_HEAL) + (hasSet(GearSet.TORAG) ? 0.5 : 0)
 			+ 0.15 * perk(Perk.RECOVERY) + (pet(Pet.PET_DARK_CORE) ? 0.3 : 0) + (pet(Pet.VASA_MINIRIO) ? 0.2 : 0)
-			+ Boost.REGEN * doses(Boost.SUPER_RESTORE);
+			+ (has(Boost.SUPER_RESTORE) ? Boost.REGEN : 0);
 	}
 
 	/** Hitpoints healed per kill. */

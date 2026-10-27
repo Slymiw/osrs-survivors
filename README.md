@@ -17,8 +17,9 @@ The start menu offers:
 - **Continue**: the saved run, in the place it was saved.
 - **Upgrades**: spend coins on permanent upgrades.
 - **Pets**: the pets you've won from champions.
-- **Options**: turn off screen flashes, the level-up animation or the boss drop animation for a
-  calmer screen. Also on the pause screen. Kept in your browser.
+- **Options**: master, combat and interface volume, and screen flashes, the level-up and boss
+  drop animations and screen shake (turn any off for a calmer screen). Also on the pause
+  screen. Kept in your browser.
 - **What's new**: the changelog, newest version first. After an update the button glows until
   you've looked. The version number sits beside the game's name.
 
@@ -26,6 +27,11 @@ The start menu offers:
 | --- | --- |
 | WASD / arrow keys | Move |
 | P / Esc | Pause / resume (the pause screen shows your equipment and stats) |
+| Click an item in the inventory | Wear it, drink a dose or eat it (works while paused too) |
+| Shift-click or right-click an item | Drop it |
+| Drag an item | Move it to another slot |
+| I / Tab | Show or hide the inventory |
+| M | Mute or unmute the sound |
 | 1 / 2 / 3 or click a card | Pick a level-up reward |
 | R or click *Reroll* | Re-roll the offers (with the Reroll upgrade) |
 | 1 or click | Stop the boss drop's reels, then claim the drop |
@@ -43,9 +49,10 @@ now, max all, reset all, +1000 coins, unlock maps).
 - Each level-up offers three rewards. When possible, one is gear, one is a passive and one
   is either.
   - **Gear** follows upgrade chains for your weapon's style:
-    - Melee: bronze → rune → dragon scimitar → whip → rapier → scythe (dragon claws strike twice).
-    - Ranged: shortbow → magic shortbow → crossbows → blowpipe → twisted bow.
-    - Magic: staves → tridents → sang → shadow.
+    - Melee: bronze → rune → dragon scimitar → whip → rapier → soulreaper axe (dragon claws
+      strike twice).
+    - Ranged: shortbow → magic shortbow → crossbows → blowpipe → Ascension crossbows.
+    - Magic: staves → tridents → sang → Zorya's tome.
     - Matching armour for each style (plate / d'hide / robes).
     - Shields for one-handed weapons.
     - Capes, amulets, gloves, boots and rings for any style.
@@ -56,10 +63,20 @@ now, max all, reset all, +1000 coins, unlock maps).
     - Other prayers: Rapid Heal and Redemption.
     - Skills: Hitpoints, Agility, Swiftness, Longrange, Multicombat.
     - Spells and items: Telekinetic Grab, Lamp of Knowledge, Vengeance, Special Attack.
-  - **Food** (a shark) is sometimes offered when you're hurt.
-  - **Potions** fill the offers once upgrades run out, so the end of a long run still gives a
-    varied choice: divine potions for your style (+4% damage), Saradomin brews, stamina, super
-    restore and antifire. Doses last the run and stack. With food and coin pouches.
+  - **Inventory**: 28 slots in the bottom right, like the game's. Now and then a weapon for
+    another style is offered for the bag; once one is there, armour and accessories for that
+    style come too (one bag item a screen). Click the weapon to switch: the style's gear from the
+    bag goes on with it and what it replaces goes in the bag, so one click swaps style and back.
+    Prayers and potions for every style you carry are offered. Nothing is offered that the bag
+    can't hold.
+  - **Food** goes in the bag: sharks are sometimes offered when you're hurt, and manta rays,
+    anglerfish and karambwans come as fillers. Eating takes three ticks before the next bite;
+    a karambwan can be eaten straight after other food.
+  - **Potions** go in the bag with four doses, once upgrades run out: divine potions for your
+    styles (+15% damage), smelling salts (+10% any style), liquid adrenaline (attack 10% more
+    often), Saradomin brews (+20% hitpoints), stamina (+20% speed), super restore (2 hitpoints/s),
+    super antifire (15% less damage) and super defence. A dose works for a minute; drinking
+    again starts the minute over. With food and coin pouches.
   - **Rarity**: every item shows how rare it is: Common, Uncommon, Rare, Epic (by its place in
     its chain), Legendary (boss drops and combinations) and Megarare.
   - **Abilities** attack on their own: cannon, thralls, Ice and Blood Barrage, chinchompas,
@@ -82,9 +99,11 @@ now, max all, reset all, +1000 coins, unlock maps).
   God Wars, the Chambers of Xeric, the Tombs of Amascut and the Fractured Archive. Their casket
   spins three reels for a unique drop: coins, an XP lamp, a boss-only item (Infernal max cape,
   Elysian spirit shield, Rondache...) or, as the jackpot, a **pet** that stays with you in every
-  run (21 to collect). Rarer still, about one casket in 250 holds a **megarare**: the
-  Fractured Archive's weapon for your style (the Obligator, Ascension crossbows or Zorya's
-  tome), better than anything else. Then it offers gear as before.
+  run (21 to collect). Rarer still, about one casket in 250 holds a **megarare** for your
+  style: the Scythe of vitur or the Obligator, the Twisted bow, or Tumeken's shadow, better
+  than anything else. Then it offers gear as before.
+- **Healing from damage** (lifesteal, Blood Barrage) is limited: it refills by 3% of your
+  hitpoints a second and holds at most 15%, so it helps a lot but can't out-heal a crowd.
 - **Monsters** come in fewer but tougher, so the screen stays readable. Each place has its own
   roster arriving over time. After 15 minutes overtime begins: fresh monsters keep arriving
   ever tougher, faster and harder-hitting, and going long without a kill makes them hit harder
@@ -105,13 +124,15 @@ Needs JDK 17 (this machine: `export JAVA_HOME=/c/Users/Joe/.devtools/jdk17`).
 ```sh
 ./gradlew dist          # the playable page in build/dist
 ./gradlew test          # headless unit tests; report in build/reports/tests/test/index.html
-./gradlew exportAssets  # re-export the artwork from a local OSRS cache (see below)
+./gradlew exportAssets  # re-export the artwork (and sounds) from a local OSRS cache (see below)
+./gradlew exportSounds  # re-export only the sound effects; -PsoundWavs=<dir> also writes WAVs
+./gradlew dist -Preadable  # game.js with its names kept, for reading stack traces
 ```
 
 `build/dist` is the whole game: `index.html`, `game.js` (~0.9 MB, compiled from Java by
 [TeaVM](https://teavm.org)), `assets/data.js` (sprites, icons, fonts, models and animations) and
 one `assets/loc/<LOCATION>.js` per map location (192 × 192 tiles, about 10 MB each), loaded
-when a run starts there. About 85 MB in all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
+when a run starts there, plus `assets/sounds.js` (the sound effects, about 85 KB). About 85 MB in all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
 host.
 
 The artwork is committed in `src/main/webapp/assets`, so building the page doesn't need the game.
@@ -123,12 +144,38 @@ locations), and commit the result.
 Pushing to `main` publishes `build/dist` to GitHub Pages
 (`.github/workflows/pages.yml`).
 
+## Sound
+
+The sound effects are the game's own. OSRS keeps them in its cache (index 4) not as recordings
+but as settings for the client's synthesiser: up to ten instruments each, with pitch and volume
+envelopes, vibrato, tremolo, gating, square/sine/saw/noise oscillators, an echo and a filter.
+`audio.SynthSound` turns them into samples the way the client does (checked against recordings
+of the same sounds on the OSRS Wiki: the timing and spectra match), in the browser, a few each
+frame once the player has pressed something (browsers allow sound only after that).
+
+Which sound plays for what is in the exporter's `SoundTable`. The meanings come from Jagex's own
+names for the sound ids (listed on the OSRS Wiki's "List of sound IDs"), RuneLite's
+`SoundEffectID`, and the cache's animations, some of which name their sounds (the player's
+sword slash, crush, stab and spear attacks; a bow shot; a human death). Weapons sound by their
+attack animation or their spell, monsters by their own hit and death sounds, and the interface
+uses the game's own clicks, coins and fanfares. `exportSounds` writes the table and the sounds'
+cache files (180 sounds, about 47 KB) to `assets/sounds.js`; without that file the game plays
+silently.
+
+In a run, `GameSession` records cues (attacks, hits landing, kills, pickups, level-ups...) that
+`audio.SoundCues` turns into sounds, panned by where they happen. `audio.Mixer` keeps a swarm
+listenable: each sound waits a moment before playing again, plays a few copies at most, and no
+more than 18 sounds play at once, the important ones (level-ups, champions) taking the place of
+lesser ones. There's no music: OSRS music is MIDI played through the client's own soundbank
+(index 15, with Vorbis samples in index 14), which this page doesn't play yet.
+
 ## How it works
 
 | Part | Where | Notes |
 | --- | --- | --- |
-| Simulation | `src/main/java/.../game` | Pure Java: phases, fixed 60 Hz steps, gear, offers, spawning, saves. |
-| Renderer | `src/main/java/.../render` | Draws a session through `GameAssets` with `java.awt.Graphics2D`; shapes stand in for missing art. `UiLayout` is shared by drawing and click handling. |
+| Simulation | `src/main/java/.../game` | Pure Java: phases, fixed 60 Hz steps, gear, offers, spawning, saves. Records `Cue`s for sound and effects. |
+| Renderer | `src/main/java/.../render` | Draws a session through `GameAssets` with `java.awt.Graphics2D`; shapes stand in for missing art. `UiLayout` is shared by drawing and click handling. `Fx` turns cues into sparks, shockwaves, shake and notices. |
+| Sound | `src/main/java/.../audio` | The OSRS synthesiser, the cue-to-sound table, the mixer's limits. Plain Java, tested on the JVM; the page plays the result with Web Audio. |
 | Browser glue | `src/main/java/.../web` | `WebMain` (loop, input, menus, saves), `WebAssets` (exported art → sprites), `AnimModel`/`Sequence` (plays classic animation frames like the client's `Model.transform`), `Json` (Gson needs reflection). |
 | AWT shim | `src/shim/java/org/teavm/classlib/java/awt/...` | `Graphics2D`, `Color`, `Font`, `BufferedImage`... drawn with Canvas2D. TeaVM uses `org.teavm.classlib.java.awt.TColor` in place of `java.awt.Color`. |
 | Page | `src/main/webapp/index.html` | Decodes the bundled data (fonts, images, gzipped models), then calls the compiled `main`. |
@@ -148,10 +195,16 @@ When the renderer starts using an AWT method the shim lacks, `generateJavaScript
 - The ground ignores height, and scenery is drawn at a fixed angle; upper floors and roofs are
   left out, and animated scenery is still.
 - The player wears the default male body.
+- Only worn items show their textures (the fire capes' lava flows); monsters and scenery use
+  each texture's average colour.
 - Balance is tuned against a scripted bot (`BalanceBot`), not yet from real play.
+- No music yet (see Sound). A few sounds stand in where the game has none of its own: the
+  level-up uses the "found a gem" chime (the game's level-up is a music jingle), thralls use a
+  skeleton's attack, and monsters without sounds of their own use a person's.
+- On very short windows (under about 400 pixels) the pause screen's stats run into its buttons.
 
 ## Credits
 
-Old School RuneScape and its artwork, models, maps and fonts are the property of Jagex Ltd.
+Old School RuneScape and its artwork, models, maps, fonts and sounds are the property of Jagex Ltd.
 This is an unofficial fan project, not affiliated with or endorsed by Jagex. The code is under
 the BSD-2 licence in `LICENSE`.

@@ -34,10 +34,16 @@ public final class GameSession
 	static final double REDEMPTION_COOLDOWN = 45;
 	/** Below this share of max hitpoints, food may be offered on level-up. */
 	static final double FOOD_THRESHOLD = 0.6;
-	/** Chance a level-up also offers switching to another combat style. */
+	/** Chance a level-up also offers a weapon for another combat style, kept in the bag to switch to. */
 	static final double STYLE_SWITCH_CHANCE = 0.15;
-	/** From this level on the build has settled on a style, so other styles' weapons aren't offered. */
-	static final int STYLE_SWITCH_MAX_LEVEL = 12;
+	/** Chance each slot is also offered gear for a style whose weapon waits in the bag. */
+	static final double OFF_STYLE_CHANCE = 0.3;
+	/** Pieces of food in a food offer. */
+	static final int FOOD_COUNT = 3;
+	/** Seconds between drinks: three ticks, like eating. */
+	static final double DRINK_DELAY = 3 * Gear.TICK;
+	/** Seconds a bag message (such as a full bag) shows. */
+	static final double NOTICE_SECONDS = 2.5;
 	/** Chance a level-up leads with the next weapon tier when there is one. */
 	static final double WEAPON_OFFER_CHANCE = 0.35;
 	/** Chance a weapon offer comes with a different weapon of the same tier. */
@@ -57,12 +63,20 @@ public final class GameSession
 	static final double COINS_PER_KILL = 0.12;
 	static final double COINS_PER_SECOND = 0.2;
 	static final double COINS_PER_CHAMPION = 25;
+	/**
+	 * Healing from damage dealt (lifesteal, Blood Barrage) comes out of a store that refills by
+	 * this share of max hitpoints a second and holds at most {@link #DRAIN_STORE} of them, so
+	 * draining helps a lot without letting a crowd heal a build that stands in it for ever.
+	 */
+	static final double DRAIN_RATE = 0.03;
+	static final double DRAIN_STORE = 0.15;
 
 	private final Random random;
 	private final Arena arena;
 	private final Location location;
 	private final PathField paths;
 	private final Build build = new Build();
+	private final Inventory bag = new Inventory();
 	private final Abilities abilities = new Abilities();
 	private final List<Enemy> enemies = new ArrayList<>();
 	private final List<XpOrb> orbs = new ArrayList<>();
@@ -74,6 +88,8 @@ public final class GameSession
 	private final List<Effects.Corpse> corpses = new ArrayList<>();
 	private final List<Effects.XpDrop> xpDrops = new ArrayList<>();
 	private final List<Effects.Burst> bursts = new ArrayList<>();
+	/** Things that happened since the page last looked, for sounds and screen effects. */
+	private final List<Cue> cues = new ArrayList<>();
 	private final Map<Location, Double> bestTimes = new EnumMap<>(Location.class);
 
 	private Player player;
@@ -123,6 +139,17 @@ public final class GameSession
 	/** Developer tool: every location can be picked. */
 	private boolean allUnlocked;
 	private double retributionTimer;
+	/** Hitpoints that draining can still heal right now (see {@link #DRAIN_RATE}). */
+	private double drainStore;
+	/** Seconds until the next bite of food, of a karambwan, and the next drink. */
+	private double eatTimer;
+	private double comboTimer;
+	private double drinkTimer;
+	/** A message about the bag, such as "not enough space", and the run time it disappears. */
+	private String notice;
+	private double noticeUntil;
+	/** Whether the bag is shown on screen (a view setting, kept between runs). */
+	private boolean bagShown = true;
 	private int bonusCoins;
 	/** Coins paid out when the run ended; -1 while it goes on. */
 	private int coinsEarned = -1;
@@ -158,6 +185,7 @@ public final class GameSession
 	public void restart()
 	{
 		build.clear();
+		bag.clear();
 		abilities.clear();
 		player = new Player(arena.getStartX(), arena.getStartY());
 		weapon = new Weapon();
@@ -173,6 +201,7 @@ public final class GameSession
 		corpses.clear();
 		xpDrops.clear();
 		bursts.clear();
+		cues.clear();
 		phase = Phase.RUNNING;
 		elapsed = 0;
 		kills = 0;
@@ -193,6 +222,11 @@ public final class GameSession
 		rerollsLeft = build.perk(Perk.REROLL);
 		revivesLeft = build.perk(Perk.REVIVAL);
 		retributionTimer = 0;
+		drainStore = 0;
+		eatTimer = 0;
+		comboTimer = 0;
+		drinkTimer = 0;
+		notice = null;
 		bonusCoins = 0;
 		coinsEarned = -1;
 		bossDrop = null;
@@ -387,9 +421,14 @@ public final class GameSession
 		{
 			s.passives.put(e.getKey().name(), e.getValue());
 		}
-		for (Map.Entry<Boost, Integer> e : build.getDoses().entrySet())
+		for (Map.Entry<Boost, Double> e : build.getPotions().entrySet())
 		{
-			s.boosts.put(e.getKey().name(), e.getValue());
+			s.potions.put(e.getKey().name(), e.getValue());
+		}
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Item item = bag.get(i);
+			s.bag.add(item == null ? "" : item.key());
 		}
 		return s;
 	}
@@ -419,14 +458,30 @@ public final class GameSession
 				build.addRank(p);
 			}
 		}
+		for (int i = 0; save.bag != null && i < Math.min(Inventory.SIZE, save.bag.size()); i++)
+		{
+			bag.set(i, Item.fromKey(save.bag.get(i)));
+		}
+		if (save.potions != null)
+		{
+			for (Map.Entry<String, Double> e : save.potions.entrySet())
+			{
+				Boost b = enumOrNull(Boost.class, e.getKey());
+				if (b != null && e.getValue() != null)
+				{
+					build.restorePotion(b, e.getValue());
+				}
+			}
+		}
 		if (save.boosts != null)
 		{
+			// potions used to last the whole run; their doses come back as potions in the bag
 			for (Map.Entry<String, Integer> e : save.boosts.entrySet())
 			{
 				Boost b = enumOrNull(Boost.class, e.getKey());
-				for (int i = 0; b != null && e.getValue() != null && i < e.getValue(); i++)
+				for (int left = e.getValue() == null ? 0 : e.getValue(); b != null && left > 0; left -= Boost.DOSES)
 				{
-					build.addDose(b);
+					bag.add(Item.potion(b, Math.min(Boost.DOSES, left)));
 				}
 			}
 		}
@@ -538,7 +593,11 @@ public final class GameSession
 		if (phase == Phase.BOSS_DROP && bossDrop != null && frameSeconds > 0)
 		{
 			// the reels spin in real time while the game waits
-			bossDrop.advance(Math.min(frameSeconds, MAX_FRAME));
+			BossDrop drop = bossDrop;
+			boolean wasSpinning = drop.isSpinning();
+			boolean[] stopped = reelsStopped(drop);
+			drop.advance(Math.min(frameSeconds, MAX_FRAME));
+			cueReels(drop, stopped, wasSpinning);
 			return;
 		}
 		if (phase != Phase.RUNNING || !(frameSeconds > 0))
@@ -632,7 +691,9 @@ public final class GameSession
 		{
 			return false;
 		}
-		take(choices.get(index));
+		Offer chosen = choices.get(index);
+		cue(Cue.of(Cue.Type.CHOOSE).withGear(chosen.getGear()).withPassive(chosen.getPassive()));
+		take(chosen);
 		if (casketOpen)
 		{
 			casketOpen = false;
@@ -658,6 +719,7 @@ public final class GameSession
 		}
 		rerollsLeft--;
 		offerChoices(casketOpen);
+		cue(Cue.of(Cue.Type.REROLL));
 		return true;
 	}
 
@@ -689,10 +751,14 @@ public final class GameSession
 		}
 		if (!bossDrop.isClaimable())
 		{
+			boolean wasSpinning = bossDrop.isSpinning();
+			boolean[] stopped = reelsStopped(bossDrop);
 			bossDrop.skip();
+			cueReels(bossDrop, stopped, wasSpinning);
 			return false;
 		}
 		BossDrop.Prize prize = bossDrop.getPrize();
+		cue(Cue.of(Cue.Type.DROP_CLAIMED).withValue(bossDrop.getRarity().ordinal()).withGear(prize.getGear()));
 		bossDrop = null;
 		switch (prize.getKind())
 		{
@@ -704,7 +770,7 @@ public final class GameSession
 				progression.grantLevels(prize.getAmount());
 				break;
 			case GEAR:
-				build.equip(prize.getGear());
+				wear(prize.getGear());
 				break;
 			default:
 				runPets.add(prize.getPet());
@@ -751,6 +817,7 @@ public final class GameSession
 		}
 		bossDrop = BossDrop.roll(random, megarares, items, pets, location.getDifficulty());
 		phase = Phase.BOSS_DROP;
+		cue(Cue.of(Cue.Type.REELS_START));
 	}
 
 	/** Coins paid when the run ended, or -1 while it goes on. */
@@ -796,7 +863,14 @@ public final class GameSession
 		switch (offer.getKind())
 		{
 			case GEAR:
-				build.equip(offer.getGear());
+				if (offer.isStored())
+				{
+					store(offer.getGear());
+				}
+				else
+				{
+					wear(offer.getGear());
+				}
 				break;
 			case PASSIVE:
 				build.addRank(offer.getPassive());
@@ -805,23 +879,303 @@ public final class GameSession
 				bonusCoins += offer.getCoins();
 				break;
 			case BOOST:
-				build.addDose(offer.getBoost());
+				bag.add(Item.potion(offer.getBoost(), Boost.DOSES));
 				break;
 			default:
+				for (int i = 0; i < offer.getRank(); i++)
+				{
+					bag.add(Item.food(offer.getFood()));
+				}
 				break;
 		}
 		applyBuild();
-		if (offer.getBoost() == Boost.SARADOMIN_BREW)
-		{
-			player.heal(Boost.HITPOINTS);
-		}
-		if (offer.getKind() == Offer.Kind.FOOD)
-		{
-			player.heal(player.maxHealth * Offer.FOOD_HEAL);
-		}
-		else if (offer.getPassive() == Passive.HITPOINTS)
+		if (offer.getPassive() == Passive.HITPOINTS)
 		{
 			player.heal(20);
+		}
+	}
+
+	// ---------------------------------------------------------------- the bag
+
+	public Inventory getInventory()
+	{
+		return bag;
+	}
+
+	public boolean isBagShown()
+	{
+		return bagShown;
+	}
+
+	/** Shows or hides the bag. */
+	public void setBagShown(boolean shown)
+	{
+		bagShown = shown;
+	}
+
+	/** Seconds until food (or, for karambwans, the next karambwan) can be eaten again. */
+	public double getEatDelay(Food food)
+	{
+		return food.isCombo() ? comboTimer : eatTimer;
+	}
+
+	/** Seconds until the next potion dose can be drunk. */
+	public double getDrinkDelay()
+	{
+		return drinkTimer;
+	}
+
+	/** A message about the bag to show now (e.g. a full bag), or null. */
+	public String getNotice()
+	{
+		return notice != null && elapsed < noticeUntil ? notice : null;
+	}
+
+	private void notice(String text)
+	{
+		notice = text;
+		noticeUntil = elapsed + NOTICE_SECONDS;
+	}
+
+	/**
+	 * Uses what is in a bag slot, like clicking it in the game: gear is worn (what it replaces goes
+	 * in its place), a potion is drunk, food is eaten. A weapon of another style also puts on that
+	 * style's gear from the bag, so one click switches style. Works while playing or paused.
+	 * Returns false when nothing happened.
+	 */
+	public boolean useItem(int slot)
+	{
+		Item item = bag.get(slot);
+		if (item == null || phase != Phase.RUNNING && phase != Phase.PAUSED)
+		{
+			return false;
+		}
+		if (item.getGear() != null)
+		{
+			return equipFromBag(slot);
+		}
+		if (item.getPotion() != null)
+		{
+			if (drinkTimer > 0)
+			{
+				cue(Cue.of(Cue.Type.REFUSED));
+				return false;
+			}
+			Boost potion = item.getPotion();
+			build.drink(potion);
+			bag.set(slot, item.sipped());
+			drinkTimer = DRINK_DELAY;
+			applyBuild();
+			if (potion == Boost.SARADOMIN_BREW)
+			{
+				player.heal(player.maxHealth * Boost.HITPOINTS);
+			}
+			cue(Cue.at(Cue.Type.DRINK, player.x, player.y));
+			return true;
+		}
+		Food food = item.getFood();
+		if (food.isCombo() ? comboTimer > 0 : eatTimer > 0)
+		{
+			cue(Cue.of(Cue.Type.REFUSED));
+			return false;
+		}
+		if (food.isCombo())
+		{
+			comboTimer = Food.EAT_DELAY;
+		}
+		else
+		{
+			eatTimer = Food.EAT_DELAY;
+		}
+		bag.set(slot, null);
+		player.heal(player.maxHealth * food.getHeal());
+		cue(Cue.at(Cue.Type.EAT, player.x, player.y));
+		return true;
+	}
+
+	/** Throws away what is in a bag slot. */
+	public boolean dropItem(int slot)
+	{
+		if (bag.get(slot) == null || phase == Phase.TITLE || phase == Phase.GAME_OVER)
+		{
+			return false;
+		}
+		bag.set(slot, null);
+		cue(Cue.of(Cue.Type.ITEM_DROPPED));
+		return true;
+	}
+
+	/** Moves an item to another bag slot, swapping with whatever is there. */
+	public boolean moveItem(int from, int to)
+	{
+		if (from == to || bag.get(from) == null || to < 0 || to >= Inventory.SIZE || phase == Phase.TITLE || phase == Phase.GAME_OVER)
+		{
+			return false;
+		}
+		bag.swap(from, to);
+		return true;
+	}
+
+	private boolean equipFromBag(int slot)
+	{
+		Gear gear = bag.get(slot).getGear();
+		// what comes off goes where it was, and in free slots
+		if (build.wouldTakeOff(gear) > 1 + bag.freeSlots())
+		{
+			notice("You don't have enough inventory space to do that.");
+			cue(Cue.of(Cue.Type.REFUSED));
+			return false;
+		}
+		bag.set(slot, null);
+		cue(Cue.of(Cue.Type.EQUIP).withGear(gear));
+		putOn(gear, slot);
+		if (gear.getSlot() == Slot.WEAPON)
+		{
+			dress(gear);
+		}
+		applyBuild();
+		return true;
+	}
+
+	/** Wears gear; what comes off goes in bag slot {@code slot} if it's free, else in any free slot. */
+	private void putOn(Gear gear, int slot)
+	{
+		for (Gear off : build.equip(gear))
+		{
+			if (bag.get(slot) == null)
+			{
+				bag.set(slot, Item.gear(off));
+			}
+			else
+			{
+				bag.add(Item.gear(off));
+			}
+		}
+	}
+
+	/**
+	 * After a weapon goes on: wears the bag's gear made for its style in place of pieces for other
+	 * styles (or none), and in place of any-style pieces that are weaker. One click on a weapon
+	 * in the bag is a whole switch, as players set up in the game.
+	 */
+	private void dress(Gear weapon)
+	{
+		Style style = weapon.getStyle();
+		for (Slot slot : Slot.values())
+		{
+			if (slot == Slot.WEAPON || slot == Slot.SHIELD && weapon.isTwoHanded())
+			{
+				continue;
+			}
+			int i = bag.find(slot, style);
+			Gear worn = build.get(slot);
+			if (i < 0 || worn != null && (worn.getStyle() == style || worn.getStyle() == null && worn.getPower() > bag.get(i).getGear().getPower()))
+			{
+				continue;
+			}
+			Gear piece = bag.get(i).getGear();
+			bag.set(i, null);
+			putOn(piece, i);
+		}
+	}
+
+	/**
+	 * Wears a piece of gear from an offer or a drop. What it replaces goes in the bag when it is
+	 * still worth keeping: a piece for another style (or any style), a boss item, or a shield
+	 * taken off by a two-handed weapon. Weaker pieces of the same kind in the bag are thrown away.
+	 */
+	private void wear(Gear gear)
+	{
+		discardWeaker(gear);
+		for (Gear old : build.equip(gear))
+		{
+			if (old.getStyle() != gear.getStyle() || old.isUnique() || old.getSlot() != gear.getSlot())
+			{
+				bag.add(Item.gear(old));
+			}
+		}
+		if (gear.getSlot() == Slot.WEAPON)
+		{
+			dress(gear);
+		}
+	}
+
+	/** Puts gear for another style in the bag, in place of a weaker piece of the same kind. */
+	private void store(Gear gear)
+	{
+		discardWeaker(gear);
+		bag.add(Item.gear(gear));
+	}
+
+	/** Throws away bag pieces for the same slot and style that are no better than {@code gear}. */
+	private void discardWeaker(Gear gear)
+	{
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Gear g = bag.get(i) == null ? null : bag.get(i).getGear();
+			if (g != null && g != gear && g.getSlot() == gear.getSlot() && g.getStyle() == gear.getStyle() && !g.isUnique()
+				&& g.getTier() <= gear.getTier())
+			{
+				bag.set(i, null);
+			}
+		}
+	}
+
+	/** Whether the bag has room for what an offer puts in it. */
+	private boolean fits(Offer offer)
+	{
+		int needed = offer.bagSlots();
+		if (needed == 0 || bag.freeSlots() >= needed)
+		{
+			return true;
+		}
+		Gear g = offer.getGear();
+		return g != null && bag.find(g.getSlot(), g.getStyle()) >= 0;
+	}
+
+	/** Styles the player can fight in: the held weapon's, and those of weapons in the bag. */
+	public Set<Style> carriedStyles()
+	{
+		Set<Style> styles = EnumSet.of(build.getStyle());
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Gear g = bag.get(i) == null ? null : bag.get(i).getGear();
+			if (g != null && g.getSlot() == Slot.WEAPON)
+			{
+				styles.add(g.getStyle());
+			}
+		}
+		return styles;
+	}
+
+	/** The strongest piece owned, worn or in the bag, for a slot and style; null for none. */
+	private Gear owned(Slot slot, Style style)
+	{
+		Gear best = null;
+		Gear worn = build.get(slot);
+		if (worn != null && worn.getStyle() == style)
+		{
+			best = worn;
+		}
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Gear g = bag.get(i) == null ? null : bag.get(i).getGear();
+			if (g != null && g.getSlot() == slot && g.getStyle() == style && (best == null || g.getTier() > best.getTier()))
+			{
+				best = g;
+			}
+		}
+		return best;
+	}
+
+	/** Heals from damage dealt, as far as the drain store allows. */
+	private void drain(double wanted)
+	{
+		double healed = Math.min(Math.max(0, wanted), drainStore);
+		if (healed > 0)
+		{
+			drainStore -= healed;
+			player.heal(healed);
 		}
 	}
 
@@ -867,10 +1221,28 @@ public final class GameSession
 		player.heal(build.regenPerSecond() * STEP);
 		redemptionTimer = Math.max(0, redemptionTimer - STEP);
 		retributionTimer = Math.max(0, retributionTimer - STEP);
+		eatTimer = Math.max(0, eatTimer - STEP);
+		comboTimer = Math.max(0, comboTimer - STEP);
+		drinkTimer = Math.max(0, drinkTimer - STEP);
+		if (build.tickPotions(STEP))
+		{
+			applyBuild();
+		}
 
+		boolean hadChampion = getChampion() != null;
 		if (spawning)
 		{
 			spawner.update(STEP, elapsed, player, arena, spawnDistance, enemies);
+		}
+		Enemy champion = getChampion();
+		if (!hadChampion && champion != null)
+		{
+			cue(Cue.at(Cue.Type.CHAMPION_ARRIVES, champion.x, champion.y).withKind(champion.kind));
+		}
+		else if (champion == null && spawner.untilChampion(elapsed - STEP) > CHAMPION_WARNING
+			&& spawner.untilChampion(elapsed) <= CHAMPION_WARNING)
+		{
+			cue(Cue.of(Cue.Type.CHAMPION_WARNING));
 		}
 		moveEnemies();
 		moveShots();
@@ -879,24 +1251,31 @@ public final class GameSession
 			return;
 		}
 
+		int splatsBefore = hitsplats.size();
+		int burstsBefore = bursts.size();
 		List<Enemy> hit = weapon.update(STEP, player, enemies, strikes, hitsplats, bursts, random);
+		cueHits(splatsBefore, weapon.getGear(), null);
 		double dealt = weapon.lastDamage;
+		drainStore = Math.min(player.maxHealth * DRAIN_STORE, drainStore + player.maxHealth * DRAIN_RATE * STEP);
 		if (!hit.isEmpty())
 		{
 			Enemy first = hit.get(0);
 			player.attackAge = 0;
 			player.facing = Math.atan2(first.y - player.y, first.x - player.x);
+			cue(Cue.at(Cue.Type.ATTACK, player.x, player.y).withGear(weapon.getGear()));
 		}
-		dealt += abilities.update(STEP, build, player, weapon.getMaxHit(), enemies, strikes, hitsplats, bursts, random);
-		double lifesteal = build.lifesteal();
-		if (lifesteal > 0 && dealt > 0)
-		{
-			player.heal(dealt * lifesteal);
-		}
+		int abilitySplats = hitsplats.size();
+		int abilityStrikes = strikes.size();
+		int abilityBursts = bursts.size();
+		abilities.update(STEP, build, player, weapon.getAttackHit(), enemies, strikes, hitsplats, bursts, random);
+		cueAbilities(abilityStrikes, abilityBursts);
+		cueHits(abilitySplats, null, Passive.CANNON);
+		// lifesteal comes from weapon hits only; Blood Barrage heals by itself
+		drain(dealt * build.lifesteal() + abilities.drained);
 		removeDeadEnemies();
 		collectOrbs();
 		collectCaskets();
-		strikes.removeIf(s -> (s.remaining -= STEP) <= 0);
+		strikes.removeIf(s -> s.tick(STEP));
 		hitsplats.removeIf(h -> (h.remaining -= STEP) <= 0);
 		corpses.removeIf(c -> (c.remaining -= STEP) <= 0);
 		xpDrops.removeIf(d -> (d.remaining -= STEP) <= 0);
@@ -959,6 +1338,7 @@ public final class GameSession
 				{
 					e.attackTimer = e.kind.attackCooldown;
 					shots.add(new EnemyShot(e.kind.attack, e.x, e.y - 8, player.x, player.y, e.missileDamage * damageScale, range));
+					cue(Cue.at(Cue.Type.ENEMY_SHOT, e.x, e.y).withKind(e.kind).withShot(e.kind.attack));
 				}
 			}
 			// shooters keep creeping in while they shoot, so they can't hide behind the crowd forever
@@ -1158,6 +1538,7 @@ public final class GameSession
 			if (damageTaken >= 0.5)
 			{
 				hitsplats.add(new Effects.Hitsplat(null, (int) Math.round(damageTaken), false));
+				cue(Cue.at(Cue.Type.PLAYER_HURT, player.x, player.y).withValue((int) Math.round(damageTaken)));
 			}
 			damageTaken = 0;
 			splatTimer = PLAYER_SPLAT_INTERVAL;
@@ -1167,11 +1548,12 @@ public final class GameSession
 		{
 			player.health = Math.max(player.health, player.maxHealth / 2);
 			redemptionTimer = REDEMPTION_COOLDOWN;
+			cue(Cue.at(Cue.Type.PRAYER_PROC, player.x, player.y).withPassive(Passive.REDEMPTION));
 		}
 		if (build.rank(Passive.RETRIBUTION) > 0 && retributionTimer <= 0 && !player.isDead()
 			&& player.health < player.maxHealth * RETRIBUTION_THRESHOLD)
 		{
-			double blast = weapon.getMaxHit() * 3;
+			double blast = weapon.getAttackHit() * 3;
 			for (Enemy e : enemies)
 			{
 				if (!e.isDead() && Math.hypot(e.x - player.x, e.y - player.y) <= RETRIBUTION_RADIUS + e.radius)
@@ -1182,6 +1564,7 @@ public final class GameSession
 			}
 			bursts.add(new Effects.Burst(Effects.Burst.Type.EXPLOSION, player.x, player.y, RETRIBUTION_RADIUS));
 			retributionTimer = RETRIBUTION_COOLDOWN;
+			cue(Cue.at(Cue.Type.PRAYER_PROC, player.x, player.y).withPassive(Passive.RETRIBUTION));
 		}
 		if (player.isDead() && revivesLeft > 0)
 		{
@@ -1195,6 +1578,7 @@ public final class GameSession
 				}
 			}
 			bursts.add(new Effects.Burst(Effects.Burst.Type.GOD, player.x, player.y, REVIVE_RADIUS));
+			cue(Cue.at(Cue.Type.REVIVE, player.x, player.y));
 		}
 		if (player.isDead())
 		{
@@ -1208,6 +1592,7 @@ public final class GameSession
 	private void endRun()
 	{
 		phase = Phase.GAME_OVER;
+		cue(Cue.at(Cue.Type.PLAYER_DEATH, player.x, player.y));
 		Double best = bestTimes.get(location);
 		if (best == null || elapsed > best)
 		{
@@ -1237,6 +1622,7 @@ public final class GameSession
 					orbs.add(new XpOrb(e.x + 6, e.y - 6, e.xpValue));
 				}
 				corpses.add(new Effects.Corpse(e));
+				cue(Cue.at(Cue.Type.KILL, e.x, e.y).withKind(e.kind).withValue(e.champion ? 1 : 0).after(e.hitDelay));
 				if (e.champion)
 				{
 					championsSlain++;
@@ -1278,6 +1664,7 @@ public final class GameSession
 		{
 			int xp = Math.max(1, (int) Math.round(gained * build.xpMultiplier()));
 			xpDrops.add(new Effects.XpDrop(xp));
+			cue(Cue.at(Cue.Type.XP, player.x, player.y).withValue(xp));
 			if (progression.addXp(xp) > 0)
 			{
 				// every level makes attacks a little faster straight away
@@ -1309,6 +1696,7 @@ public final class GameSession
 				it.remove();
 				pendingCaskets++;
 				opened = true;
+				cue(Cue.at(Cue.Type.CASKET_PICKUP, c.x, c.y));
 			}
 		}
 		if (opened && phase == Phase.RUNNING)
@@ -1321,13 +1709,15 @@ public final class GameSession
 	/**
 	 * Picks three offers. A level-up gives, when possible, one piece of gear, one passive and one
 	 * more of either; bare-handed players are always offered a weapon, and food may be offered
-	 * when hurt. A casket offers gear only. A ready weapon combination always leads.
+	 * when hurt. A casket offers gear only. A ready weapon combination always leads. Nothing is
+	 * offered that the bag has no room for.
 	 */
 	private void offerChoices(boolean casket)
 	{
 		List<Offer> gear = gearOffers();
+		gear.removeIf(o -> !fits(o));
 		List<Offer> passives = new ArrayList<>();
-		Style style = build.getStyle();
+		Set<Style> styles = carriedStyles();
 		int abilities = 0;
 		for (Passive p : Passive.values())
 		{
@@ -1337,7 +1727,7 @@ public final class GameSession
 		{
 			int rank = build.rank(p);
 			boolean slotFree = !p.isAbility() || rank > 0 || abilities < MAX_ABILITIES;
-			if (slotFree && rank < p.getMaxRank() && (p.getStyle() == null || p.getStyle() == style))
+			if (slotFree && rank < p.getMaxRank() && (p.getStyle() == null || styles.contains(p.getStyle())))
 			{
 				passives.add(Offer.passive(p, rank + 1));
 			}
@@ -1348,7 +1738,7 @@ public final class GameSession
 		// weapon tier (the biggest upgrade) leads some of the time
 		if (build.get(Slot.WEAPON) == null || random.nextDouble() < (casket ? 0.6 : WEAPON_OFFER_CHANCE))
 		{
-			gear.sort((a, b) -> Boolean.compare(b.getGear().getSlot() == Slot.WEAPON, a.getGear().getSlot() == Slot.WEAPON));
+			gear.sort((a, b) -> Integer.compare(weaponRank(a), weaponRank(b)));
 		}
 
 		choices.clear();
@@ -1381,14 +1771,26 @@ public final class GameSession
 			{
 				choices.add(rest.remove(0));
 			}
-			if (player.health < player.maxHealth * FOOD_THRESHOLD && random.nextDouble() < 0.6)
+			Offer food = Offer.food(Food.SHARK, FOOD_COUNT);
+			if (player.health < player.maxHealth * FOOD_THRESHOLD && random.nextDouble() < 0.6 && fits(food))
 			{
 				if (choices.size() == CHOICE_COUNT)
 				{
 					choices.remove(CHOICE_COUNT - 1);
 				}
-				choices.add(Offer.food());
+				choices.add(food);
 			}
+		}
+		// one piece for the bag a screen, so a style that's done still leaves room for potions and food
+		boolean stored = false;
+		for (Iterator<Offer> it = choices.iterator(); it.hasNext(); )
+		{
+			Offer o = it.next();
+			if (o.isStored() && stored && !casket)
+			{
+				it.remove();
+			}
+			stored |= o.isStored();
 		}
 		Combination combination = Combination.ready(build);
 		if (combination != null)
@@ -1407,18 +1809,16 @@ public final class GameSession
 			List<Offer> fillers = new ArrayList<>();
 			for (Boost b : Boost.values())
 			{
-				int had = build.doses(b);
-				if (b.offerable(had, style))
+				if (b.getStyle() == null || styles.contains(b.getStyle()))
 				{
-					fillers.add(Offer.boost(b, had + 1));
+					fillers.add(Offer.boost(b));
 				}
 			}
-			if (player.health < player.maxHealth && !choices.contains(Offer.food()))
-			{
-				fillers.add(Offer.food());
-			}
-			fillers.add(Offer.coins(fillerCoins()));
+			fillers.add(Offer.food(randomFood(), FOOD_COUNT));
+			fillers.removeIf(o -> !fits(o) || choices.contains(o));
 			Collections.shuffle(fillers, random);
+			// the pouch always has a place, so a full bag still leaves something to take
+			fillers.add(random.nextInt(Math.min(CHOICE_COUNT - choices.size(), fillers.size() + 1)), Offer.coins(fillerCoins()));
 			while (choices.size() < CHOICE_COUNT && !fillers.isEmpty())
 			{
 				choices.add(fillers.remove(0));
@@ -1427,11 +1827,25 @@ public final class GameSession
 		phase = Phase.LEVEL_UP;
 	}
 
+	/** Sort key putting the held style's weapons first, then other weapons, then the rest. */
+	private static int weaponRank(Offer o)
+	{
+		return o.getGear().getSlot() != Slot.WEAPON ? 2 : o.isStored() ? 1 : 0;
+	}
+
+	/** Food for a filler offer: sharks most often, anglerfish least. */
+	private Food randomFood()
+	{
+		double roll = random.nextDouble();
+		return roll < 0.4 ? Food.SHARK : roll < 0.65 ? Food.MANTA_RAY : roll < 0.85 ? Food.COOKED_KARAMBWAN : Food.ANGLERFISH;
+	}
+
 	/** Offers the next level's upgrades and starts the level-up show. */
 	private void levelUp()
 	{
 		levelUpTime = 0;
 		offerChoices(false);
+		cue(Cue.at(Cue.Type.LEVEL_UP, player.x, player.y).withValue(progression.getLevel()));
 	}
 
 	/**
@@ -1449,7 +1863,12 @@ public final class GameSession
 		return 10 + 3 * (int) (elapsed / 60);
 	}
 
-	/** Every item that would be an upgrade right now, at most one per slot (two for weapons). */
+	/**
+	 * Every item that would be an upgrade right now, at most one per slot (two for weapons) for
+	 * the held weapon's style. Now and then a weapon for another style is offered for the bag, and
+	 * once one is there, upgrades for that style come too (also for the bag), so a run can switch
+	 * between styles and still has more to find late on.
+	 */
 	private List<Offer> gearOffers()
 	{
 		List<Offer> offers = new ArrayList<>();
@@ -1464,67 +1883,118 @@ public final class GameSession
 		}
 		else
 		{
-			addPick(offers, Gear.at(Slot.WEAPON, style, weapon.getTier() + 1));
+			addPick(offers, Gear.at(Slot.WEAPON, style, weapon.getTier() + 1), false);
 			// a combined or boss weapon outclasses everything else at its tier, its base included
-			boolean special = weapon.isUnique();
-			if (!special && random.nextDouble() < SIDEGRADE_CHANCE)
+			if (!weapon.isUnique() && random.nextDouble() < SIDEGRADE_CHANCE)
 			{
 				List<Gear> same = Gear.at(Slot.WEAPON, style, weapon.getTier());
 				same.remove(weapon);
-				addPick(offers, same);
+				addPick(offers, same, false);
 			}
-			if (!special && progression.getLevel() < STYLE_SWITCH_MAX_LEVEL && random.nextDouble() < STYLE_SWITCH_CHANCE)
+			if (random.nextDouble() < STYLE_SWITCH_CHANCE)
 			{
-				// a sidegrade into another style at a similar tier
+				// a weapon for another style, a little weaker, or the next one up from the bag's
 				Style other = Style.values()[(style.ordinal() + 1 + random.nextInt(2)) % Style.values().length];
-				addPick(offers, Gear.at(Slot.WEAPON, other, weapon.getTier()));
+				Gear have = owned(Slot.WEAPON, other);
+				addPick(offers, Gear.at(Slot.WEAPON, other, have == null ? Math.max(1, weapon.getTier() - 1) : have.getTier() + 1), true);
 			}
 		}
+		addArmour(offers, style, false, 1);
+		List<Style> others = new ArrayList<>(carriedStyles());
+		others.remove(style);
+		if (!others.isEmpty())
+		{
+			Style other = others.get(random.nextInt(others.size()));
+			Gear have = owned(Slot.WEAPON, other);
+			if (have != null && random.nextDouble() < OFF_STYLE_CHANCE)
+			{
+				addPick(offers, Gear.at(Slot.WEAPON, other, have.getTier() + 1), true);
+			}
+			addArmour(offers, other, true, OFF_STYLE_CHANCE);
+		}
+		return offers;
+	}
+
+	/**
+	 * Armour, shields and accessories for one style, each slot offered with {@code chance}: worn
+	 * at once for the held weapon's style, or {@code stored} in the bag for another.
+	 */
+	private void addArmour(List<Offer> offers, Style style, boolean stored, double chance)
+	{
+		Gear weapon = stored ? owned(Slot.WEAPON, style) : build.get(Slot.WEAPON);
 		for (Slot slot : new Slot[]{Slot.HEAD, Slot.BODY, Slot.LEGS, Slot.SHIELD})
 		{
-			if (slot == Slot.SHIELD && weapon != null && weapon.isTwoHanded())
+			if (slot == Slot.SHIELD && weapon != null && weapon.isTwoHanded() || chance < 1 && random.nextDouble() >= chance)
 			{
 				continue;
 			}
 			int top = Gear.topTier(slot, style);
+			Gear mine = owned(slot, style);
 			Gear current = build.get(slot);
 			int tier;
-			if (current == null)
+			if (mine != null)
+			{
+				tier = mine.getTier() + 1;
+			}
+			else if (current == null)
 			{
 				tier = 1;
 			}
-			else if (current.getStyle() != style)
+			else
 			{
 				// swap into this style's armour of about the same strength (or out of Void robes)
 				tier = (int) Math.max(1, Math.round(current.getPower() * top) + (current.getStyle() == null ? 1 : 0));
 			}
-			else
-			{
-				tier = current.getTier() + 1;
-			}
 			List<Gear> candidates = Gear.at(slot, style, Math.min(tier, top + 1));
-			candidates.removeIf(g -> g.getStyle() == null && g.getTier() == 0);
-			if ((slot == Slot.BODY || slot == Slot.LEGS) && current != null && current.getStyle() != null
+			candidates.removeIf(g -> g.getStyle() == null && (stored || g.getTier() == 0));
+			if (!stored && (slot == Slot.BODY || slot == Slot.LEGS) && current != null && current.getStyle() != null
 				&& current.getPower() >= 0.3 && current.getPower() < 0.6 && random.nextDouble() < VOID_CHANCE)
 			{
 				candidates.clear();
 				candidates.add(slot == Slot.BODY ? Gear.VOID_KNIGHT_TOP : Gear.VOID_KNIGHT_ROBE);
 			}
-			addPick(offers, candidates);
+			addPick(offers, candidates, stored);
 		}
 		for (Slot slot : new Slot[]{Slot.CAPE, Slot.NECK, Slot.HANDS, Slot.FEET, Slot.RING, Slot.AMMO})
 		{
+			if (chance < 1 && random.nextDouble() >= chance)
+			{
+				continue;
+			}
+			Gear mine = owned(slot, style);
 			Gear current = build.get(slot);
-			int tier = current == null ? 1 : current.getStyle() != null && current.getStyle() != style ? current.getTier() : current.getTier() + 1;
+			int tier;
+			if (mine != null)
+			{
+				tier = mine.getTier() + 1;
+			}
+			else if (current == null)
+			{
+				tier = 1;
+			}
+			else if (stored || current.getStyle() == style)
+			{
+				// for the bag: this style's piece above an any-style one, or level with another style's
+				tier = current.getTier() + (current.getStyle() == null || current.getStyle() == style ? 1 : 0);
+			}
+			else
+			{
+				// another style's piece: this style's of the same tier; an any-style piece: the next one up
+				tier = current.getStyle() != null ? current.getTier() : current.getTier() + 1;
+			}
 			List<Gear> candidates = Gear.at(slot, style, tier);
 			candidates.remove(current);
-			addPick(offers, candidates);
+			if (stored)
+			{
+				// the bag only needs what is made for the style; any-style pieces are worn already
+				candidates.removeIf(g -> g.getStyle() != style);
+			}
+			addPick(offers, candidates, stored);
 		}
-		return offers;
 	}
 
 	/** Adds one of the candidates, favouring pieces of sets the player has started. */
-	private void addPick(List<Offer> offers, List<Gear> candidates)
+	private void addPick(List<Offer> offers, List<Gear> candidates, boolean stored)
 	{
 		if (candidates.isEmpty())
 		{
@@ -1539,16 +2009,17 @@ public final class GameSession
 			total += weights[i];
 		}
 		double roll = random.nextDouble() * total;
+		Gear pick = candidates.get(weights.length - 1);
 		for (int i = 0; i < weights.length; i++)
 		{
 			roll -= weights[i];
 			if (roll < 0)
 			{
-				offers.add(Offer.gear(candidates.get(i)));
-				return;
+				pick = candidates.get(i);
+				break;
 			}
 		}
-		offers.add(Offer.gear(candidates.get(weights.length - 1)));
+		offers.add(stored ? Offer.stored(pick) : Offer.gear(pick));
 	}
 
 	private boolean wearsPieceOf(GearSet set)
@@ -1645,6 +2116,122 @@ public final class GameSession
 	public List<EnemyShot> getShots()
 	{
 		return Collections.unmodifiableList(shots);
+	}
+
+	// ---------------------------------------------------------------- cues
+
+	/** Most cues kept between takes, so a page that stops looking can't make the list grow for ever. */
+	static final int MAX_CUES = 512;
+
+	private void cue(Cue c)
+	{
+		if (cues.size() >= MAX_CUES)
+		{
+			cues.remove(0);
+		}
+		cues.add(c);
+	}
+
+	/**
+	 * What happened since the last call, oldest first: hits, kills, pickups, level-ups and so on,
+	 * for sounds and screen effects. Empties the list.
+	 */
+	public List<Cue> takeCues()
+	{
+		List<Cue> taken = new ArrayList<>(cues);
+		cues.clear();
+		return taken;
+	}
+
+	/** An impact cue for each hitsplat added since {@code from}, timed to when it lands. */
+	private void cueHits(int from, Gear gear, Passive ability)
+	{
+		for (int i = from; i < hitsplats.size(); i++)
+		{
+			Effects.Hitsplat h = hitsplats.get(i);
+			Enemy e = h.target;
+			if (e == null)
+			{
+				continue;
+			}
+			Cue c = Cue.at(Cue.Type.IMPACT, e.x, e.y).withKind(e.kind).withValue(h.damage).after(h.delay);
+			cue(ability != null ? c.withPassive(ability) : c.withGear(gear));
+		}
+	}
+
+	/** Ability cues for the abilities' new missiles and area spells. */
+	private void cueAbilities(int strikesFrom, int burstsFrom)
+	{
+		for (int i = strikesFrom; i < strikes.size(); i++)
+		{
+			Strike s = strikes.get(i);
+			Passive p = s.source == Strike.Source.CANNON ? Passive.CANNON : s.source == Strike.Source.THRALL ? Passive.THRALLS
+				: s.source == Strike.Source.CHINCHOMPA ? Passive.CHINCHOMPAS : null;
+			if (p != null)
+			{
+				cue(Cue.at(Cue.Type.ABILITY, s.fromX, s.fromY).withPassive(p));
+			}
+			if (p == Passive.CHINCHOMPAS)
+			{
+				// the blast, as the chinchompa lands
+				cue(Cue.at(Cue.Type.ABILITY, s.toX, s.toY).withPassive(p).withValue(1).after(s.flight));
+			}
+		}
+		for (int i = burstsFrom; i < bursts.size(); i++)
+		{
+			Effects.Burst b = bursts.get(i);
+			Passive p;
+			switch (b.type)
+			{
+				case ICE:
+					p = Passive.ICE_BARRAGE;
+					break;
+				case BLOOD:
+					p = Passive.BLOOD_BARRAGE;
+					break;
+				case GOD:
+					p = Passive.GOD_SPELLS;
+					break;
+				case DRAGONFIRE:
+					p = Passive.DRAGONFIRE;
+					break;
+				default:
+					// chinchompa blasts are heard as their missiles' impacts
+					p = null;
+					break;
+			}
+			if (p != null)
+			{
+				// value 1: an area going off, where it lands
+				cue(Cue.at(Cue.Type.ABILITY, b.x, b.y).withPassive(p).withValue(1));
+			}
+		}
+	}
+
+	private static boolean[] reelsStopped(BossDrop drop)
+	{
+		boolean[] stopped = new boolean[drop.reelCount()];
+		for (int i = 0; i < stopped.length; i++)
+		{
+			stopped[i] = drop.isStopped(i);
+		}
+		return stopped;
+	}
+
+	/** Cues for reels that stopped since {@code before}, and for the prize once all have. */
+	private void cueReels(BossDrop drop, boolean[] before, boolean wasSpinning)
+	{
+		for (int i = 0; i < before.length; i++)
+		{
+			if (!before[i] && drop.isStopped(i))
+			{
+				cue(Cue.of(Cue.Type.REEL_STOP).withValue(i));
+			}
+		}
+		if (wasSpinning && !drop.isSpinning())
+		{
+			cue(Cue.of(Cue.Type.DROP_REVEALED).withValue(drop.getRarity().ordinal()));
+		}
 	}
 
 	public List<Strike> getStrikes()

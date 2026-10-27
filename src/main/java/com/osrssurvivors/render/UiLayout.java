@@ -6,11 +6,14 @@ import com.osrssurvivors.game.Changelog;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.GearSet;
+import com.osrssurvivors.game.Inventory;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.Option;
+import com.osrssurvivors.game.Volume;
 import com.osrssurvivors.game.Passive;
 import com.osrssurvivors.game.Perk;
 import com.osrssurvivors.game.Pet;
+import com.osrssurvivors.game.Phase;
 import com.osrssurvivors.game.TitleScreen;
 import com.osrssurvivors.game.Slot;
 import java.awt.Point;
@@ -36,6 +39,11 @@ public final class UiLayout
 		OPTIONS,
 		/** Turns the option with this ordinal on or off. */
 		TOGGLE_OPTION,
+		/** Turns the volume with this ordinal down or up a step. */
+		VOLUME_DOWN,
+		VOLUME_UP,
+		/** The volume with this ordinal's bar: clicked, it sets the level where it was clicked ({@link #volumeAt}). */
+		VOLUME_BAR,
 		CLOSE_OPTIONS,
 		/** Opens the changelog. */
 		CHANGELOG,
@@ -149,6 +157,13 @@ public final class UiLayout
 	static final int DEV_BUTTON_W = 96;
 	/** One setting on the options page: its name and state, and a line describing it. */
 	static final int OPTION_H = 44;
+	/** A setting without its description, when the window is too short for them. */
+	static final int OPTION_SHORT_H = 28;
+	/** One volume row: its name, then a minus button, the level's bar and a plus button. */
+	static final int VOLUME_H = 26;
+	static final int VOLUME_GAP = 6;
+	static final int VOLUME_BUTTON_W = 26;
+	static final int VOLUME_BAR_W = 150;
 	static final int OPTIONS_W = 420;
 	static final int TITLE_BUTTON_W = 220;
 	/** Line under the menu title (tagline, loading status, hovered location's description). */
@@ -171,6 +186,16 @@ public final class UiLayout
 	static final int REEL_GAP = 12;
 	/** Prize name and description under the reels. */
 	static final int PRIZE_H = 52;
+	// the bag: four columns of seven, item pictures 36 x 32 like the game's inventory
+	public static final int BAG_COLS = 4;
+	static final int BAG_SLOT_W = 36;
+	static final int BAG_SLOT_H = 32;
+	static final int BAG_GAP_X = 6;
+	static final int BAG_GAP_Y = 4;
+	static final int BAG_PAD = 6;
+	public static final int BAG_HEAD = 16;
+	/** Room left under the bag for the controls line. */
+	static final int BAG_BOTTOM = 18;
 
 	private UiLayout()
 	{
@@ -184,7 +209,7 @@ public final class UiLayout
 		if (session.isOptionsOpen())
 		{
 			w = OPTIONS_W;
-			h = TITLE_H + SUBTITLE_H + Option.values().length * (OPTION_H + GAP) + BUTTON_H + PAD;
+			h = optionsHeight(optionRowHeight(view), optionColumns(view));
 			w = Math.min(w, view.width);
 			h = Math.min(h, view.height);
 			return new Rectangle(view.x + (view.width - w) / 2, view.y + (view.height - h) / 2, w, h);
@@ -234,7 +259,59 @@ public final class UiLayout
 		}
 		w = Math.min(w, view.width);
 		h = Math.min(h, view.height);
-		return new Rectangle(view.x + (view.width - w) / 2, view.y + (view.height - h) / 2, w, h);
+		int x = view.x + (view.width - w) / 2;
+		Rectangle bag = bag(view, session);
+		if (bag != null && x + w + GAP > bag.x)
+		{
+			// the pause screen steps aside for the bag
+			x = Math.max(view.x, bag.x - GAP - w);
+		}
+		return new Rectangle(x, view.y + (view.height - h) / 2, w, h);
+	}
+
+	/** The bag panel, shown while playing and paused; null when hidden. */
+	public static Rectangle bag(Rectangle view, GameSession session)
+	{
+		Phase phase = session.getPhase();
+		if (!session.isBagShown() || session.isOptionsOpen() || phase != Phase.RUNNING && phase != Phase.PAUSED)
+		{
+			return null;
+		}
+		int rows = Inventory.SIZE / BAG_COLS;
+		int w = BAG_COLS * BAG_SLOT_W + (BAG_COLS - 1) * BAG_GAP_X + 2 * BAG_PAD;
+		int h = BAG_HEAD + rows * BAG_SLOT_H + (rows - 1) * BAG_GAP_Y + 2 * BAG_PAD;
+		if (w + 16 > view.width || h + BAG_BOTTOM + 120 > view.height)
+		{
+			return null;
+		}
+		return new Rectangle(view.x + view.width - 8 - w, view.y + view.height - BAG_BOTTOM - h, w, h);
+	}
+
+	/** Where a bag slot is drawn. */
+	public static Rectangle bagSlot(Rectangle bag, int index)
+	{
+		int col = index % BAG_COLS;
+		int row = index / BAG_COLS;
+		return new Rectangle(bag.x + BAG_PAD + col * (BAG_SLOT_W + BAG_GAP_X), bag.y + BAG_PAD + BAG_HEAD + row * (BAG_SLOT_H + BAG_GAP_Y),
+			BAG_SLOT_W, BAG_SLOT_H);
+	}
+
+	/** The bag slot under a point, or -1. Bag slots are not {@link #buttons}: they are clicked, dragged and dropped. */
+	public static int bagSlotAt(Rectangle view, GameSession session, Point point)
+	{
+		Rectangle bag = bag(view, session);
+		if (bag == null || point == null)
+		{
+			return -1;
+		}
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			if (bagSlot(bag, i).contains(point))
+			{
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	public static List<Button> buttons(Rectangle view, GameSession session)
@@ -249,11 +326,32 @@ public final class UiLayout
 		if (session.isOptionsOpen())
 		{
 			int y = panel.y + TITLE_H + SUBTITLE_H;
+			int rowH = optionRowHeight(view);
+			int inner = panel.width - 2 * PAD;
+			for (Volume v : Volume.values())
+			{
+				int right = panel.x + panel.width - PAD;
+				int barW = Math.min(VOLUME_BAR_W, Math.max(40, inner / 2 - 2 * VOLUME_BUTTON_W));
+				Rectangle plus = new Rectangle(right - VOLUME_BUTTON_W, y, VOLUME_BUTTON_W, VOLUME_H);
+				Rectangle bar = new Rectangle(plus.x - 4 - barW, y, barW, VOLUME_H);
+				Rectangle minus = new Rectangle(bar.x - 4 - VOLUME_BUTTON_W, y, VOLUME_BUTTON_W, VOLUME_H);
+				buttons.add(new Button(Action.VOLUME_DOWN, v.ordinal(), minus, "-"));
+				buttons.add(new Button(Action.VOLUME_BAR, v.ordinal(), bar, v.getTitle()));
+				buttons.add(new Button(Action.VOLUME_UP, v.ordinal(), plus, "+"));
+				y += VOLUME_H + VOLUME_GAP;
+			}
+			y += GAP - VOLUME_GAP;
+			int cols = optionColumns(view);
+			int colW = (inner - (cols - 1) * GAP) / cols;
 			for (Option o : Option.values())
 			{
+				int col = o.ordinal() % cols;
 				buttons.add(new Button(Action.TOGGLE_OPTION, o.ordinal(),
-					new Rectangle(panel.x + PAD, y, panel.width - 2 * PAD, OPTION_H), o.getTitle()));
-				y += OPTION_H + GAP;
+					new Rectangle(panel.x + PAD + col * (colW + GAP), y, colW, rowH), o.getTitle()));
+				if (col == cols - 1 || o.ordinal() == Option.values().length - 1)
+				{
+					y += rowH + GAP;
+				}
 			}
 			int bw = Math.min(BUTTON_W, panel.width - 2 * PAD);
 			buttons.add(new Button(Action.CLOSE_OPTIONS, 0, new Rectangle(panel.x + (panel.width - bw) / 2, bottom - BUTTON_H, bw, BUTTON_H),
@@ -494,6 +592,33 @@ public final class UiLayout
 		return RELEASE_HEAD + r.notes.size() * NOTE_H + RELEASE_PAD;
 	}
 
+	/** Height of the options page with setting rows {@code rowH} high in {@code cols} columns. */
+	private static int optionsHeight(int rowH, int cols)
+	{
+		int rows = (Option.values().length + cols - 1) / cols;
+		return TITLE_H + SUBTITLE_H + Volume.values().length * (VOLUME_H + VOLUME_GAP) + GAP - VOLUME_GAP
+			+ rows * (rowH + GAP) + BUTTON_H + PAD;
+	}
+
+	/** Setting rows keep their descriptions when the window has room for them. */
+	static int optionRowHeight(Rectangle view)
+	{
+		return optionsHeight(OPTION_H, 1) <= view.height ? OPTION_H : OPTION_SHORT_H;
+	}
+
+	/** Settings go side by side in two columns when even short rows don't fit one above another. */
+	static int optionColumns(Rectangle view)
+	{
+		return optionsHeight(OPTION_SHORT_H, 1) <= view.height ? 1 : 2;
+	}
+
+	/** The volume level a click on a volume bar asks for: 0 at its left end, {@link Volume#MAX} at its right. */
+	public static int volumeAt(Button bar, Point click)
+	{
+		double f = (click.x - bar.bounds.x) / (double) Math.max(1, bar.bounds.width);
+		return Math.max(0, Math.min(Volume.MAX, (int) Math.round(f * Volume.MAX)));
+	}
+
 	public static Button buttonAt(Rectangle view, GameSession session, Point point)
 	{
 		if (point == null)
@@ -583,9 +708,10 @@ public final class UiLayout
 			y += SECTION_HEAD + sets.size() * SECTION_LINE + 6;
 		}
 		List<String> potions = new ArrayList<>();
-		for (Map.Entry<Boost, Integer> e : build.getDoses().entrySet())
+		for (Map.Entry<Boost, Double> e : build.getPotions().entrySet())
 		{
-			potions.add(e.getKey().getTitle() + " ×" + e.getValue());
+			int left = (int) Math.ceil(e.getValue());
+			potions.add(e.getKey().getTitle() + ": " + e.getKey().getEffect().toLowerCase() + " (" + left + " s)");
 		}
 		if (!potions.isEmpty())
 		{

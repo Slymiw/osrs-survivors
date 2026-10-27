@@ -1,12 +1,49 @@
 {
   "icons": {
-    "boost.ANTIFIRE": "i2452",
-    "boost.DIVINE_MAGIC": "i23745",
-    "boost.DIVINE_RANGING": "i23733",
-    "boost.DIVINE_SUPER_COMBAT": "i23685",
-    "boost.SARADOMIN_BREW": "i6685",
-    "boost.STAMINA": "i12625",
-    "boost.SUPER_RESTORE": "i3024",
+    "boost.ANTIFIRE.1": "i21987",
+    "boost.ANTIFIRE.2": "i21984",
+    "boost.ANTIFIRE.3": "i21981",
+    "boost.ANTIFIRE.4": "i21978",
+    "boost.DIVINE_MAGIC.1": "i23754",
+    "boost.DIVINE_MAGIC.2": "i23751",
+    "boost.DIVINE_MAGIC.3": "i23748",
+    "boost.DIVINE_MAGIC.4": "i23745",
+    "boost.DIVINE_RANGING.1": "i23742",
+    "boost.DIVINE_RANGING.2": "i23739",
+    "boost.DIVINE_RANGING.3": "i23736",
+    "boost.DIVINE_RANGING.4": "i23733",
+    "boost.DIVINE_SUPER_COMBAT.1": "i23694",
+    "boost.DIVINE_SUPER_COMBAT.2": "i23691",
+    "boost.DIVINE_SUPER_COMBAT.3": "i23688",
+    "boost.DIVINE_SUPER_COMBAT.4": "i23685",
+    "boost.LIQUID_ADRENALINE.1": "i27341",
+    "boost.LIQUID_ADRENALINE.2": "i27339",
+    "boost.LIQUID_ADRENALINE.3": "i27339",
+    "boost.LIQUID_ADRENALINE.4": "i27339",
+    "boost.SARADOMIN_BREW.1": "i6691",
+    "boost.SARADOMIN_BREW.2": "i6689",
+    "boost.SARADOMIN_BREW.3": "i6687",
+    "boost.SARADOMIN_BREW.4": "i6685",
+    "boost.SMELLING_SALTS.1": "i27345",
+    "boost.SMELLING_SALTS.2": "i27343",
+    "boost.SMELLING_SALTS.3": "i27343",
+    "boost.SMELLING_SALTS.4": "i27343",
+    "boost.STAMINA.1": "i12631",
+    "boost.STAMINA.2": "i12629",
+    "boost.STAMINA.3": "i12627",
+    "boost.STAMINA.4": "i12625",
+    "boost.SUPER_DEFENCE.1": "i167",
+    "boost.SUPER_DEFENCE.2": "i165",
+    "boost.SUPER_DEFENCE.3": "i163",
+    "boost.SUPER_DEFENCE.4": "i2442",
+    "boost.SUPER_RESTORE.1": "i3030",
+    "boost.SUPER_RESTORE.2": "i3028",
+    "boost.SUPER_RESTORE.3": "i3026",
+    "boost.SUPER_RESTORE.4": "i3024",
+    "food.ANGLERFISH": "i13441",
+    "food.COOKED_KARAMBWAN": "i3144",
+    "food.MANTA_RAY": "i391",
+    "food.SHARK": "i385",
     "gear.ABYSSAL_TENTACLE": "i12006",
     "gear.ABYSSAL_WHIP": "i4151",
     "gear.ACCURSED_SCEPTRE": "i27665",
@@ -254,7 +291,6 @@
     "location.VARROCK": "i8007",
     "location.WILDERNESS": "i964",
     "offer.coins": "i1002",
-    "offer.food": "i385",
     "passive.AGILITY.0": "s204",
     "passive.AGILITY.1": "s204",
     "passive.AGILITY.2": "s204",
@@ -1213,14 +1249,6 @@
         ],
         "attack": 390
       },
-      "SCYTHE_OF_VITUR": {
-        "model": "gear.SCYTHE_OF_VITUR",
-        "slot": 3,
-        "hides": [
-          5
-        ],
-        "attack": 8056
-      },
       "SOULREAPER_AXE": {
         "model": "gear.SOULREAPER_AXE",
         "slot": 3,
@@ -1355,13 +1383,13 @@
         "hides": [],
         "attack": 4230
       },
-      "TWISTED_BOW": {
-        "model": "gear.TWISTED_BOW",
+      "ASCENSION_CROSSBOWS": {
+        "model": "gear.ASCENSION_CROSSBOWS",
         "slot": 3,
         "hides": [
           5
         ],
-        "attack": 426
+        "attack": 15115
       },
       "STAFF_OF_AIR": {
         "model": "gear.STAFF_OF_AIR",
@@ -1465,13 +1493,13 @@
         "hides": [],
         "attack": 727
       },
-      "TUMEKENS_SHADOW": {
-        "model": "gear.TUMEKENS_SHADOW",
+      "ZORYAS_TOME": {
+        "model": "gear.ZORYAS_TOME",
         "slot": 3,
         "hides": [
           5
         ],
-        "attack": 9493
+        "attack": 727
       },
       "ABYSSAL_TENTACLE": {
         "model": "gear.ABYSSAL_TENTACLE",
@@ -2445,6 +2473,14 @@
         "slot": 1,
         "hides": []
       },
+      "SCYTHE_OF_VITUR": {
+        "model": "gear.SCYTHE_OF_VITUR",
+        "slot": 3,
+        "hides": [
+          5
+        ],
+        "attack": 8056
+      },
       "OBLIGATOR": {
         "model": "gear.OBLIGATOR",
         "slot": 3,
@@ -2453,21 +2489,21 @@
         ],
         "attack": 15122
       },
-      "ASCENSION_CROSSBOWS": {
-        "model": "gear.ASCENSION_CROSSBOWS",
+      "TWISTED_BOW": {
+        "model": "gear.TWISTED_BOW",
         "slot": 3,
         "hides": [
           5
         ],
-        "attack": 15115
+        "attack": 426
       },
-      "ZORYAS_TOME": {
-        "model": "gear.ZORYAS_TOME",
+      "TUMEKENS_SHADOW": {
+        "model": "gear.TUMEKENS_SHADOW",
         "slot": 3,
         "hides": [
           5
         ],
-        "attack": 727
+        "attack": 9493
       }
     },
     "punch": 422,
@@ -2475,5 +2511,5 @@
     "walk": 819
   },
   "itemOffset": 2048,
-  "modelsVersion": 1
+  "modelsVersion": 2
 }

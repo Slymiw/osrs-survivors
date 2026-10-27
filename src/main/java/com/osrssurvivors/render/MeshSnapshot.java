@@ -1,9 +1,9 @@
 package com.osrssurvivors.render;
 
 /**
- * A triangle mesh copied out of the game client, with one resolved colour per face. Coordinates
- * use the game's model space: x east, y down (negative is up), z north; unrotated models face
- * south (-z).
+ * A triangle mesh copied out of the game client, with one resolved colour per face, and for worn
+ * items the textured faces that are drawn with their texture. Coordinates use the game's model
+ * space: x east, y down (negative is up), z north; unrotated models face south (-z).
  */
 public final class MeshSnapshot
 {
@@ -15,9 +15,17 @@ public final class MeshSnapshot
 	final int[] c;
 	/** ARGB per face; alpha 0 means don't draw. */
 	final int[] argb;
+	/** Faces drawn with a texture instead of their colour; null for none. */
+	final FaceTextures textures;
 
 	public MeshSnapshot(float[] x, float[] y, float[] z, int[] a, int[] b, int[] c, int[] argb)
 	{
+		this(x, y, z, a, b, c, argb, null);
+	}
+
+	public MeshSnapshot(float[] x, float[] y, float[] z, int[] a, int[] b, int[] c, int[] argb, FaceTextures textures)
+	{
+		this.textures = textures;
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -75,7 +83,7 @@ public final class MeshSnapshot
 	/** The same mesh with new x and z vertex positions (heights and faces unchanged). */
 	public MeshSnapshot withPositions(float[] newX, float[] newZ)
 	{
-		return new MeshSnapshot(newX, y, newZ, a, b, c, argb);
+		return new MeshSnapshot(newX, y, newZ, a, b, c, argb, textures);
 	}
 
 	/** The same mesh made {@code factor} times bigger (or smaller) in every direction. */
@@ -90,7 +98,7 @@ public final class MeshSnapshot
 			ny[i] = (float) (y[i] * factor);
 			nz[i] = (float) (z[i] * factor);
 		}
-		return new MeshSnapshot(nx, ny, nz, a, b, c, argb);
+		return new MeshSnapshot(nx, ny, nz, a, b, c, argb, textures);
 	}
 
 	/** Two meshes drawn as one. */
@@ -123,6 +131,7 @@ public final class MeshSnapshot
 			c[pf + i] = q.c[i] + nv;
 			argb[pf + i] = q.argb[i];
 		}
-		return new MeshSnapshot(x, y, z, a, b, c, argb);
+		return new MeshSnapshot(x, y, z, a, b, c, argb,
+			FaceTextures.join(p.textures, q.textures == null ? null : q.textures.shifted(pf)));
 	}
 }

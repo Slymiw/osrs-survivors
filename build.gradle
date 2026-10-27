@@ -68,7 +68,8 @@ tasks.named('test') {
 teavm {
 	js {
 		mainClass = 'com.osrssurvivors.web.WebMain'
-		obfuscated = true
+		// -Preadable keeps names in game.js, for reading stack traces
+		obfuscated = !project.hasProperty('readable')
 		optimization = org.teavm.gradle.api.OptimizationLevel.AGGRESSIVE
 		targetFileName = 'game.js'
 	}
@@ -87,6 +88,19 @@ tasks.register('exportAssets', JavaExec) {
 	args cacheDir.get(), assetsDir.path
 }
 
+tasks.register('exportSounds', JavaExec) {
+	group = 'build'
+	description = 'Exports the sound effects from a local OSRS cache into src/main/webapp/assets/sounds.js (-PsoundWavs=<dir> also writes WAVs).'
+	classpath = sourceSets.export.runtimeClasspath
+	mainClass = 'com.osrssurvivors.SoundExport'
+	def wavs = providers.gradleProperty('soundWavs')
+	args = [cacheDir.get(), assetsDir.path] + (wavs.isPresent() ? [wavs.get()] : [])
+}
+
+tasks.named('exportAssets') {
+	finalizedBy 'exportSounds'
+}
+
 // the playable page: index.html, game.js and the committed artwork
 tasks.register('dist', Sync) {
 	group = 'build'
@@ -97,8 +111,15 @@ tasks.register('dist', Sync) {
 			throw new GradleException("The artwork is missing; export it from an OSRS cache with: ./gradlew exportAssets")
 		}
 	}
+	// a new build number in the script addresses, so browsers never keep an old game.js or old
+	// artwork after an update
+	def stamp = String.valueOf(System.currentTimeMillis())
+	inputs.property('build', stamp)
 	from('src/main/webapp') {
 		exclude 'assets/manifest.json'
+		filesMatching('index.html') {
+			filter { String line -> line.replace('@BUILD@', stamp) }
+		}
 	}
 	from(layout.buildDirectory.dir('generated/teavm/js')) {
 		include 'game.js'

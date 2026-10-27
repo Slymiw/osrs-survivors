@@ -114,7 +114,8 @@ final class Spawner
 	/** The boss for a run's {@code index}th champion (0-based) at a difficulty. */
 	static EnemyKind boss(int difficulty, int index, Random random)
 	{
-		int start = Math.min(BOSSES.length - BOSS_WINDOW, BOSS_STEP * (Math.max(1, difficulty) - 1 + index));
+		// a champion summoned early (the developer tool) comes before the first: count it as the first
+		int start = Math.min(BOSSES.length - BOSS_WINDOW, BOSS_STEP * (Math.max(1, difficulty) - 1 + Math.max(0, index)));
 		return BOSSES[start + random.nextInt(BOSS_WINDOW)];
 	}
 

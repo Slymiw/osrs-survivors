@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.osrssurvivors.game.Arena;
 import com.osrssurvivors.game.Boost;
+import com.osrssurvivors.game.Food;
 import com.osrssurvivors.game.EnemyKind;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.Location;
@@ -36,7 +37,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
 import net.runelite.api.PlayerComposition;
@@ -101,7 +104,10 @@ public final class WebExport
 	private static final double TEXTURE_LIGHT = 80;
 
 	/** Blob format version, checked by the browser. */
-	static final int MODELS_VERSION = 1;
+	static final int MODELS_VERSION = 2;
+	/** Edge of a texture as the client loads it, and as exported for worn items (smaller, still sharp on a sprite). */
+	private static final int TEXTURE_SIZE = 128;
+	private static final int EXPORTED_TEXTURE_SIZE = 64;
 
 	private final Store store;
 	private final Storage storage;
@@ -117,6 +123,10 @@ public final class WebExport
 	private final Map<Integer, ArchiveFiles> configGroups = new HashMap<>();
 	private final Map<Integer, Integer> configRevisions = new HashMap<>();
 	private final Map<Integer, TextureDefinition> textureDefs = new HashMap<>();
+	/** Texture pixels by texture id, loaded on first use; an empty array when they can't be. */
+	private final Map<Integer, int[]> texturePixels = new HashMap<>();
+	/** Textures drawn on worn items, written after the models. */
+	private final Set<Integer> usedTextures = new TreeSet<>();
 	private final Map<Integer, FramemapDefinition> framemaps = new TreeMap<>();
 	private final Map<Integer, SequenceDefinition> sequences = new TreeMap<>();
 	/** Lit, animatable models by name, in the order written. */
@@ -138,6 +148,11 @@ public final class WebExport
 		int[] b;
 		int[] c;
 		int[] argb;
+		/** Textured faces (worn items only): texture id, u and v at each corner, and light at each corner. */
+		int[] texFaces = new int[0];
+		int[] texIds = new int[0];
+		float[][] texUv = new float[0][];
+		float[][] texLight = new float[0][];
 
 		int vertexCount()
 		{
@@ -287,10 +302,16 @@ public final class WebExport
 		}
 		// offer and prize icons (GearArt.prizeItem)
 		icon("offer.coins", item(ItemID.COINS_250));
-		icon("offer.food", item(ItemID.SHARK));
+		for (Food food : Food.values())
+		{
+			icon("food." + food.name(), item(GearArt.foodItem(food)));
+		}
 		for (Boost boost : Boost.values())
 		{
-			icon("boost." + boost.name(), item(GearArt.boostItem(boost)));
+			for (int doses = 1; doses <= Boost.DOSES; doses++)
+			{
+				icon("boost." + boost.name() + "." + doses, item(GearArt.boostItem(boost, doses)));
+			}
 		}
 		icon("prize.coins", item(ItemID.COINS_10000));
 		icon("prize.lamp", item(ItemID.MACRO_GENILAMP));
@@ -592,6 +613,15 @@ public final class WebExport
 	 */
 	private LitModel light(ModelDefinition m, int[] light)
 	{
+		return light(m, light, false);
+	}
+
+	/**
+	 * @param textured keep textured faces' mapping so the browser can draw the texture itself
+	 *                 (worn items: capes, whose lava also flows)
+	 */
+	private LitModel light(ModelDefinition m, int[] light, boolean textured)
+	{
 		int ambient = light[0];
 		int contrast = light[1];
 		int lx = light[2];
@@ -601,6 +631,25 @@ public final class WebExport
 		int magnitude = (int) Math.sqrt(lx * lx + ly * ly + lz * lz);
 		int k = magnitude * contrast >> 8;
 		int faces = m.faceCount;
+		float[][] us = null;
+		float[][] vs = null;
+		if (textured && m.faceTextures != null)
+		{
+			try
+			{
+				m.computeTextureUVCoordinates();
+				us = m.faceTextureUCoordinates;
+				vs = m.faceTextureVCoordinates;
+			}
+			catch (RuntimeException e)
+			{
+				// merged models lose their texture mapping; their textured faces stay one colour
+			}
+		}
+		List<Integer> texFaces = new ArrayList<>();
+		List<Integer> texIds = new ArrayList<>();
+		List<float[]> texUv = new ArrayList<>();
+		List<float[]> texLight = new ArrayList<>();
 		LitModel out = new LitModel();
 		out.x = m.vertexX.clone();
 		out.y = m.vertexY.clone();
@@ -661,6 +710,17 @@ public final class WebExport
 				c3 = vertexLight(m, vc, colour, texture, k, ambient, lx, ly, lz);
 			}
 			int rgb;
+			if (texture != -1 && us != null && f < us.length && us[f] != null && vs[f] != null && texturePixels(texture).length > 0)
+			{
+				texFaces.add(f);
+				texIds.add(texture);
+				texUv.add(new float[]{us[f][0], vs[f][0], us[f][1], vs[f][1], us[f][2], vs[f][2]});
+				double l1 = (c1 & 0x7f) / TEXTURE_LIGHT;
+				double l2 = c3 == -1 ? l1 : (c2 & 0x7f) / TEXTURE_LIGHT;
+				double l3 = c3 == -1 ? l1 : (c3 & 0x7f) / TEXTURE_LIGHT;
+				texLight.add(new float[]{(float) l1, (float) l2, (float) l3});
+				usedTextures.add(texture);
+			}
 			if (texture != -1)
 			{
 				int hsl = textureHsl(texture);
@@ -685,7 +745,66 @@ public final class WebExport
 			int a = m.faceTransparencies == null ? 255 : 255 - (m.faceTransparencies[f] & 0xff);
 			out.argb[f] = a << 24 | rgb;
 		}
+		out.texFaces = new int[texFaces.size()];
+		out.texIds = new int[texFaces.size()];
+		out.texUv = texUv.toArray(new float[0][]);
+		out.texLight = texLight.toArray(new float[0][]);
+		for (int i = 0; i < out.texFaces.length; i++)
+		{
+			out.texFaces[i] = texFaces.get(i);
+			out.texIds[i] = texIds.get(i);
+		}
 		return out;
+	}
+
+	/** A texture's pixels (RGB, 0 for see-through), as the client loads it; empty if it can't be read. */
+	private int[] texturePixels(int texture)
+	{
+		int[] cached = texturePixels.get(texture);
+		if (cached == null)
+		{
+			TextureDefinition t = textureDefs.get(texture);
+			cached = t != null && t.method2680(1.0, TEXTURE_SIZE, sprites) && t.pixels != null ? t.pixels.clone() : new int[0];
+			texturePixels.put(texture, cached);
+		}
+		return cached;
+	}
+
+	/** A texture shrunk to {@link #EXPORTED_TEXTURE_SIZE}, a texel see-through when most of its source is. */
+	private int[] smallTexture(int texture)
+	{
+		int[] pixels = texturePixels(texture);
+		int size = (int) Math.round(Math.sqrt(pixels.length));
+		int step = Math.max(1, size / EXPORTED_TEXTURE_SIZE);
+		int out = size / step;
+		int[] small = new int[out * out];
+		for (int y = 0; y < out; y++)
+		{
+			for (int x = 0; x < out; x++)
+			{
+				int r = 0;
+				int g = 0;
+				int b = 0;
+				int seen = 0;
+				for (int dy = 0; dy < step; dy++)
+				{
+					for (int dx = 0; dx < step; dx++)
+					{
+						int c = pixels[(y * step + dy) * size + x * step + dx];
+						if (c != 0)
+						{
+							r += c >> 16 & 0xff;
+							g += c >> 8 & 0xff;
+							b += c & 0xff;
+							seen++;
+						}
+					}
+				}
+				// 0 stays see-through; a seen texel is never pure black 0
+				small[y * out + x] = seen * 2 < step * step ? 0 : Math.max(1, (r / seen) << 16 | (g / seen) << 8 | (b / seen));
+			}
+		}
+		return small;
 	}
 
 	private static int vertexLight(ModelDefinition m, int v, int colour, int texture, int k, int ambient, int lx, int ly, int lz)
@@ -820,7 +939,7 @@ public final class WebExport
 					}
 					recolour(model, def.colorFind, def.colorReplace, def.textureFind, def.textureReplace);
 					String name = "gear." + g.name();
-					actorModels.put(name, light(model, PLAYER_LIGHT));
+					actorModels.put(name, light(model, PLAYER_LIGHT, true));
 					entry.put("model", name);
 				}
 				entry.put("slot", kit.getIndex());
@@ -985,6 +1104,23 @@ public final class WebExport
 				out.writeShort(label);
 			}
 			writeFaces(out, m.a, m.b, m.c, m.argb);
+			writeTexturedFaces(out, m);
+		}
+
+		// the textures those faces use: id, edge, scrolling (direction, speed), RGB texels
+		out.writeInt(usedTextures.size());
+		for (int id : usedTextures)
+		{
+			TextureDefinition t = textureDefs.get(id);
+			int[] small = smallTexture(id);
+			out.writeInt(id);
+			out.writeInt((int) Math.round(Math.sqrt(small.length)));
+			out.writeByte(t.animationSpeed > 0 ? t.animationDirection : 0);
+			out.writeByte(t.animationSpeed);
+			for (int texel : small)
+			{
+				out.writeInt(texel);
+			}
 		}
 		out.flush();
 		return bytes.toByteArray();
@@ -998,6 +1134,42 @@ public final class WebExport
 			out.writeInt(x[i]);
 			out.writeInt(y[i]);
 			out.writeInt(z[i]);
+		}
+	}
+
+	/**
+	 * Textured faces: count, then per face its index among the written faces, its texture, u and
+	 * v at each corner, and the light at each corner.
+	 */
+	private static void writeTexturedFaces(DataOutputStream out, LitModel m) throws IOException
+	{
+		int[] written = new int[m.argb.length];
+		int n = 0;
+		for (int f = 0; f < m.argb.length; f++)
+		{
+			written[f] = m.argb[f] >>> 24 != 0 ? n++ : -1;
+		}
+		List<Integer> kept = new ArrayList<>();
+		for (int i = 0; i < m.texFaces.length; i++)
+		{
+			if (written[m.texFaces[i]] >= 0)
+			{
+				kept.add(i);
+			}
+		}
+		out.writeInt(kept.size());
+		for (int i : kept)
+		{
+			out.writeInt(written[m.texFaces[i]]);
+			out.writeShort(m.texIds[i]);
+			for (float uv : m.texUv[i])
+			{
+				out.writeFloat(uv);
+			}
+			for (float l : m.texLight[i])
+			{
+				out.writeFloat(l);
+			}
 		}
 	}
 

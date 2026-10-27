@@ -26,7 +26,7 @@ public enum Passive
 	LONGRANGE(null, false, "+12% attack range", ranks("Longrange", 4)),
 	MULTICOMBAT(null, false, "Hit one more enemy per attack", ranks("Multicombat", 4)),
 	TELEKINETIC_GRAB(null, false, "+40 gem pickup radius", ranks("Telekinetic Grab", 5)),
-	LAMP(null, false, "+20% XP from gems", ranks("Lamp of Knowledge", 3)),
+	LAMP(null, false, "+5% XP from gems", ranks("Lamp of Knowledge", 3)),
 	VENGEANCE(null, false, "Enemies touching you take 15 damage/s", ranks("Vengeance", 3)),
 	SPECIAL_ATTACK(null, false, "A double-damage special attack every 12 s, 2 s sooner per rank", ranks("Special Attack", 3)),
 	CANNON(null, true, "Sets up a cannon that fires at monsters around it", ranks("Dwarf multicannon", 4)),

@@ -15,7 +15,7 @@ import java.io.IOException;
 final class MapArea
 {
 	/** Must match WebExport.MODELS_VERSION. */
-	private static final int VERSION = 1;
+	private static final int VERSION = 2;
 
 	final Arena arena;
 	final Terrain terrain;

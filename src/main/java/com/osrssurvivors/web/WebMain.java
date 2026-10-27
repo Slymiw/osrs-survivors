@@ -1,7 +1,9 @@
 package com.osrssurvivors.web;
 
+import com.osrssurvivors.audio.SoundCues;
 import com.osrssurvivors.game.Arena;
 import com.osrssurvivors.game.Changelog;
+import com.osrssurvivors.game.Cue;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
@@ -11,9 +13,12 @@ import com.osrssurvivors.game.Perk;
 import com.osrssurvivors.game.Phase;
 import com.osrssurvivors.game.RunSave;
 import com.osrssurvivors.game.TitleScreen;
+import com.osrssurvivors.game.Volume;
+import com.osrssurvivors.render.Fx;
 import com.osrssurvivors.render.GameRenderer;
 import com.osrssurvivors.render.UiLayout;
 import com.osrssurvivors.web.awt.WebImage;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -22,11 +27,14 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import org.teavm.jso.JSBody;
+import org.teavm.jso.JSExceptions;
+import org.teavm.jso.JSObject;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.dom.events.Event;
 import org.teavm.jso.dom.events.KeyboardEvent;
@@ -47,19 +55,43 @@ public final class WebMain
 {
 	/** Key that saves the run and goes back to the start menu. */
 	private static final String EXIT_KEY = "Q";
-	/** Window heights per pixel of the game: big screens draw the game larger rather than finer. */
-	private static final int HEIGHT_PER_PIXEL_SCALE = 640;
+	/**
+	 * Window heights per pixel of the game: big screens draw the game larger rather than finer.
+	 * A maximised browser on a 1080p screen (about 950 tall inside) gets 2x, so text stays readable.
+	 */
+	private static final int HEIGHT_PER_PIXEL_SCALE = 470;
 	/** How often a run in progress is saved, in case the page closes. */
 	private static final double AUTOSAVE_MS = 5000;
+	private static final Color MUTED = new Color(255, 152, 31);
+	private static final Color UNMUTED = new Color(0, 230, 0);
 
 	private enum Command
 	{
-		TOGGLE_PAUSE, CHOOSE_1, CHOOSE_2, CHOOSE_3, RESTART, EXIT
+		TOGGLE_PAUSE, CHOOSE_1, CHOOSE_2, CHOOSE_3, RESTART, EXIT, TOGGLE_BAG, MUTE
+	}
+
+	/** A mouse button going down or up, for the bag (which is clicked, dragged and dropped). */
+	private static final class Press
+	{
+		final Point at;
+		final boolean down;
+		/** Right button or shift held: throw the item away. */
+		final boolean drop;
+
+		Press(Point at, boolean down, boolean drop)
+		{
+			this.at = at;
+			this.down = down;
+			this.drop = drop;
+		}
 	}
 
 	private final HTMLCanvasElement canvas;
 	private final BufferedImage screen;
 	private final WebAssets assets;
+	private final SoundSystem sounds;
+	/** Sparks, shake, notices: what the run's cues look like. */
+	private final Fx fx = new Fx();
 	private final boolean devTools;
 	private final Map<Location, MapArea> areas = new HashMap<>();
 
@@ -89,12 +121,20 @@ public final class WebMain
 	private final Set<String> held = new HashSet<>();
 	private final Queue<Command> commands = new ArrayDeque<>();
 	private final Queue<Point> clicks = new ArrayDeque<>();
+	private final Queue<Press> presses = new ArrayDeque<>();
+	/** The bag slot the mouse went down on, or -1; an item is used or moved when it comes up. */
+	private int pressedSlot = -1;
+	/** Whether the bag shows, kept from run to run. */
+	private boolean bagShown = true;
 	private Point mouse;
+	/** Whether the left mouse button is held, so the button under it looks pressed. */
+	private boolean mouseDown;
 
-	private WebMain(HTMLCanvasElement canvas, WebAssets assets, boolean devTools)
+	private WebMain(HTMLCanvasElement canvas, WebAssets assets, SoundSystem sounds, boolean devTools)
 	{
 		this.canvas = canvas;
 		this.assets = assets;
+		this.sounds = sounds;
 		this.devTools = devTools;
 		this.screen = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 		((WebImage) (Object) screen).adopt(canvas);
@@ -115,7 +155,7 @@ public final class WebMain
 			return;
 		}
 		HTMLCanvasElement canvas = (HTMLCanvasElement) HTMLDocument.current().getElementById("game");
-		new WebMain(canvas, assets, Browser.hasParam("dev")).start();
+		new WebMain(canvas, assets, SoundSystem.load(), Browser.hasParam("dev")).start();
 		Browser.status(null);
 	}
 
@@ -147,6 +187,7 @@ public final class WebMain
 		lastFrame = 0;
 		lastPhase = s.getPhase();
 		session = s;
+		fx.clear();
 	}
 
 	// ---------------------------------------------------------------- input
@@ -168,14 +209,26 @@ public final class WebMain
 		});
 		canvas.addEventListener("mousedown", (MouseEvent e) ->
 		{
-			if (e.getButton() == 0)
+			Point at = toGame(e);
+			if (e.getButton() == MouseEvent.LEFT_BUTTON)
 			{
-				clicks.add(toGame(e));
+				clicks.add(at);
+				mouseDown = true;
 			}
+			presses.add(new Press(at, true, e.getButton() == MouseEvent.RIGHT_BUTTON || e.getShiftKey()));
 			e.preventDefault();
 		});
+		canvas.addEventListener("mouseup", (MouseEvent e) ->
+		{
+			presses.add(new Press(toGame(e), false, false));
+			mouseDown = false;
+		});
 		canvas.addEventListener("mousemove", (MouseEvent e) -> mouse = toGame(e));
-		canvas.addEventListener("mouseleave", (MouseEvent e) -> mouse = null);
+		canvas.addEventListener("mouseleave", (MouseEvent e) ->
+		{
+			mouse = null;
+			mouseDown = false;
+		});
 		canvas.addEventListener("contextmenu", Event::preventDefault);
 	}
 
@@ -265,6 +318,11 @@ public final class WebMain
 				return Command.RESTART;
 			case "KeyQ":
 				return Command.EXIT;
+			case "KeyI":
+			case "Tab":
+				return Command.TOGGLE_BAG;
+			case "KeyM":
+				return Command.MUTE;
 			default:
 				return null;
 		}
@@ -309,12 +367,17 @@ public final class WebMain
 		catch (RuntimeException e)
 		{
 			log("Frame failed: " + e);
+			logStack(JSExceptions.getJSException(e));
 		}
 		Window.requestAnimationFrame(this::frame);
 	}
 
 	@JSBody(params = "text", script = "console.error(text);")
 	private static native void log(String text);
+
+	/** The JavaScript stack of a failure inside the browser's own code, if there is one. */
+	@JSBody(params = "error", script = "if (error && error.stack) { console.error(error.stack); }")
+	private static native void logStack(JSObject error);
 
 	private void step()
 	{
@@ -327,6 +390,7 @@ public final class WebMain
 			{
 				case TOGGLE_PAUSE:
 					s.togglePause();
+					sounds.play(SoundCues.click());
 					break;
 				case CHOOSE_1:
 					if (s.getPhase() == Phase.BOSS_DROP)
@@ -361,13 +425,28 @@ public final class WebMain
 						return;
 					}
 					break;
+				case TOGGLE_BAG:
+					bagShown = !bagShown;
+					s.setBagShown(bagShown);
+					break;
+				case MUTE:
+					options.setMuted(!options.isMuted());
+					Saves.storeOptions(options);
+					fx.toast(options.isMuted() ? "Sound off" : "Sound on", "Press M to turn it " + (options.isMuted() ? "on" : "off")
+						+ " again.", options.isMuted() ? MUTED : UNMUTED);
+					break;
 			}
 		}
 
 		Rectangle view = new Rectangle(0, 0, screen.getWidth(), screen.getHeight());
+		for (Press p = presses.poll(); p != null; p = presses.poll())
+		{
+			press(s, view, p);
+		}
 		for (Point click = clicks.poll(); click != null; click = clicks.poll())
 		{
-			if (click(s, view, click))
+			// clicks on the bag were handled as presses
+			if (UiLayout.bagSlotAt(view, s, click) < 0 && click(s, view, click))
 			{
 				return;
 			}
@@ -384,11 +463,17 @@ public final class WebMain
 		s.setMoveDirection((right ? 1 : 0) - (left ? 1 : 0), (down ? 1 : 0) - (up ? 1 : 0));
 
 		double now = Browser.now();
+		double dt = lastFrame != 0 ? (now - lastFrame) / 1000 : 0;
 		if (lastFrame != 0)
 		{
-			s.advance((now - lastFrame) / 1000);
+			s.advance(dt);
 		}
 		lastFrame = now;
+		// what happened this frame, heard and seen
+		List<Cue> happened = s.takeCues();
+		fx.handle(happened, s);
+		sounds.frame(happened, s.getPlayer(), options, now / 1000);
+		fx.update(dt, s);
 
 		if (s.getPhase() == Phase.GAME_OVER && lastPhase != Phase.GAME_OVER)
 		{
@@ -406,8 +491,46 @@ public final class WebMain
 
 		assets.beginFrame();
 		Graphics2D g = screen.createGraphics();
-		GameRenderer.render(g, view, s, assets, mouse, EXIT_KEY);
+		boolean dragging = pressedSlot >= 0 && UiLayout.bagSlotAt(view, s, mouse) != pressedSlot;
+		GameRenderer.render(g, view, s, assets, mouse, EXIT_KEY, dragging ? pressedSlot : -1, fx, mouseDown);
 		g.dispose();
+	}
+
+	/**
+	 * The bag, like the game's inventory: an item is used when the button comes up over the slot
+	 * it went down on, moved when it comes up over another, and thrown away by a right-click or a
+	 * shift-click.
+	 */
+	private void press(GameSession s, Rectangle view, Press p)
+	{
+		int slot = UiLayout.bagSlotAt(view, s, p.at);
+		if (p.down)
+		{
+			pressedSlot = -1;
+			if (slot >= 0 && p.drop)
+			{
+				s.dropItem(slot);
+			}
+			else if (slot >= 0)
+			{
+				pressedSlot = slot;
+			}
+			return;
+		}
+		int from = pressedSlot;
+		pressedSlot = -1;
+		if (from < 0 || slot < 0)
+		{
+			return;
+		}
+		if (slot == from)
+		{
+			s.useItem(slot);
+		}
+		else
+		{
+			s.moveItem(from, slot);
+		}
 	}
 
 	/** Handles a click; returns true when the session was replaced and the frame should start over. */
@@ -430,6 +553,20 @@ public final class WebMain
 		switch (button.action)
 		{
 			case CHOOSE_UPGRADE:
+			case REROLL:
+			case CLAIM:
+			case PET_CARD:
+			case BUY_PERK:
+			case CHOOSE_LOCATION:
+				// these make their own sounds (or none)
+				break;
+			default:
+				sounds.play(SoundCues.click());
+				break;
+		}
+		switch (button.action)
+		{
+			case CHOOSE_UPGRADE:
 				s.chooseUpgrade(button.index);
 				break;
 			case RESUME:
@@ -448,10 +585,12 @@ public final class WebMain
 				Location location = Location.values()[button.index];
 				if (s.isUnlocked(location))
 				{
+					sounds.play(SoundCues.click());
 					startRun(s, location, null);
 				}
 				else
 				{
+					sounds.play(SoundCues.error());
 					s.setStatus(location.unlockHint());
 				}
 				break;
@@ -477,6 +616,21 @@ public final class WebMain
 				options.toggle(Option.values()[button.index]);
 				Saves.storeOptions(options);
 				break;
+			case VOLUME_DOWN:
+			case VOLUME_UP:
+			case VOLUME_BAR:
+			{
+				Volume v = Volume.values()[button.index];
+				int level = button.action == UiLayout.Action.VOLUME_BAR ? UiLayout.volumeAt(button, click)
+					: options.getVolume(v) + (button.action == UiLayout.Action.VOLUME_UP ? 1 : -1);
+				options.setVolume(v, level);
+				if (v == Volume.MASTER)
+				{
+					options.setMuted(false);
+				}
+				Saves.storeOptions(options);
+				break;
+			}
 			case CLOSE_OPTIONS:
 				s.closeOptions();
 				break;
@@ -500,6 +654,7 @@ public final class WebMain
 				break;
 			case DEV_UNLOCK_MAPS:
 				setAllUnlocked(s, true);
+				sounds.play(SoundCues.unlock());
 				break;
 			case DEV_COINS:
 				meta.addCoins(1000);
@@ -508,7 +663,12 @@ public final class WebMain
 			case BUY_PERK:
 				if (meta.buy(Perk.values()[button.index]))
 				{
+					sounds.play(SoundCues.purchase());
 					storeMetaIfChanged();
+				}
+				else
+				{
+					sounds.play(SoundCues.error());
 				}
 				break;
 			case REROLL:
@@ -608,9 +768,11 @@ public final class WebMain
 		run.setDevTools(devTools);
 		run.setOptions(options);
 		run.setAllUnlocked(allUnlocked);
+		run.setBagShown(bagShown);
 		lastFrame = 0;
 		lastPhase = run.getPhase();
 		session = run;
+		fx.clear();
 	}
 
 	private void setAllUnlocked(GameSession s, boolean unlocked)

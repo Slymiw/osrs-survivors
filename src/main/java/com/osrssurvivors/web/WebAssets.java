@@ -1,8 +1,10 @@
 package com.osrssurvivors.web;
 
+import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.BossDrop;
 import com.osrssurvivors.game.EnemyKind;
 import com.osrssurvivors.game.Gear;
+import com.osrssurvivors.game.Item;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.Offer;
 import com.osrssurvivors.game.Perk;
@@ -24,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +101,9 @@ final class WebAssets implements GameAssets
 	private final Font small = new Font("RuneScape Small", Font.PLAIN, 16);
 
 	private final Map<Long, MeshSnapshot> npcMeshes = new HashMap<>();
-	private final Map<Long, MeshSnapshot> playerMeshes = new HashMap<>();
+	private final Map<Long, MeshSnapshot> playerMeshes = recent(PLAYER_CACHE);
 	private final Map<Long, ActorSprite> npcSprites = new HashMap<>();
-	private final Map<Long, ActorSprite> playerSprites = new HashMap<>();
+	private final Map<Long, ActorSprite> playerSprites = recent(PLAYER_CACHE);
 	private final Map<Integer, ActorSprite> propSprites = new HashMap<>();
 	/** Most recent sprite per character and direction, shown while new frames wait for budget. */
 	private final Map<Integer, ActorSprite> lastSprite = new HashMap<>();
@@ -194,6 +197,22 @@ final class WebAssets implements GameAssets
 			() -> npc.model.pose(anim == null ? null : anim.frames[frame], npc.scale));
 	}
 
+	/** Player poses kept: flowing capes give every pose many looks, so only the latest are kept. */
+	private static final int PLAYER_CACHE = 480;
+
+	/** A map that forgets its least recently used entries beyond {@code limit}. */
+	private static <V> Map<Long, V> recent(int limit)
+	{
+		return new LinkedHashMap<Long, V>(64, 0.75f, true)
+		{
+			@Override
+			protected boolean removeEldestEntry(Map.Entry<Long, V> eldest)
+			{
+				return size() > limit;
+			}
+		};
+	}
+
 	@Override
 	public ActorSprite player(PlayerPose pose, double pixelsPerUnit)
 	{
@@ -220,13 +239,15 @@ final class WebAssets implements GameAssets
 			anim = walking ? walk : ready;
 			frame = anim == null ? 0 : anim.loopFrame(pose.time);
 		}
+		// worn lava (the fire capes) flows, a step at a time
+		int flow = playerModel.flowStep(pose.time);
 		long poseKey = (long) ((anim == null ? -1 : anim.id) + 1 & 0xffff) << 32 | (long) (frame & 0xffff) << 16
-			| (walking ? 1L << 15 : 0);
+			| (walking ? 1L << 15 : 0) | (long) (flow & 0xff) << 48;
 		AnimModel model = playerModel;
 		Sequence a = anim;
 		int f = frame;
 		return actor(PLAYER_SLOT, poseKey, pose.facing, pixelsPerUnit, playerMeshes, playerSprites,
-			() -> model.pose(a == null ? null : a.frames[f], 1));
+			() -> model.pose(a == null ? null : a.frames[f], 1, flow));
 	}
 
 	/** The player's body with the worn items, merged so animations move it as one. */
@@ -410,10 +431,24 @@ final class WebAssets implements GameAssets
 			case COINS:
 				return icon("offer.coins");
 			case BOOST:
-				return icon("boost." + offer.getBoost().name());
+				return icon("boost." + offer.getBoost().name() + "." + Boost.DOSES);
 			default:
-				return icon("offer.food");
+				return icon("food." + offer.getFood().name());
 		}
+	}
+
+	@Override
+	public BufferedImage itemIcon(Item item)
+	{
+		if (item.getGear() != null)
+		{
+			return gearIcon(item.getGear());
+		}
+		if (item.getPotion() != null)
+		{
+			return icon("boost." + item.getPotion().name() + "." + item.getDoses());
+		}
+		return icon("food." + item.getFood().name());
 	}
 
 	@Override

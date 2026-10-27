@@ -82,6 +82,15 @@ public final class Weapon
 		return damage * multiplier;
 	}
 
+	/**
+	 * Max hit of a whole attack: every missile of a volley together. Abilities and Retribution
+	 * scale with this, so weapons that split an attack into several missiles don't weaken them.
+	 */
+	public double getAttackHit()
+	{
+		return getMaxHit() * volley;
+	}
+
 	public double getCooldown()
 	{
 		return cooldown;
@@ -165,22 +174,36 @@ public final class Weapon
 		int shots = volley + (random != null && doubleChance > 0 && random.nextDouble() < doubleChance ? 1 : 0);
 		for (int shot = 0; shot < shots; shot++)
 		{
+			if (shot > 0)
+			{
+				// each missile after the first goes to the nearest still standing, not into a corpse
+				inRange.removeIf(Enemy::isDead);
+				if (inRange.isEmpty())
+				{
+					break;
+				}
+				primaries = new ArrayList<>(inRange.subList(0, Math.min(targets, inRange.size())));
+			}
 			for (Enemy p : primaries)
 			{
-				hit(p, maxHit, special, hitsplats, random);
-				strikes.add(new Strike(player.x, player.y, p.x, p.y, gear));
+				Strike strike = new Strike(player.x, player.y, p.x, p.y, gear);
+				// hits are dealt now but seen (hitsplat, flash) when the missile arrives
+				double flight = strike.flight;
+				hit(p, maxHit, special, hitsplats, random, flight);
+				strikes.add(strike);
 				if (cleave > 0)
 				{
 					for (Enemy e : beside(player, p, inRange, primaries))
 					{
-						hit(e, maxHit * CLEAVE_SHARE, special, hitsplats, random);
+						hit(e, maxHit * CLEAVE_SHARE, special, hitsplats, random, flight);
 					}
 				}
 				if (pierce > 0)
 				{
 					for (Enemy e : behind(player, p, enemies, primaries))
 					{
-						hit(e, maxHit * PIERCE_SHARE, special, hitsplats, random);
+						double further = Strike.flightFor(gear, Strike.Source.PLAYER, Math.sqrt(distSq(player.x, player.y, e)));
+						hit(e, maxHit * PIERCE_SHARE, special, hitsplats, random, further);
 					}
 				}
 				if (splash > 0)
@@ -190,11 +213,11 @@ public final class Weapon
 					{
 						if (e != p && !e.isDead() && distSq(p.x, p.y, e) <= r2)
 						{
-							hit(e, maxHit * SPLASH_SHARE, special, hitsplats, random);
+							hit(e, maxHit * SPLASH_SHARE, special, hitsplats, random, flight);
 						}
 					}
 					bursts.add(new Effects.Burst(gear != null && gear.getMissile() == Gear.Missile.CHINCHOMPA
-						? Effects.Burst.Type.EXPLOSION : Effects.Burst.Type.SPLASH, p.x, p.y, splash));
+						? Effects.Burst.Type.EXPLOSION : Effects.Burst.Type.SPLASH, p.x, p.y, splash, flight));
 				}
 			}
 		}
@@ -206,17 +229,17 @@ public final class Weapon
 		return primaries;
 	}
 
-	private void hit(Enemy e, double maxHit, boolean special, List<Effects.Hitsplat> hitsplats, Random random)
+	private void hit(Enemy e, double maxHit, boolean special, List<Effects.Hitsplat> hitsplats, Random random, double delay)
 	{
 		double roll = random == null ? 1 : MIN_ROLL + (1 - MIN_ROLL) * random.nextDouble();
 		double amount = maxHit * roll * (e.champion ? championMultiplier : 1);
-		e.damage(amount);
+		e.damage(amount, delay);
 		if (freeze > 0)
 		{
 			e.frozen = Math.max(e.frozen, freeze * (e.champion ? 0.3 : 1));
 		}
 		lastDamage += amount;
-		hitsplats.add(new Effects.Hitsplat(e, (int) Math.round(amount), special));
+		hitsplats.add(new Effects.Hitsplat(e, (int) Math.round(amount), special, delay));
 	}
 
 	/** Enemies in range within the swing's arc around the target, nearest first. */

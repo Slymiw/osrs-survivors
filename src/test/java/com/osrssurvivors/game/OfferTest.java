@@ -49,7 +49,9 @@ public class OfferTest
 		}
 		assertEquals(10, Gear.chain(Slot.WEAPON, Style.MELEE).size());
 		assertEquals(Gear.DRAGON_SCIMITAR, Gear.RUNE_SCIMITAR.next());
-		assertNull(Gear.TWISTED_BOW.next());
+		assertNull(Gear.ASCENSION_CROSSBOWS.next());
+		assertEquals("the twisted bow is a megarare, not the top of the chain", Gear.ASCENSION_CROSSBOWS,
+			Gear.chain(Slot.WEAPON, Style.RANGED).get(9));
 		assertEquals(Gear.RED_CAPE, Gear.first(Slot.CAPE, Style.MAGIC));
 		// books and wards for ranged; most ranged weapons are two-handed and can't use them
 		assertEquals(Gear.ODIUM_WARD, Gear.chain(Slot.SHIELD, Style.RANGED).get(2));
@@ -173,8 +175,12 @@ public class OfferTest
 	{
 		GameSession s = session(1);
 		s.getPlayer().health = 10;
-		s.grant(Offer.food());
-		assertEquals(10 + Player.BASE_MAX_HEALTH * Offer.FOOD_HEAL, s.getPlayer().health, EPS);
+		s.grant(Offer.food(Food.SHARK, 1));
+		assertEquals("food goes in the bag", Item.food(Food.SHARK), s.getInventory().get(0));
+		assertEquals(10, s.getPlayer().health, EPS);
+		assertTrue(s.useItem(0));
+		assertEquals(10 + Player.BASE_MAX_HEALTH * Food.SHARK.getHeal(), s.getPlayer().health, EPS);
+		assertNull("and is eaten", s.getInventory().get(0));
 	}
 
 	@Test
@@ -308,10 +314,11 @@ public class OfferTest
 				s.grant(Offer.gear(chain.get(chain.size() - 1)));
 			}
 		}
-		// already combined, and settled on melee
+		// already combined
 		s.grant(Offer.gear(Gear.SANGUINE_SCYTHE_OF_VITUR));
-		levelledUp(s, GameSession.STYLE_SWITCH_MAX_LEVEL);
-		// with nothing left to upgrade: three different fillers, which change from level to level
+		levelledUp(s, 1);
+		// with nothing left to upgrade for melee: fillers (and now and then another style's gear for
+		// the bag), which change from level to level
 		java.util.Set<String> seen = new java.util.HashSet<>();
 		boolean paid = false;
 		for (int level = 0; level < 12; level++)
@@ -319,16 +326,18 @@ public class OfferTest
 			List<Offer> choices = s.getChoices();
 			assertEquals("always a full choice", GameSession.CHOICE_COUNT, choices.size());
 			assertEquals("no repeats on one screen", choices.size(), new java.util.HashSet<>(choices).size());
+			Offer pick = null;
 			for (Offer o : choices)
 			{
-				assertTrue(o.getKind() == Offer.Kind.BOOST || o.getKind() == Offer.Kind.COINS || o.getKind() == Offer.Kind.FOOD);
+				assertTrue(o.getKind() == Offer.Kind.BOOST || o.getKind() == Offer.Kind.COINS || o.getKind() == Offer.Kind.FOOD
+					|| o.isStored() && o.getGear().getStyle() != Style.MELEE);
 				assertTrue("melee only gets the melee potion", o.getBoost() == null || o.getBoost().getStyle() == null
 					|| o.getBoost().getStyle() == Style.MELEE);
 				seen.add(o.getBoost() != null ? o.getBoost().name() : o.getKind().name());
+				pick = pick == null && !o.isStored() ? o : pick;
 			}
-			Offer pick = choices.get(0);
 			int coins = s.coinsSoFar();
-			s.chooseUpgrade(0);
+			s.chooseUpgrade(choices.indexOf(pick));
 			if (pick.getKind() == Offer.Kind.COINS)
 			{
 				assertTrue(s.coinsSoFar() >= coins + pick.getCoins());
@@ -336,31 +345,50 @@ public class OfferTest
 			}
 			if (pick.getBoost() != null)
 			{
-				assertEquals(pick.getRank(), s.getBuild().doses(pick.getBoost()));
+				assertEquals("a full potion in the bag", Item.potion(pick.getBoost(), Boost.DOSES), s.getInventory().get(0));
+			}
+			// a player drinks and eats them, so the bag never fills up here
+			for (int i = 0; i < Inventory.SIZE; i++)
+			{
+				s.dropItem(i);
 			}
 			levelledUp(s, 1);
 		}
 		assertTrue("a varied mix, not the same three: " + seen, seen.size() >= 5);
+		// back to playing: bag items are used during play, not over the level-up screen
+		s.chooseUpgrade(0);
+		assertEquals(Phase.RUNNING, s.getPhase());
+		s.grant(Offer.boost(Boost.DIVINE_SUPER_COMBAT));
 		double before = s.getBuild().damageMultiplier();
-		s.grant(Offer.boost(Boost.DIVINE_SUPER_COMBAT, 1));
+		int slot = -1;
+		for (int i = 0; i < Inventory.SIZE && slot < 0; i++)
+		{
+			slot = s.getInventory().get(i) != null && s.getInventory().get(i).getPotion() == Boost.DIVINE_SUPER_COMBAT ? i : -1;
+		}
+		assertTrue(s.useItem(slot));
 		assertEquals("a dose of the style's potion adds damage", before + Boost.DAMAGE, s.getBuild().damageMultiplier(), 1e-9);
 	}
 
 	@Test
-	public void noOtherStyleWeaponsOnceTheBuildHasSettled()
+	public void otherStylesWeaponsGoInTheBag()
 	{
 		Random seeds = new Random(9);
+		boolean offered = false;
 		for (int i = 0; i < 80; i++)
 		{
 			GameSession s = new GameSession(new Random(seeds.nextLong()));
 			s.disableSpawning();
 			s.grant(Offer.gear(Gear.RUNE_SCIMITAR));
-			levelledUp(s, GameSession.STYLE_SWITCH_MAX_LEVEL);
+			levelledUp(s, 1);
 			for (Offer o : s.getChoices())
 			{
-				assertFalse("offered " + o, o.getGear() != null && o.getGear().getSlot() == Slot.WEAPON
-					&& o.getGear().getStyle() != Style.MELEE);
+				if (o.getGear() != null && o.getGear().getStyle() != null && o.getGear().getStyle() != Style.MELEE)
+				{
+					offered = true;
+					assertTrue("offered for the bag: " + o, o.isStored());
+				}
 			}
 		}
+		assertTrue("other styles' weapons do come up", offered);
 	}
 }

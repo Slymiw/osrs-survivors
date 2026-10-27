@@ -67,11 +67,11 @@ public class ProgressionTest
 		s.grant(Offer.passive(Passive.LAMP, 1));
 		s.grant(Offer.passive(Passive.LAMP, 2));
 		Player p = s.getPlayer();
-		s.dropOrbAt(p.x, p.y, 5);
+		s.dropOrbAt(p.x, p.y, 10);
 		s.advance(GameSession.STEP);
-		// 5 xp * 1.4 = 7: level 2 (4 xp) with 3 over
-		assertEquals(2, s.getProgression().getLevel());
-		assertEquals(3, s.getProgression().getXp());
+		// 10 xp * 1.1 = 11: level 2 (4 xp), then level 3 (7 xp), nothing over
+		assertEquals(3, s.getProgression().getLevel());
+		assertEquals(0, s.getProgression().getXp());
 	}
 
 	@Test

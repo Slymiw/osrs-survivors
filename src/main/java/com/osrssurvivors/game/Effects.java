@@ -20,13 +20,28 @@ public final class Effects
 		final int damage;
 		/** Shown in the special-attack colour. */
 		final boolean special;
-		double remaining = DURATION;
+		/** Seconds before it shows: a missile still flying to the target. */
+		final double delay;
+		double remaining;
 
 		Hitsplat(Enemy target, int damage, boolean special)
+		{
+			this(target, damage, special, 0);
+		}
+
+		Hitsplat(Enemy target, int damage, boolean special, double delay)
 		{
 			this.target = target;
 			this.damage = damage;
 			this.special = special;
+			this.delay = Math.max(0, delay);
+			this.remaining = DURATION + this.delay;
+		}
+
+		/** False while the missile carrying this hit is still in the air. */
+		public boolean isLanded()
+		{
+			return remaining <= DURATION;
 		}
 
 		public boolean isSpecial()
@@ -45,10 +60,10 @@ public final class Effects
 			return damage;
 		}
 
-		/** 0 when fresh, rising to 1 as it expires. */
+		/** 0 when it lands, rising to 1 as it expires. */
 		public double getAge()
 		{
-			return 1 - remaining / DURATION;
+			return Math.max(0, 1 - remaining / DURATION);
 		}
 	}
 
@@ -62,7 +77,10 @@ public final class Effects
 		final double y;
 		final double facing;
 		final double radius;
-		double remaining = DURATION;
+		final boolean champion;
+		/** Seconds it stands before falling: the killing missile is still flying. */
+		final double delay;
+		double remaining;
 
 		Corpse(Enemy e)
 		{
@@ -71,6 +89,26 @@ public final class Effects
 			y = e.y;
 			facing = e.facing;
 			radius = e.radius;
+			champion = e.champion;
+			delay = Math.max(0, e.hitDelay);
+			remaining = DURATION + delay;
+		}
+
+		public boolean isChampion()
+		{
+			return champion;
+		}
+
+		/** False while it still stands, waiting for the killing blow to land. */
+		public boolean isFalling()
+		{
+			return remaining <= DURATION;
+		}
+
+		/** 0 as it starts to fall, rising to 1 as it expires. */
+		public double getAge()
+		{
+			return Math.max(0, Math.min(1, 1 - remaining / DURATION));
 		}
 
 		public EnemyKind getKind()
@@ -101,7 +139,7 @@ public final class Effects
 		/** 1 when fresh, falling to 0 as it expires. */
 		public double getStrength()
 		{
-			return Math.max(0, remaining / DURATION);
+			return Math.max(0, Math.min(1, remaining / DURATION));
 		}
 	}
 
@@ -137,21 +175,34 @@ public final class Effects
 
 		public enum Type
 		{
-			SPLASH, EXPLOSION, ICE, BLOOD, GOD
+			SPLASH, EXPLOSION, ICE, BLOOD, GOD, DRAGONFIRE
 		}
 
 		final Type type;
 		final double x;
 		final double y;
 		final double radius;
-		double remaining = DURATION;
+		double remaining;
 
 		Burst(Type type, double x, double y, double radius)
+		{
+			this(type, x, y, radius, 0);
+		}
+
+		/** A burst that goes off {@code delay} seconds from now (when a lobbed missile lands). */
+		Burst(Type type, double x, double y, double radius, double delay)
 		{
 			this.type = type;
 			this.x = x;
 			this.y = y;
 			this.radius = radius;
+			this.remaining = DURATION + Math.max(0, delay);
+		}
+
+		/** False until it goes off. */
+		public boolean isLanded()
+		{
+			return remaining <= DURATION;
 		}
 
 		public Type getType()
@@ -174,10 +225,10 @@ public final class Effects
 			return radius;
 		}
 
-		/** 0 when fresh, rising to 1 as it expires. */
+		/** 0 when it goes off, rising to 1 as it expires. */
 		public double getAge()
 		{
-			return 1 - remaining / DURATION;
+			return Math.max(0, 1 - remaining / DURATION);
 		}
 	}
 }

@@ -2,6 +2,7 @@ package com.osrssurvivors;
 
 import com.osrssurvivors.game.Boost;
 import com.osrssurvivors.game.BossDrop;
+import com.osrssurvivors.game.Food;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.Passive;
 import com.osrssurvivors.game.Perk;
@@ -293,7 +294,7 @@ final class GearArt
 		item(Gear.RONDACHE, ItemID.RONDACHE);
 		item(Gear.IMBUED_ANCIENT_CAPE, ItemID.MA2_ZAROS_CAPE_DARKER);
 
-		// megarares, with their own animations from the Fractured Archive
+		// the Fractured Archive's weapons, with their own animations (the obligator is a megarare)
 		weapon(Gear.OBLIGATOR, ItemID.OBLIGATOR, AnimationID.TFA_HUMAN_OBLIGATOR_ATTACK);
 		weapon(Gear.ASCENSION_CROSSBOWS, ItemID.ASCENSION_CROSSBOWS, AnimationID.TFA_HUMAN_ASCENSION_CROSSBOW_FIRE_RIGHT);
 		staff(Gear.ZORYAS_TOME, ItemID.ZORYAS_TOME, AnimationID.HUMAN_CASTWAVE, SpriteID.Magicon.FIRE_WAVE);
@@ -326,25 +327,54 @@ final class GearArt
 		PETS.put(Pet.DORK, ItemID.BORKPET);
 	}
 
-	/** The potion each filler boost is drawn as (four doses). */
-	static int boostItem(Boost boost)
+	/** The potion drawn for a filler boost with {@code doses} left (1 to 4). */
+	static int boostItem(Boost boost, int doses)
 	{
 		switch (boost)
 		{
 			case DIVINE_SUPER_COMBAT:
-				return ItemID._4DOSEDIVINECOMBAT;
+				return dose(doses, ItemID._1DOSEDIVINECOMBAT, ItemID._2DOSEDIVINECOMBAT, ItemID._3DOSEDIVINECOMBAT, ItemID._4DOSEDIVINECOMBAT);
 			case DIVINE_RANGING:
-				return ItemID._4DOSEDIVINERANGE;
+				return dose(doses, ItemID._1DOSEDIVINERANGE, ItemID._2DOSEDIVINERANGE, ItemID._3DOSEDIVINERANGE, ItemID._4DOSEDIVINERANGE);
 			case DIVINE_MAGIC:
-				return ItemID._4DOSEDIVINEMAGIC;
+				return dose(doses, ItemID._1DOSEDIVINEMAGIC, ItemID._2DOSEDIVINEMAGIC, ItemID._3DOSEDIVINEMAGIC, ItemID._4DOSEDIVINEMAGIC);
 			case SARADOMIN_BREW:
-				return ItemID._4DOSEPOTIONOFSARADOMIN;
+				return dose(doses, ItemID._1DOSEPOTIONOFSARADOMIN, ItemID._2DOSEPOTIONOFSARADOMIN, ItemID._3DOSEPOTIONOFSARADOMIN,
+					ItemID._4DOSEPOTIONOFSARADOMIN);
 			case STAMINA:
-				return ItemID._4DOSESTAMINA;
+				return dose(doses, ItemID._1DOSESTAMINA, ItemID._2DOSESTAMINA, ItemID._3DOSESTAMINA, ItemID._4DOSESTAMINA);
 			case SUPER_RESTORE:
-				return ItemID._4DOSE2RESTORE;
+				return dose(doses, ItemID._1DOSE2RESTORE, ItemID._2DOSE2RESTORE, ItemID._3DOSE2RESTORE, ItemID._4DOSE2RESTORE);
+			case ANTIFIRE:
+				return dose(doses, ItemID._1DOSE3ANTIDRAGON, ItemID._2DOSE3ANTIDRAGON, ItemID._3DOSE3ANTIDRAGON, ItemID._4DOSE3ANTIDRAGON);
+			// the Tombs of Amascut's supplies come in two doses at most
+			case SMELLING_SALTS:
+				return dose(doses, ItemID.TOA_SUPPLY_STATS_1, ItemID.TOA_SUPPLY_STATS_2, ItemID.TOA_SUPPLY_STATS_2, ItemID.TOA_SUPPLY_STATS_2);
+			case LIQUID_ADRENALINE:
+				return dose(doses, ItemID.TOA_SUPPLY_ENERGY_1, ItemID.TOA_SUPPLY_ENERGY_2, ItemID.TOA_SUPPLY_ENERGY_2, ItemID.TOA_SUPPLY_ENERGY_2);
 			default:
-				return ItemID._4DOSE1ANTIDRAGON;
+				return dose(doses, ItemID._1DOSE2DEFENSE, ItemID._2DOSE2DEFENSE, ItemID._3DOSE2DEFENSE, ItemID._4DOSE2DEFENSE);
+		}
+	}
+
+	private static int dose(int doses, int... items)
+	{
+		return items[Math.max(1, Math.min(items.length, doses)) - 1];
+	}
+
+	/** The item a piece of food is drawn as. */
+	static int foodItem(Food food)
+	{
+		switch (food)
+		{
+			case SHARK:
+				return ItemID.SHARK;
+			case MANTA_RAY:
+				return ItemID.MANTARAY;
+			case ANGLERFISH:
+				return ItemID.ANGLERFISH;
+			default:
+				return ItemID.TBWT_COOKED_KARAMBWAN;
 		}
 	}
 

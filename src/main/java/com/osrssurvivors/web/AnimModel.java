@@ -1,6 +1,8 @@
 package com.osrssurvivors.web;
 
+import com.osrssurvivors.render.FaceTextures;
 import com.osrssurvivors.render.MeshSnapshot;
+import com.osrssurvivors.render.Texture;
 import java.util.List;
 
 /**
@@ -30,6 +32,16 @@ final class AnimModel
 	final int[] b;
 	final int[] c;
 	final int[] argb;
+	/** Seconds per step of flowing textures; sprites are cached per step. */
+	static final double FLOW_STEP = 0.125;
+	/** Steps before every texture is back where it started (all loops divide this). */
+	static final int FLOW_STEPS = 64;
+
+	/** Textured faces, with their textures, u and v at each corner (6 a face) and light at each corner (3 a face). */
+	private int[] texFaces = new int[0];
+	private Texture[] textures = new Texture[0];
+	private float[] texUv = new float[0];
+	private float[] texLight = new float[0];
 	/** Vertex indices per label, built on first use. */
 	private int[][] groups;
 
@@ -43,6 +55,36 @@ final class AnimModel
 		this.b = b;
 		this.c = c;
 		this.argb = argb;
+	}
+
+	/** This model with textured faces. */
+	AnimModel withTextures(int[] faces, Texture[] textures, float[] uv, float[] light)
+	{
+		AnimModel m = new AnimModel(x, y, z, labels, a, b, c, argb);
+		m.texFaces = faces;
+		m.textures = textures;
+		m.texUv = uv;
+		m.texLight = light;
+		return m;
+	}
+
+	/** Whether a texture on it scrolls by itself, so its look changes over time. */
+	boolean flows()
+	{
+		for (Texture t : textures)
+		{
+			if (t != null && t.flows())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** The step of the flowing textures' loop at {@code seconds}; 0 when nothing flows. */
+	int flowStep(double seconds)
+	{
+		return flows() ? Math.floorMod((int) Math.floor(seconds / FLOW_STEP), FLOW_STEPS) : 0;
 	}
 
 	/** Several models as one, so an animation moves them together (as the client merges a player). */
@@ -65,9 +107,26 @@ final class AnimModel
 		int[] argb = new int[nf];
 		int vo = 0;
 		int fo = 0;
+		int textured = 0;
+		for (AnimModel p : parts)
+		{
+			textured += p.texFaces.length;
+		}
+		int[] texFaces = new int[textured];
+		Texture[] textures = new Texture[textured];
+		float[] texUv = new float[textured * 6];
+		float[] texLight = new float[textured * 3];
+		int ti = 0;
 		for (AnimModel p : parts)
 		{
 			int pv = p.x.length;
+			for (int i = 0; i < p.texFaces.length; i++, ti++)
+			{
+				texFaces[ti] = p.texFaces[i] + fo;
+				textures[ti] = p.textures[i];
+			}
+			System.arraycopy(p.texUv, 0, texUv, (ti - p.texFaces.length) * 6, p.texUv.length);
+			System.arraycopy(p.texLight, 0, texLight, (ti - p.texFaces.length) * 3, p.texLight.length);
 			System.arraycopy(p.x, 0, x, vo, pv);
 			System.arraycopy(p.y, 0, y, vo, pv);
 			System.arraycopy(p.z, 0, z, vo, pv);
@@ -82,7 +141,8 @@ final class AnimModel
 			vo += pv;
 			fo += p.a.length;
 		}
-		return new AnimModel(x, y, z, labels, a, b, c, argb);
+		AnimModel merged = new AnimModel(x, y, z, labels, a, b, c, argb);
+		return textured == 0 ? merged : merged.withTextures(texFaces, textures, texUv, texLight);
 	}
 
 	private int[][] groups()
@@ -124,6 +184,12 @@ final class AnimModel
 	/** The mesh in an animation frame (or unanimated, for null), scaled by {@code scale}. */
 	MeshSnapshot pose(Sequence.Frame frame, double scale)
 	{
+		return pose(frame, scale, 0);
+	}
+
+	/** The same, with flowing textures at step {@code flow} of their loop (see {@link #flowStep}). */
+	MeshSnapshot pose(Sequence.Frame frame, double scale, int flow)
+	{
 		int n = x.length;
 		int[] vx = x.clone();
 		int[] vy = y.clone();
@@ -141,7 +207,17 @@ final class AnimModel
 			fy[i] = (float) (vy[i] * scale);
 			fz[i] = (float) (vz[i] * scale);
 		}
-		return new MeshSnapshot(fx, fy, fz, a, b, c, argb);
+		FaceTextures faceTextures = null;
+		if (texFaces.length > 0)
+		{
+			float[] scroll = new float[texFaces.length];
+			for (int i = 0; i < scroll.length; i++)
+			{
+				scroll[i] = textures[i] == null ? 0 : (float) textures[i].scroll(flow * FLOW_STEP);
+			}
+			faceTextures = new FaceTextures(texFaces, textures, texUv, texLight, scroll);
+		}
+		return new MeshSnapshot(fx, fy, fz, a, b, c, argb, faceTextures);
 	}
 
 	private void animate(Sequence.Frame frame, int[] vx, int[] vy, int[] vz)

@@ -69,6 +69,7 @@ final class BalanceBot
 				continue;
 			}
 			steer(s);
+			useBag(s, style);
 			s.advance(frame);
 		}
 		Result r = new Result(s.getElapsed(), s.getKills(), s.getProgression().getLevel(), s.getWeapon().getDps());
@@ -136,6 +137,30 @@ final class BalanceBot
 		s.setMoveDirection(mx, my);
 	}
 
+	/** Eats when hurt and keeps potions for its style (or any style) going, like a player. */
+	private static void useBag(GameSession s, Style style)
+	{
+		Player p = s.getPlayer();
+		Inventory bag = s.getInventory();
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Item item = bag.get(i);
+			if (item == null)
+			{
+				continue;
+			}
+			if (item.getFood() != null && p.health < p.maxHealth * 0.5)
+			{
+				s.useItem(i);
+			}
+			Boost potion = item.getPotion();
+			if (potion != null && (potion.getStyle() == null || potion.getStyle() == style) && !s.getBuild().has(potion))
+			{
+				s.useItem(i);
+			}
+		}
+	}
+
 	/**
 	 * The reward a player of one style would take: weapon upgrades first, then abilities, then
 	 * a mix of armour and prayers (stronger armour wins over plain passives).
@@ -168,8 +193,15 @@ final class BalanceBot
 					Passive pa = o.getPassive();
 					score = pa.isAbility() ? 55 : pa.getStyle() != null ? 46 : 36;
 					break;
+				case FOOD:
+					// enough food in the bag already is enough
+					score = p.health < p.maxHealth * 0.5 ? 120 : s.getInventory().freeSlots() > 20 ? 6 : 2;
+					break;
+				case BOOST:
+					score = o.getBoost().getStyle() == null || o.getBoost().getStyle() == style ? 7 : -1;
+					break;
 				default:
-					score = p.health < p.maxHealth * 0.5 ? 120 : 0;
+					score = 0;
 					break;
 			}
 			if (score > bestScore)

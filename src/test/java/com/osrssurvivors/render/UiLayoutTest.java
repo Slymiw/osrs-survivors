@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Option;
+import com.osrssurvivors.game.Volume;
 import com.osrssurvivors.game.Phase;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -106,7 +107,8 @@ public class UiLayoutTest
 			s.openOptions();
 			assertTrue(s.isOptionsOpen());
 			List<UiLayout.Button> buttons = UiLayout.buttons(FIXED, s);
-			assertEquals(Option.values().length + 1, buttons.size());
+			// each volume has a minus button, its bar and a plus button
+			assertEquals(Option.values().length + 3 * Volume.values().length + 1, buttons.size());
 			Rectangle panel = UiLayout.panel(FIXED, s);
 			for (UiLayout.Button b : buttons)
 			{

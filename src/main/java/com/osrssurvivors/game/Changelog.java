@@ -45,6 +45,22 @@ public final class Changelog
 	}
 
 	public static final List<Release> RELEASES = Collections.unmodifiableList(Arrays.asList(
+		new Release("0.7", "2026-10-26", "Sound and polish",
+			note("Sound: the game's own sound effects, for every swing, spell and monster death.", Gear.STAFF_OF_FIRE),
+			note("Master, combat and interface volume on the options page; M mutes.", null),
+			note("Hits land with sparks as the arrow or spell arrives; monsters rise in and fall.", Gear.MAGIC_SHORTBOW),
+			note("Champions arrive with a gong and fall in a gold shockwave.", EnemyKind.GIANT_MOLE),
+			note("A red edge when hit hard, a heartbeat when low. New option: screen shake.", null),
+			note("A cleaner screen: a level badge, a smooth XP bar, notices for big moments.", null),
+			note("Fixed: summoning a champion early with the dev tools could break the game.", null)),
+		new Release("0.6", "2026-10-26", "Your inventory",
+			note("An inventory: click to use, drag to move, shift-click to drop. I hides it.", null),
+			note("Other styles' gear waits in the bag; click its weapon to switch style.", Gear.ASCENSION_CROSSBOWS),
+			note("Potions go in the bag, a minute a dose. New: smelling salts and more.", Boost.SMELLING_SALTS),
+			note("Food goes in the bag too, karambwans included for combo eating.", null),
+			note("Megarares: Scythe of vitur, Twisted bow, Tumeken's shadow, Obligator.", Gear.TWISTED_BOW),
+			note("The fire and infernal capes show their lava, and it flows.", Gear.INFERNAL_CAPE),
+			note("Lamp of Knowledge gives 5% a rank; healing from hits has a limit.", Gear.SANGUINE_SCYTHE_OF_VITUR)),
 		new Release("0.5", "2026-10-26", "Raids and megarares",
 			note("19 raid bosses join the champions: Chambers, Tombs and the Fractured Archive.", EnemyKind.TEKTON),
 			note("Megarares, rarer than any pet: the Obligator, Ascension crossbows, Zorya's tome.", Gear.OBLIGATOR),

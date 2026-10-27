@@ -38,6 +38,8 @@ public final class Enemy
 	/** Seconds left frozen in place (Ice Barrage). */
 	double frozen;
 	double hitFlash;
+	/** Seconds until the latest hit is seen to land (a missile in flight); for drawing only. */
+	double hitDelay;
 	/** Direction of travel in radians (0 = east, PI/2 = south). */
 	double facing = Math.PI / 2;
 	boolean moving;
@@ -121,12 +123,24 @@ public final class Enemy
 
 	public boolean isFlashing()
 	{
-		return hitFlash > 0;
+		return hitFlash > 0 && hitFlash <= HIT_FLASH;
+	}
+
+	/** 1 as a hit lands, falling to 0 over the flash; 0 while a missile is still on its way. */
+	public double getFlash()
+	{
+		return isFlashing() ? hitFlash / HIT_FLASH : 0;
 	}
 
 	public boolean isChampion()
 	{
 		return champion;
+	}
+
+	/** Run time when it arrived, for its entrance. */
+	public double getBorn()
+	{
+		return born;
 	}
 
 	public boolean isFrozen()
@@ -152,8 +166,15 @@ public final class Enemy
 
 	void damage(double amount)
 	{
+		damage(amount, 0);
+	}
+
+	/** Takes damage now; the flash shows once {@code delay} seconds pass (a missile's flight). */
+	void damage(double amount, double delay)
+	{
 		health -= amount;
-		hitFlash = HIT_FLASH;
+		hitDelay = Math.max(0, delay);
+		hitFlash = HIT_FLASH + hitDelay;
 	}
 
 	/** Moves straight towards the target, stopping on contact instead of overshooting into it. */

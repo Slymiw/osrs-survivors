@@ -15,6 +15,8 @@ import com.osrssurvivors.game.EnemyShot;
 import com.osrssurvivors.game.GameSession;
 import com.osrssurvivors.game.Gear;
 import com.osrssurvivors.game.GearSet;
+import com.osrssurvivors.game.Inventory;
+import com.osrssurvivors.game.Item;
 import com.osrssurvivors.game.ItemRarity;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.MetaProgress;
@@ -30,6 +32,7 @@ import com.osrssurvivors.game.Progression;
 import com.osrssurvivors.game.Slot;
 import com.osrssurvivors.game.Strike;
 import com.osrssurvivors.game.TitleScreen;
+import com.osrssurvivors.game.Volume;
 import com.osrssurvivors.game.Weapon;
 import com.osrssurvivors.game.XpOrb;
 import java.awt.AlphaComposite;
@@ -69,12 +72,18 @@ public final class GameRenderer
 	static final Color RED = new Color(255, 0, 0);
 	static final Color HINT = new Color(200, 190, 160);
 	/** Shown on the main menu. */
-	static final String CREDITS = "Free unofficial fan game, not affiliated with Jagex. Old School RuneScape and its artwork are the property of Jagex Ltd.";
+	static final String CREDITS = "Free unofficial fan game, not affiliated with Jagex. Old School RuneScape and its artwork and sounds are the property of Jagex Ltd.";
 	static final Color PANEL = new Color(62, 53, 41, 240);
 	static final Color PANEL_EDGE_DARK = new Color(24, 20, 15);
 	static final Color PANEL_EDGE_LIGHT = new Color(110, 98, 78);
 	static final Color STONE = new Color(78, 68, 55);
 	static final Color STONE_HOVER = new Color(104, 91, 73);
+	static final Color STONE_PRESSED = new Color(66, 57, 45);
+	static final Color STONE_DISABLED = new Color(58, 52, 44);
+	static final Color PANEL_BAND = new Color(48, 41, 31, 200);
+	private static final Color ABILITY_STRIP = new Color(110, 140, 255);
+	private static final Color PASSIVE_STRIP = new Color(90, 200, 190);
+	private static final Color SUPPLY_STRIP = new Color(200, 170, 110);
 	static final Color SLOT_BACK = new Color(45, 39, 30);
 
 	private static final Color OUTSIDE = new Color(18, 22, 14);
@@ -100,9 +109,9 @@ public final class GameRenderer
 	private static final Color CANNON_FALLBACK = new Color(60, 60, 66);
 	private static final Color CHAMPION_BAR = new Color(150, 20, 20);
 	private static final Color BLOOD = new Color(170, 20, 30);
-	private static final Color GOD = new Color(255, 215, 90);
-	private static final Color GOLD = new Color(255, 200, 40);
-	private static final Color GREEN = new Color(0, 230, 0);
+	static final Color GOD = new Color(255, 215, 90);
+	static final Color GOLD = new Color(255, 200, 40);
+	static final Color GREEN = new Color(0, 230, 0);
 	private static final Color LOCKED = new Color(120, 110, 95);
 	private static final Color REEL_BACK = new Color(22, 18, 13);
 	private static final Color BULB_OFF = new Color(90, 70, 30);
@@ -129,6 +138,23 @@ public final class GameRenderer
 	public static void render(Graphics2D graphics, Rectangle view, GameSession session, GameAssets assets,
 		Point mouse, String exitKey)
 	{
+		render(graphics, view, session, assets, mouse, exitKey, -1);
+	}
+
+	/** @param dragging the bag slot whose item is being dragged by the mouse, or -1 */
+	public static void render(Graphics2D graphics, Rectangle view, GameSession session, GameAssets assets,
+		Point mouse, String exitKey, int dragging)
+	{
+		render(graphics, view, session, assets, mouse, exitKey, dragging, null, false);
+	}
+
+	/**
+	 * @param fx screen effects to draw with the world (null for none)
+	 * @param mouseDown whether the mouse button is held, so the button under it looks pressed
+	 */
+	public static void render(Graphics2D graphics, Rectangle view, GameSession session, GameAssets assets,
+		Point mouse, String exitKey, int dragging, Fx fx, boolean mouseDown)
+	{
 		if (view.width <= 0 || view.height <= 0)
 		{
 			return;
@@ -140,11 +166,13 @@ public final class GameRenderer
 			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, assets.pixelFonts()
 				? RenderingHints.VALUE_TEXT_ANTIALIAS_OFF : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 			Ui ui = new Ui(g, assets, session.getOptions(),
-				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime());
-			new World(view, session, assets).draw(g);
+				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime(), mouse, mouseDown);
+			new World(view, session, assets, fx).draw(g);
 			if (session.getPhase() != Phase.TITLE)
 			{
-				drawHud(ui, view, session, exitKey);
+				drawVignette(ui, view, session, fx);
+				drawHud(ui, view, session, exitKey, fx);
+				drawToasts(ui, view, fx);
 			}
 			if (session.getPhase() != Phase.RUNNING)
 			{
@@ -185,11 +213,40 @@ public final class GameRenderer
 					drawLevelUpBanner(ui, view, levelPanel, levelUp);
 				}
 			}
+			drawBag(ui, view, session, mouse, dragging);
 		}
 		finally
 		{
 			g.dispose();
 		}
+	}
+
+	/** Seconds a monster takes to rise into the fight. */
+	static final double ENTRANCE = 0.35;
+	/** Share of a hitsplat's life spent popping in. */
+	static final double SPLAT_POP = 0.12;
+	/** Blobs in a spell's tail, and the world units between them. */
+	static final int TRAIL = 5;
+	static final double TRAIL_STEP = 4;
+
+	/**
+	 * A twinkle on loot: a little four-pointed star that flares for a moment every couple of
+	 * seconds, at a time set by {@code phase}.
+	 */
+	static void drawGlint(Graphics2D g, int x, int y, double phase, int size)
+	{
+		double cycle = phase - Math.floor(phase);
+		if (cycle > 0.18)
+		{
+			return;
+		}
+		double k = Math.sin(cycle / 0.18 * Math.PI);
+		int r = (int) Math.max(1, Math.round(size * k));
+		g.setColor(new Color(255, 255, 255, (int) (220 * k)));
+		g.fillRect(x - r, y, r * 2 + 1, 1);
+		g.fillRect(x, y - r, 1, r * 2 + 1);
+		g.setColor(new Color(255, 255, 255, (int) (120 * k)));
+		g.fillRect(x - 1, y - 1, 3, 3);
 	}
 
 	/** The world: ground, scenery, pickups, characters and combat effects, centred on the player. */
@@ -203,17 +260,23 @@ public final class GameRenderer
 		final double originY;
 		/** Where each character's sprite top ended up, for placing health bars and hitsplats. */
 		final Map<Enemy, Integer> heads = new IdentityHashMap<>();
+		/** Screen effects, or null. */
+		final Fx fx;
 		int playerTop;
 
-		World(Rectangle view, GameSession session, GameAssets assets)
+		World(Rectangle view, GameSession session, GameAssets assets, Fx fx)
 		{
 			this.view = view;
 			this.session = session;
 			this.assets = assets;
+			this.fx = fx;
 			this.scale = scale(view);
 			Player p = session.getPlayer();
-			this.originX = view.x + view.width / 2.0 - p.getX() * scale;
-			this.originY = view.y + view.height / 2.0 - p.getY() * scale;
+			// the world shakes; the interface over it stays put
+			double shakeX = fx == null ? 0 : fx.getShakeX();
+			double shakeY = fx == null ? 0 : fx.getShakeY();
+			this.originX = view.x + view.width / 2.0 - p.getX() * scale + shakeX;
+			this.originY = view.y + view.height / 2.0 - p.getY() * scale + shakeY;
 		}
 
 		int sx(double wx)
@@ -260,6 +323,10 @@ public final class GameRenderer
 			{
 				drawField(g);
 			}
+			if (fx != null)
+			{
+				fx.drawGround(g, originX, originY, scale);
+			}
 			drawBursts(g);
 			drawChampionRings(g);
 			drawGems(g);
@@ -268,6 +335,10 @@ public final class GameRenderer
 			drawPets(g);
 			drawStrikes(g);
 			drawShots(g);
+			if (fx != null)
+			{
+				fx.drawAir(g, originX, originY, scale, view);
+			}
 			drawOverheads(g);
 			drawChampionPointers(g);
 		}
@@ -433,19 +504,30 @@ public final class GameRenderer
 			Composite old = g.getComposite();
 			for (Effects.Burst b : session.getBursts())
 			{
-				if (!visible(b.getX(), b.getY(), b.getRadius()))
+				if (!b.isLanded() || !visible(b.getX(), b.getY(), b.getRadius()))
 				{
 					continue;
 				}
-				float fade = (float) (1 - b.getAge());
-				int r = len(b.getRadius() * (0.6 + 0.4 * b.getAge()));
+				double age = b.getAge();
+				float fade = (float) (1 - age);
+				// spreads fast, then settles
+				int r = len(b.getRadius() * (0.55 + 0.45 * (1 - (1 - age) * (1 - age))));
 				int x = sx(b.getX());
 				int y = sy(b.getY());
 				Color c = burstColour(b.getType());
-				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f * fade));
+				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.32f * fade));
 				g.setColor(c);
 				g.fillOval(x - r, y - r / 2, r * 2, r);
+				if (age < 0.35 && (b.getType() == Effects.Burst.Type.EXPLOSION || b.getType() == Effects.Burst.Type.DRAGONFIRE))
+				{
+					// a hot white core as it goes off
+					int core = r / 2;
+					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.7 * (1 - age / 0.35))));
+					g.setColor(new Color(255, 240, 200));
+					g.fillOval(x - core, y - core / 2, core * 2, core);
+				}
 				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.9f * fade));
+				g.setColor(c);
 				g.drawOval(x - r, y - r / 2, r * 2, r);
 				BufferedImage icon = b.getType() == Effects.Burst.Type.ICE ? assets.sprite(UiSprite.ICE_SPELL) : null;
 				if (icon != null)
@@ -463,6 +545,7 @@ public final class GameRenderer
 				case ICE:
 					return ICE;
 				case EXPLOSION:
+				case DRAGONFIRE:
 					return FIRE;
 				case BLOOD:
 					return BLOOD;
@@ -476,12 +559,20 @@ public final class GameRenderer
 		private void drawCaskets(Graphics2D g)
 		{
 			BufferedImage icon = assets.sprite(UiSprite.CASKET);
+			Composite old = g.getComposite();
 			for (Casket c : session.getCaskets())
 			{
 				int x = sx(c.getX());
 				int y = sy(c.getY());
-				// a slow bob so the loot catches the eye
+				// a slow bob so the loot catches the eye, over a pulsing gold glow
 				int bob = (int) Math.round(Math.sin(session.getElapsed() * 4) * 3);
+				double pulse = 0.5 + 0.5 * Math.sin(session.getElapsed() * 5);
+				int glow = len(16 + 4 * pulse);
+				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.25 + 0.2 * pulse)));
+				g.setColor(GOLD);
+				g.fillOval(x - glow, y - glow / 2, glow * 2, glow);
+				g.setComposite(old);
+				drawGlint(g, x + len(6), y - len(14) + bob, session.getElapsed() * 1.3, len(5));
 				if (icon != null)
 				{
 					g.drawImage(icon, x - icon.getWidth() / 2, y - icon.getHeight() + bob, null);
@@ -515,6 +606,9 @@ public final class GameRenderer
 				else if (spell != null)
 				{
 					int size = Math.max(12, len(10));
+					// a dark-red glow round monster spells, so they read as danger
+					g.setColor(new Color(200, 40, 90, 70));
+					g.fillOval(x - size, y - size, size * 2, size * 2);
 					g.drawImage(spell, x - size / 2, y - size / 2, size, size, null);
 				}
 				else
@@ -526,17 +620,35 @@ public final class GameRenderer
 			g.setStroke(old);
 		}
 
+		/**
+		 * XP gems: each bobs a little and now and then glints; one being pulled in trails a faint
+		 * streak, so pickups read as flying to the player.
+		 */
 		private void drawGems(Graphics2D g)
 		{
 			int size = Math.max(10, len(XpOrb.RADIUS * 3.2));
+			Player p = session.getPlayer();
+			double magnet = p.getMagnetRadius();
+			double t = session.getElapsed();
+			Stroke oldStroke = g.getStroke();
 			for (XpOrb orb : session.getOrbs())
 			{
 				if (!visible(orb.getX(), orb.getY(), XpOrb.RADIUS * 3))
 				{
 					continue;
 				}
+				double seed = noise((int) (orb.getX() * 7) * 31 + (int) (orb.getY() * 13));
 				int x = sx(orb.getX());
-				int y = sy(orb.getY());
+				int y = sy(orb.getY()) - (int) Math.round(Math.sin(t * 3 + seed * 6.28) * 1.5 * scale);
+				double dx = p.getX() - orb.getX();
+				double dy = p.getY() - orb.getY();
+				double dist = Math.hypot(dx, dy);
+				if (dist <= magnet && dist > 1)
+				{
+					g.setStroke(new BasicStroke(Math.max(1f, (float) scale * 2)));
+					g.setColor(new Color(160, 230, 255, 90));
+					g.drawLine(x, y, x - (int) Math.round(dx / dist * len(12)), y - (int) Math.round(dy / dist * len(12)));
+				}
 				BufferedImage gem = assets.gem(orb.getValue());
 				if (gem != null)
 				{
@@ -550,7 +662,9 @@ public final class GameRenderer
 					g.setColor(GEM_FALLBACK);
 					g.fillOval(x - r, y - r, r * 2, r * 2);
 				}
+				drawGlint(g, x + size / 4, y - size / 4, t * 0.8 + seed * 5, Math.max(3, size / 3));
 			}
+			g.setStroke(oldStroke);
 		}
 
 		/** Scenery, corpses, enemies and the player, back to front so nearer things overlap further ones. */
@@ -576,14 +690,17 @@ public final class GameRenderer
 					draws.add(() ->
 					{
 						Composite old = g.getComposite();
+						double fall = c.getAge();
 						g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) c.getStrength()));
 						ActorSprite s = assets.enemy(c.getKind(), c.getRadius() > c.getKind().getRadius(), c.getFacing(), false, 0, scale);
-						drawActor(g, s, c.getX(), c.getY(), c.getRadius(), kindColor(c.getKind()), 0);
+						// sinks into the ground as it fades
+						drawActor(g, s, c.getX(), c.getY(), c.getRadius(), kindColor(c.getKind()), (int) Math.round(fall * fall * len(8)));
 						g.setComposite(old);
 					});
 				}
 			}
 			List<Runnable> onTop = new ArrayList<>();
+			Player player = session.getPlayer();
 			for (Enemy e : session.getEnemies())
 			{
 				if (visible(e.getX(), e.getY(), e.getRadius() * 4))
@@ -596,7 +713,22 @@ public final class GameRenderer
 					{
 						ActorSprite s = assets.enemy(e.getKind(), e.isChampion(), e.getFacing(), e.isMoving() && !e.isFrozen(),
 							animTime + e.getAnimOffset(), scale);
-						int top = drawActor(g, s, e.getX(), e.getY(), e.getRadius(), e.isFlashing() && session.getOptions().isOn(Option.FLASHES) ? WHITE : kindColor(e.getKind()), 0);
+						// arriving monsters rise out of the ground and fade in
+						double since = animTime - e.getBorn();
+						double entrance = since >= 0 && since < ENTRANCE ? since / ENTRANCE : 1;
+						Composite before = g.getComposite();
+						if (entrance < 1)
+						{
+							g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) entrance));
+						}
+						// a hit knocks the sprite back a touch, away from the player
+						double flash = e.getFlash();
+						double away = Math.atan2(e.getY() - player.getY(), e.getX() - player.getX());
+						int nudgeX = (int) Math.round(Math.cos(away) * flash * len(3));
+						int nudgeY = (int) Math.round(Math.sin(away) * flash * len(2)) + (int) Math.round((1 - entrance) * len(10));
+						int top = drawActor(g, s, e.getX(), e.getY(), e.getRadius(),
+							e.isFlashing() && session.getOptions().isOn(Option.FLASHES) ? WHITE : kindColor(e.getKind()), nudgeY, nudgeX);
+						g.setComposite(before);
 						heads.put(e, top);
 						if (e.isFrozen())
 						{
@@ -677,6 +809,12 @@ public final class GameRenderer
 		/** Draws a sprite with its feet at the world position, or a fallback disc. Returns the top edge in screen y. */
 		private int drawActor(Graphics2D g, ActorSprite sprite, double wx, double wy, double radius, Color fallback, int bob)
 		{
+			return drawActor(g, sprite, wx, wy, radius, fallback, bob, 0);
+		}
+
+		/** As above, the sprite moved {@code nudge} pixels sideways (its shadow stays). */
+		private int drawActor(Graphics2D g, ActorSprite sprite, double wx, double wy, double radius, Color fallback, int bob, int nudge)
+		{
 			int x = sx(wx);
 			int y = sy(wy);
 			int r = len(radius);
@@ -685,32 +823,46 @@ public final class GameRenderer
 			if (sprite != null)
 			{
 				int top = y - sprite.anchorY + bob;
-				g.drawImage(sprite.image, x - sprite.anchorX, top, null);
+				g.drawImage(sprite.image, x - sprite.anchorX + nudge, top, null);
 				return top;
 			}
 			g.setColor(fallback);
-			g.fillOval(x - r, y - r * 2, r * 2, r * 2);
+			g.fillOval(x - r + nudge, y - r * 2 + bob, r * 2, r * 2);
 			g.setColor(Color.BLACK);
-			g.drawOval(x - r, y - r * 2, r * 2, r * 2);
-			return y - r * 2;
+			g.drawOval(x - r + nudge, y - r * 2 + bob, r * 2, r * 2);
+			return y - r * 2 + bob;
 		}
 
+		/**
+		 * The player's attacks and the abilities' missiles: swings sweep across the target, arrows
+		 * streak, spells glow and trail, lobbed things arc; missiles flash where they land.
+		 */
 		private void drawStrikes(Graphics2D g)
 		{
 			Stroke oldStroke = g.getStroke();
 			Composite oldComposite = g.getComposite();
 			for (Strike s : session.getStrikes())
 			{
-				double t = 1 - s.getStrength();
 				Gear.Missile missile = s.weapon == null ? Gear.Missile.NONE : s.weapon.getMissile();
-				if (s.source == Strike.Source.CANNON || s.source == Strike.Source.CHINCHOMPA || missile == Gear.Missile.CHINCHOMPA)
+				double t = s.getProgress();
+				double impact = s.getImpactAge();
+				boolean lobbed = s.source == Strike.Source.CANNON || s.source == Strike.Source.CHINCHOMPA || missile == Gear.Missile.CHINCHOMPA;
+				if (lobbed)
 				{
+					if (impact >= 0)
+					{
+						continue;
+					}
 					// lobbed: cannonballs and chinchompas
 					double wx = s.fromX + (s.toX - s.fromX) * t;
 					double wy = s.fromY + (s.toY - s.fromY) * t - 12 - Math.sin(t * Math.PI) * (s.source == Strike.Source.CANNON ? 6 : 30);
 					BufferedImage icon = assets.sprite(s.source == Strike.Source.CANNON ? UiSprite.CANNONBALL : UiSprite.CHINCHOMPA);
 					int x = sx(wx);
 					int y = sy(wy);
+					// its shadow on the ground, so the arc reads
+					g.setColor(SHADOW);
+					int sh = len(4);
+					g.fillOval(sx(s.fromX + (s.toX - s.fromX) * t) - sh, sy(s.fromY + (s.toY - s.fromY) * t) - sh / 2, sh * 2, sh);
 					if (icon != null)
 					{
 						int size = Math.max(10, len(s.source == Strike.Source.CANNON ? 8 : 12));
@@ -723,53 +875,107 @@ public final class GameRenderer
 					}
 					continue;
 				}
-				if (missile == Gear.Missile.NONE)
+				if (missile == Gear.Missile.NONE && s.source == Strike.Source.PLAYER)
 				{
-					// a melee swing: a quick arc across the target
+					drawSwing(g, s, t);
+					continue;
+				}
+				Color glow = s.source == Strike.Source.THRALL ? new Color(200, 200, 235) : missile == Gear.Missile.SPELL
+					? Fx.spellColour(s.weapon) : new Color(255, 245, 220);
+				if (impact >= 0)
+				{
+					// a flash where it lands
 					int x = sx(s.toX);
-					int y = sy(s.toY - 10);
-					int r = len(14);
-					double angle = Math.toDegrees(Math.atan2(-(s.toY - s.fromY), s.toX - s.fromX));
-					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) s.getStrength()));
-					g.setColor(SLASH);
-					g.setStroke(new BasicStroke(Math.max(2f, (float) scale * 2)));
-					g.drawArc(x - r, y - r, r * 2, r * 2, (int) angle - 60, 120);
+					int y = sy(s.toY - 12);
+					int r = len((missile == Gear.Missile.SPELL ? 5 : 3) + 9 * impact);
+					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.8 * (1 - impact))));
+					g.setColor(glow);
+					g.fillOval(x - r, y - r, r * 2, r * 2);
+					g.setColor(WHITE);
+					int core = Math.max(1, r / 3);
+					g.fillOval(x - core, y - core, core * 2, core * 2);
 					g.setComposite(oldComposite);
 					continue;
 				}
 				// projectiles fly from chest height on the player to the target
-				double wx = s.fromX + (s.toX - s.fromX) * t;
-				double wy = s.fromY + (s.toY - s.fromY) * t - 12;
+				double dx = s.toX - s.fromX;
+				double dy = s.toY - s.fromY;
+				double d = Math.max(1, Math.hypot(dx, dy));
+				double wx = s.fromX + dx * t;
+				double wy = s.fromY + dy * t - 12;
 				int x = sx(wx);
 				int y = sy(wy);
-				if (missile == Gear.Missile.SPELL)
+				if (missile == Gear.Missile.SPELL || s.source == Strike.Source.THRALL)
 				{
-					BufferedImage spell = assets.projectile(s.weapon);
+					BufferedImage spell = s.source == Strike.Source.THRALL ? null : assets.projectile(s.weapon);
 					int size = Math.max(12, len(10));
+					// a glow and a tapering tail behind it, no longer than the way it has come
+					double travelled = d * t;
+					for (int k = TRAIL; k >= 1; k--)
+					{
+						double back = Math.min(travelled, k * TRAIL_STEP);
+						int tx = sx(wx - dx / d * back);
+						int ty = sy(wy - dy / d * back);
+						int r = Math.max(1, size * (TRAIL + 2 - k) / (2 * TRAIL + 2));
+						g.setColor(new Color(glow.getRed(), glow.getGreen(), glow.getBlue(), 110 - k * (90 / TRAIL)));
+						g.fillOval(tx - r, ty - r, r * 2, r * 2);
+					}
+					g.setColor(new Color(glow.getRed(), glow.getGreen(), glow.getBlue(), 80));
+					g.fillOval(x - size * 3 / 4, y - size * 3 / 4, size * 3 / 2, size * 3 / 2);
 					if (spell != null)
 					{
 						g.drawImage(spell, x - size / 2, y - size / 2, size, size, null);
 					}
 					else
 					{
-						g.setColor(SPELL_FALLBACK);
+						g.setColor(s.source == Strike.Source.THRALL ? glow : SPELL_FALLBACK);
 						g.fillOval(x - size / 4, y - size / 4, size / 2, size / 2);
 					}
 					continue;
 				}
-				double dx = s.toX - s.fromX;
-				double dy = s.toY - s.fromY;
-				double d = Math.max(1, Math.hypot(dx, dy));
 				double length = missile == Gear.Missile.DART ? 5 : 9;
 				int tailX = sx(wx - dx / d * length);
 				int tailY = sy(wy - dy / d * length);
+				// a motion streak behind the shaft
+				int streakX = sx(wx - dx / d * length * 2.6);
+				int streakY = sy(wy - dy / d * length * 2.6);
+				g.setStroke(new BasicStroke(Math.max(1f, (float) scale)));
+				g.setColor(new Color(255, 250, 230, 70));
+				g.drawLine(streakX, streakY, tailX, tailY);
 				g.setStroke(new BasicStroke(Math.max(1.5f, (float) scale)));
-				g.setColor(SHAFT);
+				g.setColor(missile == Gear.Missile.BOLT ? new Color(90, 90, 100) : SHAFT);
 				g.drawLine(tailX, tailY, x, y);
 				g.setColor(ARROWHEAD);
 				g.fillRect(x - 1, y - 1, 3, 3);
 			}
 			g.setStroke(oldStroke);
+			g.setComposite(oldComposite);
+		}
+
+		/**
+		 * A melee swing: a bright crescent sweeping across the target, its trailing edge fading,
+		 * gone in a quarter of a second.
+		 */
+		private void drawSwing(Graphics2D g, Strike s, double t)
+		{
+			int x = sx(s.toX);
+			int y = sy(s.toY - 10);
+			int r = len(15);
+			double angle = Math.toDegrees(Math.atan2(-(s.toY - s.fromY), s.toX - s.fromX));
+			double ease = 1 - (1 - t) * (1 - t) * (1 - t);
+			int lead = (int) Math.round(angle + 75 - 150 * ease);
+			int span = (int) Math.round(Math.min(110, 150 * ease) + 10);
+			float fade = (float) Math.max(0, 1 - t);
+			Composite old = g.getComposite();
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f * fade));
+			g.setColor(new Color(255, 236, 190));
+			g.setStroke(new BasicStroke(Math.max(3f, (float) scale * 5)));
+			g.drawArc(x - r, y - r, r * 2, r * 2, lead, span);
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.95f * fade));
+			g.setColor(SLASH);
+			g.setStroke(new BasicStroke(Math.max(1.5f, (float) scale * 2)));
+			g.drawArc(x - r, y - r, r * 2, r * 2, lead, Math.max(10, span / 2));
+			g.setComposite(old);
 		}
 
 		/** Health bars over hurt characters and hitsplats, drawn above everything in the world. */
@@ -816,22 +1022,40 @@ public final class GameRenderer
 				{
 					continue;
 				}
+				if (!h.isLanded())
+				{
+					continue;
+				}
 				int n = stack.merge(key, 1, Integer::sum) - 1;
 				Integer top = e == null ? Integer.valueOf(playerTop) : heads.get(e);
 				int x = sx(ex) + (n % 2 == 1 ? -10 : 0);
 				int y = (top != null ? (top + sy(ey)) / 2 : sy(ey) - len(radius)) - (n / 2) * 14 - (n % 2) * 7;
 				String text = String.valueOf(h.getDamage());
 				BufferedImage image = h.isSpecial() && specialSplat != null ? specialSplat : splat;
+				double age = h.getAge();
+				// pops in a size larger, settles, and fades at the end
+				double pop = age < SPLAT_POP ? 1 + 0.4 * (1 - age / SPLAT_POP) : 1;
+				float alpha = (float) Math.min(1, (1 - age) / 0.2);
+				Composite before = g.getComposite();
+				if (alpha < 1)
+				{
+					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+				}
 				if (image != null)
 				{
-					g.drawImage(image, x - image.getWidth() / 2, y - image.getHeight() / 2, null);
+					int w = (int) Math.round(image.getWidth() * pop);
+					int hh = (int) Math.round(image.getHeight() * pop);
+					g.drawImage(image, x - w / 2, y - hh / 2, w, hh, null);
 				}
 				else
 				{
-					g.setColor(new Color(170, 0, 0));
-					g.fillOval(x - 10, y - 9, 20, 18);
+					int w = (int) Math.round(20 * pop);
+					int hh = (int) Math.round(18 * pop);
+					g.setColor(e == null ? new Color(170, 0, 0) : new Color(150, 0, 0));
+					g.fillOval(x - w / 2, y - hh / 2, w, hh);
 				}
 				shadowText(g, text, x - fm.stringWidth(text) / 2, y + fm.getAscent() / 2 - 1, h.isSpecial() ? YELLOW : WHITE);
+				g.setComposite(before);
 			}
 		}
 
@@ -861,56 +1085,111 @@ public final class GameRenderer
 		}
 	}
 
-	private static void drawHud(Ui ui, Rectangle view, GameSession session, String exitKey)
+	private static final Color HUD_BACK = new Color(16, 13, 9, 170);
+	private static final Color HUD_EDGE = new Color(110, 98, 78, 200);
+	private static final Color XP_BACK = new Color(14, 22, 12, 230);
+	private static final Color XP_SHINE = new Color(140, 235, 120);
+	private static final Color BADGE = new Color(58, 49, 36);
+	/** Seconds into a run the controls line shows for (it shows again on the pause screen). */
+	static final double HINT_SECONDS = 25;
+
+	/**
+	 * The heads-up display. Top left: hitpoints, the weapon and running potions. Top middle: the
+	 * level and XP bar, and under it the champion's health (or its warning). Top right: time,
+	 * kills, coins and the place, with XP drops floating up beneath. The controls line shows at
+	 * the start of a run.
+	 */
+	private static void drawHud(Ui ui, Rectangle view, GameSession session, String exitKey, Fx fx)
 	{
 		Player player = session.getPlayer();
 		Progression prog = session.getProgression();
 		Graphics2D g = ui.g;
 
-		// hitpoints orb top left, current weapon beside it
+		// hitpoints orb top left, current weapon beside it in a slot
 		int orbRight = drawHpOrb(ui, view.x + 6, view.y + 6, player);
 		Gear weapon = session.getWeapon().getGear();
 		BufferedImage weaponIcon = weapon == null ? null : ui.assets.gearIcon(weapon);
 		if (weaponIcon != null)
 		{
-			g.drawImage(weaponIcon, orbRight + 4, view.y + 6, null);
+			Rectangle slot = new Rectangle(orbRight + 4, view.y + 6, UiLayout.SLOT, UiLayout.SLOT);
+			drawSlotTile(ui, slot);
+			g.drawImage(weaponIcon, slot.x + (slot.width - weaponIcon.getWidth()) / 2, slot.y + (slot.height - weaponIcon.getHeight()) / 2, null);
 		}
 
-		// level and XP bar, top centre
-		int barW = Math.min(260, view.width / 2);
-		int barH = 16;
-		int barX = view.x + (view.width - barW) / 2;
-		int barY = view.y + 8;
-		g.setColor(BAR_BACK);
+		// level badge and XP bar, top centre
+		int barW = Math.min(300, view.width / 2);
+		int barH = 14;
+		int badgeW = 30;
+		int barX = view.x + (view.width - barW + badgeW) / 2;
+		int barY = view.y + 9;
+		double fill = fx != null ? fx.getXpShown() : Math.min(1.0, (double) prog.getXp() / prog.getXpToNext());
+		double pulse = fx == null ? 0 : fx.getXpPulse();
+		g.setColor(XP_BACK);
 		g.fillRect(barX, barY, barW, barH);
-		g.setColor(XP_FILL);
-		g.fillRect(barX + 1, barY + 1, (int) Math.round((barW - 2) * Math.min(1.0, (double) prog.getXp() / prog.getXpToNext())), barH - 2);
+		int fw = (int) Math.round((barW - 2) * Math.max(0, Math.min(1, fill)));
+		if (fw > 0)
+		{
+			g.setColor(XP_FILL);
+			g.fillRect(barX + 1, barY + 1, fw, barH - 2);
+			// a lighter top edge gives the bar some depth
+			g.setColor(new Color(XP_SHINE.getRed(), XP_SHINE.getGreen(), XP_SHINE.getBlue(), 120 + (int) (100 * pulse)));
+			g.fillRect(barX + 1, barY + 1, fw, 3);
+			if (pulse > 0)
+			{
+				// the leading edge glows as XP comes in
+				g.setColor(new Color(220, 255, 200, (int) (200 * pulse)));
+				g.fillRect(barX + fw - 2, barY + 1, 3, barH - 2);
+			}
+		}
 		g.setColor(PANEL_EDGE_DARK);
 		g.drawRect(barX, barY, barW, barH);
-		BufferedImage skill = ui.assets.sprite(UiSprite.XP_SKILL_ICON);
-		if (skill != null)
-		{
-			g.drawImage(skill, barX - skill.getWidth() - 3, barY + (barH - skill.getHeight()) / 2, null);
-		}
+		g.setColor(HUD_EDGE);
+		g.drawRect(barX - 1, barY - 1, barW + 2, barH + 2);
 		ui.font(TextStyle.SMALL);
-		ui.centred("Level " + prog.getLevel() + "   " + prog.getXp() + " / " + prog.getXpToNext() + " xp",
-			barX + barW / 2, barY + barH - 3, WHITE);
-
-		// time and kills, top right
+		ui.centred(prog.getXp() + " / " + prog.getXpToNext() + " xp", barX + barW / 2, barY + barH - 3, WHITE);
+		// the level, in a badge at the bar's left end
+		int badgeH = barH + 10;
+		int badgeX = barX - badgeW - 4;
+		int badgeY = barY + (barH - badgeH) / 2;
+		g.setColor(BADGE);
+		g.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 8, 8);
+		g.setColor(pulse > 0.5 ? GOLD : HUD_EDGE);
+		g.drawRoundRect(badgeX, badgeY, badgeW - 1, badgeH - 1, 8, 8);
 		ui.font(TextStyle.BOLD);
-		int right = view.x + view.width - 8;
-		int lineH = ui.metrics().getHeight();
-		ui.right(formatTime(session.getElapsed()), right, view.y + 6 + ui.metrics().getAscent(), YELLOW);
-		ui.font(TextStyle.REGULAR);
-		ui.right("Kills: " + session.getKills(), right, view.y + 6 + lineH + ui.metrics().getAscent(), WHITE);
-		ui.font(TextStyle.SMALL);
-		ui.right(session.getLocation().getTitle(), right, view.y + 6 + lineH * 2 + ui.metrics().getAscent(), HINT);
-		ui.right("Coins: " + session.coinsSoFar(), right, view.y + 6 + lineH * 3 + ui.metrics().getAscent() - 4, YELLOW);
-		drawChampion(ui, session, barX, barY + barH + 6, barW);
+		ui.centredFit(String.valueOf(prog.getLevel()), badgeX + badgeW / 2, badgeY + (badgeH + ui.metrics().getAscent()) / 2 - 1,
+			badgeW - 4, YELLOW);
+		drawChampion(ui, session, barX - badgeW - 4, barY + barH + 8, barW + badgeW + 4, fx);
 
-		// XP drops float up the right side, like the game's own
+		// time, kills, coins and the place, top right, on a card
+		int cardW = 118;
+		int right = view.x + view.width - 8;
+		int cardX = right - cardW + 2;
 		ui.font(TextStyle.REGULAR);
-		int dropBase = view.y + 6 + lineH * 4;
+		int lineH = ui.metrics().getHeight();
+		int cardH = 8 + lineH * 3 + 12;
+		g.setColor(HUD_BACK);
+		g.fillRoundRect(cardX, view.y + 4, cardW, cardH, 10, 10);
+		g.setColor(HUD_EDGE);
+		g.drawRoundRect(cardX, view.y + 4, cardW - 1, cardH - 1, 10, 10);
+		int row = view.y + 6 + ui.metrics().getAscent();
+		ui.font(TextStyle.BOLD);
+		ui.right(formatTime(session.getElapsed()), right - 6, row, YELLOW);
+		ui.font(TextStyle.SMALL);
+		ui.text(fit(session.getLocation().getTitle(), ui.metrics(), cardW - 60), cardX + 8, row - 1, HINT);
+		row += lineH;
+		ui.text("Kills", cardX + 8, row, HINT);
+		ui.font(TextStyle.REGULAR);
+		ui.right(String.valueOf(session.getKills()), right - 6, row, WHITE);
+		row += lineH;
+		ui.font(TextStyle.SMALL);
+		ui.text("Coins", cardX + 8, row, HINT);
+		ui.font(TextStyle.REGULAR);
+		ui.right(String.valueOf(session.coinsSoFar()), right - 6, row, GOLD);
+
+		// XP drops float up under the card, like the game's own
+		ui.font(TextStyle.REGULAR);
+		BufferedImage skill = ui.assets.sprite(UiSprite.XP_SKILL_ICON);
+		int dropBase = view.y + 4 + cardH + 6;
 		for (Effects.XpDrop d : session.getXpDrops())
 		{
 			double age = d.getAge();
@@ -918,7 +1197,7 @@ public final class GameRenderer
 			Composite old = g.getComposite();
 			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) Math.min(1, (1 - age) * 3)));
 			String text = "+" + d.getAmount();
-			int textX = right - ui.metrics().stringWidth(text);
+			int textX = right - 6 - ui.metrics().stringWidth(text);
 			if (skill != null)
 			{
 				g.drawImage(skill, textX - skill.getWidth() - 2, y - skill.getHeight() + 2, null);
@@ -928,12 +1207,22 @@ public final class GameRenderer
 		}
 
 		ui.font(TextStyle.SMALL);
-		ui.centred("WASD / arrows: move   P / Esc: pause   " + exitKey + ": save & exit",
-			view.x + view.width / 2, view.y + view.height - 6, HINT);
+		drawPotionTimers(ui, view, session);
+		// the controls, while a run is new and on the pause screen
+		double since = session.getElapsed();
+		float hint = session.getPhase() == Phase.PAUSED ? 1f : (float) Math.max(0, Math.min(1, (HINT_SECONDS - since) / 3));
+		if (hint > 0)
+		{
+			Composite old = g.getComposite();
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, hint));
+			ui.centred("WASD / arrows: move   P / Esc: pause   I: bag   M: mute   " + exitKey + ": save & exit",
+				view.x + view.width / 2, view.y + view.height - 6, HINT);
+			g.setComposite(old);
+		}
 	}
 
 	/** The living champion's name and health under the XP bar, or a warning that one is coming. */
-	private static void drawChampion(Ui ui, GameSession session, int x, int y, int width)
+	private static void drawChampion(Ui ui, GameSession session, int x, int y, int width, Fx fx)
 	{
 		Graphics2D g = ui.g;
 		Enemy champion = session.getChampion();
@@ -941,21 +1230,117 @@ public final class GameRenderer
 		if (champion != null)
 		{
 			int h = 12;
-			int top = y + ui.metrics().getAscent() + 2;
+			int top = y + ui.metrics().getAscent() + 3;
 			ui.centred(champion.getTitle(), x + width / 2, y + ui.metrics().getAscent(), ORANGE);
+			double health = Math.max(0, champion.getHealth() / champion.getMaxHealth());
+			// a pale trail shows the damage just done, catching up after a moment
+			double trail = fx == null ? health : Math.max(health, fx.getChampionShown());
 			g.setColor(BAR_BACK);
 			g.fillRect(x, top, width, h);
+			g.setColor(new Color(255, 230, 180));
+			g.fillRect(x + 1, top + 1, (int) Math.round((width - 2) * trail), h - 2);
 			g.setColor(CHAMPION_BAR);
-			g.fillRect(x + 1, top + 1, (int) Math.round((width - 2) * Math.max(0, champion.getHealth() / champion.getMaxHealth())), h - 2);
+			g.fillRect(x + 1, top + 1, (int) Math.round((width - 2) * health), h - 2);
+			g.setColor(new Color(220, 70, 60));
+			g.fillRect(x + 1, top + 1, (int) Math.round((width - 2) * health), 3);
 			g.setColor(PANEL_EDGE_DARK);
 			g.drawRect(x, top, width, h);
+			g.setColor(GOLD);
+			g.drawRect(x - 1, top - 1, width + 2, h + 2);
 			return;
 		}
 		double countdown = session.getChampionCountdown();
 		if (countdown > 0 && countdown <= GameSession.CHAMPION_WARNING)
 		{
-			ui.centred("A champion approaches! (" + (int) Math.ceil(countdown) + ")", x + width / 2, y + ui.metrics().getAscent(), RED);
+			// throbs as it gets close
+			boolean lit = !ui.on(Option.FLASHES) || ((int) (countdown * 3)) % 2 == 0;
+			ui.centred("A champion approaches! (" + (int) Math.ceil(countdown) + ")", x + width / 2, y + ui.metrics().getAscent(),
+				lit ? RED : ORANGE);
 		}
+	}
+
+	/**
+	 * A red edge on the screen when the player is hit (stronger for heavy blows), and a slow
+	 * heartbeat of it while hitpoints are low.
+	 */
+	private static void drawVignette(Ui ui, Rectangle view, GameSession session, Fx fx)
+	{
+		Player p = session.getPlayer();
+		if (session.getPhase() == Phase.GAME_OVER)
+		{
+			return;
+		}
+		double hp = p.getHealth() / Math.max(1, p.getMaxHealth());
+		double low = hp < LOW_HEALTH ? (LOW_HEALTH - hp) / LOW_HEALTH : 0;
+		boolean lively = ui.on(Option.FLASHES);
+		double beat = lively ? 0.55 + 0.45 * Math.abs(Math.sin(session.getElapsed() * Math.PI * (1 + low))) : 0.8;
+		double strength = Math.max(fx == null ? 0 : fx.getHurt() * (lively ? 0.9 : 0.5), low * 0.6 * beat);
+		if (strength < 0.02)
+		{
+			return;
+		}
+		Graphics2D g = ui.g;
+		int depth = Math.max(20, Math.min(view.width, view.height) / 6);
+		int layers = 8;
+		int step = Math.max(1, depth / layers);
+		for (int i = 0; i < layers; i++)
+		{
+			int inset = i * step;
+			int a = (int) Math.round(strength * 60 * (1 - i / (double) layers));
+			if (a <= 0)
+			{
+				continue;
+			}
+			g.setColor(new Color(160, 0, 0, Math.min(255, a)));
+			g.fillRect(view.x + inset, view.y + inset, view.width - 2 * inset, step);
+			g.fillRect(view.x + inset, view.y + view.height - inset - step, view.width - 2 * inset, step);
+			g.fillRect(view.x + inset, view.y + inset + step, step, view.height - 2 * inset - 2 * step);
+			g.fillRect(view.x + view.width - inset - step, view.y + inset + step, step, view.height - 2 * inset - 2 * step);
+		}
+	}
+
+	/** Below this share of hitpoints the screen's edge beats red. */
+	static final double LOW_HEALTH = 0.3;
+
+	/** Notices for big moments, sliding in under the XP bar. */
+	private static void drawToasts(Ui ui, Rectangle view, Fx fx)
+	{
+		if (fx == null || fx.getToasts().isEmpty())
+		{
+			return;
+		}
+		Graphics2D g = ui.g;
+		Composite old = g.getComposite();
+		int y = view.y + 78;
+		for (Fx.Toast t : fx.getToasts())
+		{
+			double in = Math.min(1, t.age / 0.18);
+			double out = Math.min(1, (Fx.TOAST_SECONDS - t.age) / 0.45);
+			float alpha = (float) Math.max(0, Math.min(in, out));
+			int slide = (int) Math.round((1 - in) * -10);
+			ui.font(TextStyle.BOLD);
+			int titleW = ui.metrics().stringWidth(t.title);
+			int ascent = ui.metrics().getAscent();
+			ui.font(TextStyle.SMALL);
+			int lineW = ui.metrics().stringWidth(t.line);
+			int w = Math.min(view.width - 16, Math.max(titleW, lineW) + 36);
+			int h = ascent + ui.metrics().getHeight() + 14;
+			int x = view.x + (view.width - w) / 2;
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+			g.setColor(new Color(0, 0, 0, 90));
+			g.fillRoundRect(x + 2, y + slide + 3, w, h, 12, 12);
+			g.setColor(new Color(24, 20, 14, 235));
+			g.fillRoundRect(x, y + slide, w, h, 12, 12);
+			g.setColor(t.colour);
+			g.drawRoundRect(x, y + slide, w - 1, h - 1, 12, 12);
+			g.fillRoundRect(x + 6, y + slide + 6, 3, h - 12, 3, 3);
+			ui.font(TextStyle.BOLD);
+			ui.centredFit(t.title, x + w / 2, y + slide + 5 + ascent, w - 24, t.colour);
+			ui.font(TextStyle.SMALL);
+			ui.centredFit(t.line, x + w / 2, y + slide + 7 + ascent + ui.metrics().getHeight(), w - 24, NOTE_TEXT);
+			y += h + 6;
+		}
+		g.setComposite(old);
 	}
 
 	/** Returns the right edge of what was drawn. */
@@ -1048,8 +1433,8 @@ public final class GameRenderer
 		if (options)
 		{
 			ui.font(TextStyle.SMALL);
-			ui.centredFit("Turn any of these off for a calmer screen.", panel.x + panel.width / 2, panel.y + UiLayout.TITLE_H + 6,
-				panel.width - 2 * UiLayout.PAD, YELLOW);
+			ui.centredFit("Sound and screen settings. Press M to mute at any time.", panel.x + panel.width / 2,
+				panel.y + UiLayout.TITLE_H + 6, panel.width - 2 * UiLayout.PAD, YELLOW);
 		}
 		else switch (session.getPhase())
 		{
@@ -1132,8 +1517,25 @@ public final class GameRenderer
 
 		for (UiLayout.Button b : UiLayout.buttons(view, session))
 		{
-			boolean hover = mouse != null && b.bounds.contains(mouse);
-			drawStoneButton(ui, b.bounds, hover);
+			boolean enabled = enabled(session, b);
+			boolean hover = enabled && mouse != null && b.bounds.contains(mouse);
+			boolean pressed = hover && ui.mouseDown;
+			if (b.action == UiLayout.Action.VOLUME_BAR)
+			{
+				drawVolumeRow(ui, b, Volume.values()[b.index], panel);
+				continue;
+			}
+			AffineTransform beforeLift = g(ui).getTransform();
+			if (b.action == UiLayout.Action.CHOOSE_UPGRADE && hover && !pressed)
+			{
+				// the hovered card rises to meet the cursor
+				g(ui).translate(0, -3);
+			}
+			drawStoneButton(ui, b.bounds, hover, pressed, enabled);
+			if (pressed)
+			{
+				g(ui).translate(0, 1);
+			}
 			if (b.action == UiLayout.Action.CHOOSE_UPGRADE)
 			{
 				drawCard(ui, b, session.getChoices().get(b.index), session.getBuild(), hover);
@@ -1161,8 +1563,10 @@ public final class GameRenderer
 			{
 				ui.font(TextStyle.BOLD);
 				ui.centredFit(b.label, b.bounds.x + b.bounds.width / 2,
-					b.bounds.y + (b.bounds.height + ui.metrics().getAscent()) / 2 - 2, b.bounds.width - 8, hover ? WHITE : ORANGE);
+					b.bounds.y + (b.bounds.height + ui.metrics().getAscent()) / 2 - 2, b.bounds.width - 8,
+					!enabled ? LOCKED : hover ? WHITE : ORANGE);
 			}
+			g(ui).setTransform(beforeLift);
 		}
 		if (session.getPhase() == Phase.PAUSED && !options)
 		{
@@ -1366,8 +1770,9 @@ public final class GameRenderer
 			String body;
 			if (t.gear != null)
 			{
-				title = t.gear.getTitle();
-				body = t.gear.getRarity().getTitle() + ". " + t.gear.describe();
+				drawTooltip(ui, view, mouse, t.gear.getTitle(), rarityColour(t.gear.getRarity(), ui.time), t.gear.getRarity().getTitle(),
+					t.gear.describe(), null);
+				return;
 			}
 			else if (t.passive != null)
 			{
@@ -1388,34 +1793,191 @@ public final class GameRenderer
 			{
 				return;
 			}
-			drawTooltip(ui, view, mouse, title, body);
+			drawTooltip(ui, view, mouse, title, ORANGE, null, body, null);
 			return;
 		}
 	}
 
-	private static void drawTooltip(Ui ui, Rectangle view, Point mouse, String title, String body)
+	/**
+	 * A tooltip by the mouse: the name (in its rarity's colour, with the rarity at the right for
+	 * gear), what it does, and how to use it under a rule.
+	 *
+	 * @param tag shown at the right of the title row, or null
+	 * @param hint controls, under a rule at the bottom, or null
+	 */
+	private static void drawTooltip(Ui ui, Rectangle view, Point mouse, String title, Color titleColour, String tag, String body,
+		String hint)
 	{
 		Graphics2D g = ui.g;
-		int width = 210;
+		int width = 220;
 		ui.font(TextStyle.SMALL);
-		List<String> lines = wrap(body, ui.metrics(), width - 12);
+		List<String> lines = wrap(body, ui.metrics(), width - 14);
+		List<String> hints = hint == null ? new ArrayList<>() : wrap(hint, ui.metrics(), width - 14);
 		int line = ui.metrics().getHeight();
-		int height = 8 + line + lines.size() * line + 6;
-		int x = Math.min(mouse.x + 14, view.x + view.width - width - 2);
-		int y = Math.min(mouse.y + 14, view.y + view.height - height - 2);
-		g.setColor(new Color(20, 17, 12, 235));
+		int height = 10 + line + lines.size() * line + (hints.isEmpty() ? 4 : 8 + hints.size() * line) + 4;
+		// beside the cursor, flipped to its other side near the screen's edges
+		int x = mouse.x + 16 + width <= view.x + view.width ? mouse.x + 16 : mouse.x - 16 - width;
+		int y = Math.max(view.y + 2, Math.min(mouse.y + 14, view.y + view.height - height - 2));
+		x = Math.max(view.x + 2, x);
+		g.setColor(new Color(0, 0, 0, 80));
+		g.fillRect(x + 3, y + 3, width, height);
+		g.setColor(new Color(20, 17, 12, 240));
 		g.fillRect(x, y, width, height);
-		g.setColor(PANEL_EDGE_LIGHT);
+		g.setColor(PANEL_EDGE_DARK);
 		g.drawRect(x, y, width - 1, height - 1);
+		g.setColor(new Color(titleColour.getRed(), titleColour.getGreen(), titleColour.getBlue(), 160));
+		g.drawRect(x + 1, y + 1, width - 3, height - 3);
+		int tagW = 0;
+		if (tag != null)
+		{
+			ui.font(TextStyle.SMALL);
+			tagW = ui.metrics().stringWidth(tag) + 8;
+		}
 		ui.font(TextStyle.BOLD);
-		ui.text(fit(title, ui.metrics(), width - 12), x + 6, y + 4 + ui.metrics().getAscent(), ORANGE);
+		int titleBase = y + 5 + ui.metrics().getAscent();
+		ui.text(fit(title, ui.metrics(), width - 14 - tagW), x + 7, titleBase, titleColour);
 		ui.font(TextStyle.SMALL);
-		int ty = y + 6 + line;
+		if (tag != null)
+		{
+			ui.right(tag, x + width - 7, titleBase, titleColour);
+		}
+		int ty = y + 8 + line;
 		for (String l : lines)
 		{
 			ty += ui.metrics().getAscent();
-			ui.text(l, x + 6, ty, YELLOW);
+			ui.text(l, x + 7, ty, YELLOW);
 			ty += line - ui.metrics().getAscent();
+		}
+		if (!hints.isEmpty())
+		{
+			ty += 3;
+			g.setColor(new Color(110, 98, 78, 140));
+			g.drawLine(x + 7, ty, x + width - 8, ty);
+			ty += 2;
+			for (String l : hints)
+			{
+				ty += ui.metrics().getAscent();
+				ui.text(l, x + 7, ty, HINT);
+				ty += line - ui.metrics().getAscent();
+			}
+		}
+	}
+
+	private static final Color BAG_HOVER = new Color(255, 255, 255, 28);
+	private static final Color POTION_FALLBACK = new Color(150, 90, 200);
+	private static final Color FOOD_FALLBACK = new Color(200, 120, 60);
+	private static final Color GEAR_FALLBACK = new Color(120, 120, 130);
+
+	/**
+	 * The bag in the bottom right corner, like the game's inventory: the items, the one being
+	 * dragged under the mouse, a tooltip for the one hovered, and any message about the bag.
+	 */
+	private static void drawBag(Ui ui, Rectangle view, GameSession session, Point mouse, int dragging)
+	{
+		Rectangle bag = UiLayout.bag(view, session);
+		if (bag == null)
+		{
+			return;
+		}
+		Graphics2D g = ui.g;
+		drawPanel(ui, bag);
+		Inventory items = session.getInventory();
+		ui.font(TextStyle.SMALL);
+		int headY = bag.y + 5 + ui.metrics().getAscent();
+		ui.text("Inventory (I)", bag.x + 8, headY, ORANGE);
+		ui.right(items.freeSlots() + " free", bag.x + bag.width - 8, headY, HINT);
+		int hovered = -1;
+		for (int i = 0; i < Inventory.SIZE; i++)
+		{
+			Rectangle r = UiLayout.bagSlot(bag, i);
+			if (mouse != null && r.contains(mouse))
+			{
+				hovered = i;
+				g.setColor(BAG_HOVER);
+				g.fill(r);
+			}
+			Item item = items.get(i);
+			if (item != null && i != dragging)
+			{
+				drawItem(ui, item, r.x + r.width / 2, r.y + r.height / 2, 1f);
+			}
+		}
+		String notice = session.getNotice();
+		if (notice != null)
+		{
+			ui.font(TextStyle.SMALL);
+			List<String> lines = wrap(notice, ui.metrics(), bag.width);
+			int y = bag.y - 4 - (lines.size() - 1) * ui.metrics().getHeight();
+			for (String line : lines)
+			{
+				ui.right(line, bag.x + bag.width, y, RED);
+				y += ui.metrics().getHeight();
+			}
+		}
+		Item held = items.get(dragging);
+		if (held != null && mouse != null)
+		{
+			drawItem(ui, held, mouse.x, mouse.y, 0.75f);
+			return;
+		}
+		Item over = items.get(hovered);
+		if (over != null)
+		{
+			String use = over.getGear() != null ? "wear" : over.getPotion() != null ? "drink" : "eat";
+			Gear gear = over.getGear();
+			drawTooltip(ui, view, mouse, over.getTitle(), gear != null ? rarityColour(gear.getRarity(), ui.time) : ORANGE,
+				gear != null ? gear.getRarity().getTitle() : null, over.describe(),
+				"Click to " + use + ". Shift-click or right-click to drop. Drag to move.");
+		}
+	}
+
+	/** An item's picture centred on a point, or a plain stand-in without artwork. */
+	private static void drawItem(Ui ui, Item item, int cx, int cy, float alpha)
+	{
+		Graphics2D g = ui.g;
+		Composite old = g.getComposite();
+		if (alpha < 1)
+		{
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+		}
+		BufferedImage icon = ui.assets.itemIcon(item);
+		if (icon != null)
+		{
+			g.drawImage(icon, cx - icon.getWidth() / 2, cy - icon.getHeight() / 2, null);
+		}
+		else
+		{
+			g.setColor(item.getGear() != null ? GEAR_FALLBACK : item.getPotion() != null ? POTION_FALLBACK : FOOD_FALLBACK);
+			g.fillRoundRect(cx - 12, cy - 11, 24, 22, 8, 8);
+			ui.font(TextStyle.SMALL);
+			String label = item.getPotion() != null ? String.valueOf(item.getDoses()) : item.getTitle().substring(0, 2);
+			ui.centred(label, cx, cy + 4, WHITE);
+		}
+		g.setComposite(old);
+	}
+
+	/** Potions working now, under the hitpoints orb: picture and seconds left, blinking near the end. */
+	private static void drawPotionTimers(Ui ui, Rectangle view, GameSession session)
+	{
+		int x = view.x + 8;
+		int y = view.y + 52;
+		ui.font(TextStyle.SMALL);
+		for (Map.Entry<Boost, Double> e : session.getBuild().getPotions().entrySet())
+		{
+			double left = e.getValue();
+			if (left < 5 && (int) (left * 4) % 2 == 0)
+			{
+				y += 20;
+				continue;
+			}
+			BufferedImage icon = ui.assets.offerIcon(Offer.boost(e.getKey()));
+			if (icon != null)
+			{
+				ui.g.drawImage(icon, x, y, icon.getWidth() * 2 / 3, icon.getHeight() * 2 / 3, null);
+			}
+			int s = (int) Math.ceil(left);
+			ui.text(String.format("%d:%02d", s / 60, s % 60), x + 26, y + 14, left < 10 ? ORANGE : WHITE);
+			y += 20;
 		}
 	}
 
@@ -1526,7 +2088,7 @@ public final class GameRenderer
 		}
 		if (art instanceof Boost)
 		{
-			return assets.offerIcon(Offer.boost((Boost) art, 1));
+			return assets.offerIcon(Offer.boost((Boost) art));
 		}
 		if (art instanceof EnemyKind)
 		{
@@ -1626,7 +2188,77 @@ public final class GameRenderer
 		ui.text(option.getTitle(), r.x + 8, y, hover ? WHITE : ORANGE);
 		ui.right(on ? "On" : "Off", r.x + r.width - 8, y, on ? GREEN : RED);
 		ui.font(TextStyle.SMALL);
-		ui.text(fit(option.getDescription(), ui.metrics(), width), r.x + 8, y + ui.metrics().getHeight() + 2, YELLOW);
+		if (r.height >= UiLayout.OPTION_H)
+		{
+			ui.text(fit(option.getDescription(), ui.metrics(), width), r.x + 8, y + ui.metrics().getHeight() + 2, YELLOW);
+		}
+	}
+
+	/**
+	 * A volume row on the options page: its name on the left, then minus and plus buttons (drawn
+	 * with the others) round a bar of {@link Volume#MAX} steps, and the percentage.
+	 */
+	private static void drawVolumeRow(Ui ui, UiLayout.Button bar, Volume volume, Rectangle panel)
+	{
+		Graphics2D g = ui.g;
+		Rectangle r = bar.bounds;
+		int level = ui.options.getVolume(volume);
+		boolean muted = ui.options.isMuted();
+		ui.font(TextStyle.BOLD);
+		int baseline = r.y + (r.height + ui.metrics().getAscent()) / 2 - 1;
+		ui.text(volume.getTitle(), panel.x + UiLayout.PAD + 8, baseline, ORANGE);
+		boolean hover = ui.mouse != null && r.contains(ui.mouse);
+		g.setColor(SLOT_BACK);
+		g.fillRect(r.x, r.y + 4, r.width, r.height - 8);
+		g.setColor(PANEL_EDGE_DARK);
+		g.drawRect(r.x, r.y + 4, r.width - 1, r.height - 9);
+		int steps = Volume.MAX;
+		int gap = 2;
+		int w = (r.width - 4 - gap * (steps - 1)) / steps;
+		int preview = hover ? UiLayout.volumeAt(bar, ui.mouse) : -1;
+		for (int i = 0; i < steps; i++)
+		{
+			int x = r.x + 2 + i * (w + gap);
+			boolean on = i < level;
+			Color c = on ? (muted && volume == Volume.MASTER ? LOCKED : GREEN) : new Color(0, 0, 0, 120);
+			if (!on && i < preview)
+			{
+				c = new Color(0, 230, 0, 70);
+			}
+			// steps grow taller towards the loud end
+			int h = (r.height - 12) * (i + 4) / (steps + 3);
+			g.setColor(c);
+			g.fillRect(x, r.y + r.height - 6 - h, w, h);
+		}
+		ui.font(TextStyle.SMALL);
+		String label = muted && volume == Volume.MASTER ? "Muted" : level * 100 / Volume.MAX + "%";
+		int minusX = r.x - 4 - UiLayout.VOLUME_BUTTON_W;
+		ui.right(label, minusX - 6, baseline, muted && volume == Volume.MASTER ? RED : YELLOW);
+	}
+
+	/** Whether a button can be used now; others are drawn dull and don't light up. */
+	private static boolean enabled(GameSession session, UiLayout.Button b)
+	{
+		switch (b.action)
+		{
+			case BUY_PERK:
+			{
+				MetaProgress meta = session.getMeta();
+				int cost = meta == null ? -1 : meta.cost(Perk.values()[b.index]);
+				return cost >= 0 && meta.coins >= cost;
+			}
+			case CHOOSE_LOCATION:
+				return session.isUnlocked(Location.values()[b.index]);
+			case PET_CARD:
+				return false;
+			default:
+				return true;
+		}
+	}
+
+	private static Graphics2D g(Ui ui)
+	{
+		return ui.g;
 	}
 
 	private static void drawPetCard(Ui ui, UiLayout.Button b, Pet pet, boolean owned)
@@ -2133,6 +2765,13 @@ public final class GameRenderer
 	{
 		Combination combination = offer.getGear() == null ? null : Combination.making(offer.getGear());
 		Rectangle r = b.bounds;
+		// a strip along the top in the offer's colour: rarity for gear, ability or prayer for passives
+		Color strip = combination != null ? GOLD : offer.getGear() != null ? rarityColour(offer.getGear().getRarity(), ui.time)
+			: offer.getPassive() != null ? (offer.getPassive().isAbility() ? ABILITY_STRIP : PASSIVE_STRIP) : SUPPLY_STRIP;
+		ui.g.setColor(strip);
+		ui.g.fillRect(r.x + 3, r.y + 3, r.width - 6, 3);
+		ui.g.setColor(new Color(strip.getRed(), strip.getGreen(), strip.getBlue(), hover ? 40 : 18));
+		ui.g.fillRect(r.x + 3, r.y + 6, r.width - 6, 34);
 		int cx = r.x + r.width / 2;
 		int y = r.y + 8;
 		BufferedImage icon = ui.assets.offerIcon(offer);
@@ -2216,8 +2855,24 @@ public final class GameRenderer
 	private static void drawPanel(Ui ui, Rectangle r)
 	{
 		Graphics2D g = ui.g;
+		// a soft shadow lifts the panel off the game
+		for (int i = 1; i <= 3; i++)
+		{
+			g.setColor(new Color(0, 0, 0, 50 - i * 12));
+			g.fillRect(r.x - i + 3, r.y - i + 5, r.width + 2 * i, r.height + 2 * i);
+		}
 		g.setColor(PANEL);
 		g.fill(r);
+		if (r.height > UiLayout.TITLE_H * 2)
+		{
+			// the title's band, a shade darker, with an engraved line under it
+			g.setColor(PANEL_BAND);
+			g.fillRect(r.x + 2, r.y + 2, r.width - 4, UiLayout.TITLE_H - 6);
+			g.setColor(PANEL_EDGE_DARK);
+			g.drawLine(r.x + 6, r.y + UiLayout.TITLE_H - 4, r.x + r.width - 7, r.y + UiLayout.TITLE_H - 4);
+			g.setColor(new Color(110, 98, 78, 120));
+			g.drawLine(r.x + 6, r.y + UiLayout.TITLE_H - 3, r.x + r.width - 7, r.y + UiLayout.TITLE_H - 3);
+		}
 		g.setColor(PANEL_EDGE_DARK);
 		g.drawRect(r.x, r.y, r.width - 1, r.height - 1);
 		g.setColor(PANEL_EDGE_LIGHT);
@@ -2238,9 +2893,35 @@ public final class GameRenderer
 	/** A button in the game's carved-stone style (nine-slice), lighter while hovered. */
 	private static void drawStoneButton(Ui ui, Rectangle r, boolean hover)
 	{
+		drawStoneButton(ui, r, hover, false, true);
+	}
+
+	/**
+	 * A stone button: lighter with a gold edge while hovered, darker while pressed, dull when it
+	 * can't be used.
+	 */
+	private static void drawStoneButton(Ui ui, Rectangle r, boolean hover, boolean pressed, boolean enabled)
+	{
 		Graphics2D g = ui.g;
-		g.setColor(hover ? STONE_HOVER : STONE);
+		g.setColor(!enabled ? STONE_DISABLED : pressed ? STONE_PRESSED : hover ? STONE_HOVER : STONE);
 		g.fill(r);
+		drawStoneEdges(ui, r, hover);
+		if (hover)
+		{
+			g.setColor(pressed ? new Color(255, 200, 40, 90) : new Color(255, 200, 40, 150));
+			g.drawRect(r.x + 2, r.y + 2, r.width - 5, r.height - 5);
+		}
+		if (pressed)
+		{
+			// pressed in: shade along the top edge
+			g.setColor(new Color(0, 0, 0, 70));
+			g.fillRect(r.x + 3, r.y + 3, r.width - 6, 2);
+		}
+	}
+
+	private static void drawStoneEdges(Ui ui, Rectangle r, boolean hover)
+	{
+		Graphics2D g = ui.g;
 		BufferedImage tl = ui.assets.sprite(UiSprite.BUTTON_TOP_LEFT);
 		BufferedImage tr = ui.assets.sprite(UiSprite.BUTTON_TOP_RIGHT);
 		BufferedImage bl = ui.assets.sprite(UiSprite.BUTTON_BOTTOM_LEFT);
@@ -2278,13 +2959,23 @@ public final class GameRenderer
 		final Options options;
 		/** Real seconds for little animations on the menus (the level-up show's, or the start menu's). */
 		final double time;
+		/** Where the mouse is (or null), and whether its button is held. */
+		final Point mouse;
+		final boolean mouseDown;
 
 		Ui(Graphics2D g, GameAssets assets, Options options, double time)
+		{
+			this(g, assets, options, time, null, false);
+		}
+
+		Ui(Graphics2D g, GameAssets assets, Options options, double time, Point mouse, boolean mouseDown)
 		{
 			this.g = g;
 			this.assets = assets;
 			this.options = options;
 			this.time = time;
+			this.mouse = mouse;
+			this.mouseDown = mouseDown;
 		}
 
 		boolean on(Option option)

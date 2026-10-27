@@ -5,7 +5,8 @@ public enum Option
 {
 	FLASHES("Screen flashes", "White flashes, blinking lights, and monsters flashing white when hit."),
 	LEVEL_UP_SHOW("Level-up animation", "Light rays, sparks and the bouncing banner when you level up."),
-	DROP_SHOW("Boss drop animation", "Shaking, searchlights and fireworks around the champion's casket.");
+	DROP_SHOW("Boss drop animation", "Shaking, searchlights and fireworks around the champion's casket."),
+	SCREEN_SHAKE("Screen shake", "The view jolts when you're hit hard and when champions fall.");
 
 	private final String title;
 	private final String description;

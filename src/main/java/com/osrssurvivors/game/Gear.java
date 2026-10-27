@@ -39,7 +39,6 @@ public enum Gear
 	OSMUMTENS_FANG(weapon("Osmumten's fang", Style.MELEE, 9, 5, 50).power(1.03)),
 	INQUISITORS_MACE(weapon("Inquisitor's mace", Style.MELEE, 9, 4, 48).set(GearSet.INQUISITOR)),
 	ARMADYL_GODSWORD(weapon("Armadyl godsword", Style.MELEE, 9, 6, 58).twoHanded().cleave(2)),
-	SCYTHE_OF_VITUR(weapon("Scythe of vitur", Style.MELEE, 10, 5, 58).targets(3).twoHanded()),
 	SOULREAPER_AXE(weapon("Soulreaper axe", Style.MELEE, 10, 5, 54).twoHanded().cleave(1).power(1.05)),
 	ELDER_MAUL(weapon("Elder maul", Style.MELEE, 10, 6, 54).twoHanded().cleave(3)),
 	// two quick slashes per swing (a volley shares the swing's damage)
@@ -61,7 +60,9 @@ public enum Gear
 	TOXIC_BLOWPIPE(weapon("Toxic blowpipe", Style.RANGED, 9, 2, 200).twoHanded().missile(Missile.DART)),
 	BOW_OF_FAERDHINEN(weapon("Bow of faerdhinen", Style.RANGED, 9, 4, 260).twoHanded().missile(Missile.ARROW)),
 	ZARYTE_CROSSBOW(weapon("Zaryte crossbow", Style.RANGED, 9, 5, 260).missile(Missile.BOLT)),
-	TWISTED_BOW(weapon("Twisted bow", Style.RANGED, 10, 5, 300).twoHanded().missile(Missile.ARROW)),
+	// two crossbows at once (a volley shares the attack's damage)
+	ASCENSION_CROSSBOWS(weapon("Ascension crossbows", Style.RANGED, 10, 3, 290).twoHanded().volley(2).missile(Missile.BOLT)
+		.power(1.2)),
 
 	// magic weapons
 	STAFF_OF_AIR(weapon("Staff of air", Style.MAGIC, 1, 5, 190).twoHanded().missile(Missile.SPELL)),
@@ -81,13 +82,13 @@ public enum Gear
 	VOLATILE_NIGHTMARE_STAFF(weapon("Volatile nightmare staff", Style.MAGIC, 8, 5, 230).splash(24).missile(Missile.SPELL)),
 	EYE_OF_AYAK(weapon("Eye of ayak", Style.MAGIC, 9, 3, 230).missile(Missile.SPELL)),
 	ACCURSED_SCEPTRE(weapon("Accursed sceptre", Style.MAGIC, 9, 4, 235).splash(10).missile(Missile.SPELL)),
-	TUMEKENS_SHADOW(weapon("Tumeken's shadow", Style.MAGIC, 10, 5, 240).twoHanded().missile(Missile.SPELL)),
+	ZORYAS_TOME(weapon("Zorya's tome", Style.MAGIC, 10, 3, 250).targets(2).splash(26).missile(Missile.SPELL).power(1.05)),
 
 	// combination weapons: never in a chain, only offered when a weapon meets its upgrade (see Combination)
 	ABYSSAL_TENTACLE(weapon("Abyssal tentacle", Style.MELEE, 8, 4, 70).power(1.3).unique()),
 	ARMADYL_GODSWORD_OR(weapon("Armadyl godsword (or)", Style.MELEE, 9, 6, 62).twoHanded().cleave(3).power(1.25).unique()),
-	SANGUINE_SCYTHE_OF_VITUR(weapon("Sanguine scythe of vitur", Style.MELEE, 10, 5, 62).targets(3).twoHanded().lifesteal(0.05)
-		.power(1.2).unique()),
+	SANGUINE_SCYTHE_OF_VITUR(weapon("Sanguine scythe of vitur", Style.MELEE, 10, 5, 62).targets(3).twoHanded().lifesteal(0.02)
+		.power(1.4).unique()),
 	MAGIC_SHORTBOW_I(weapon("Magic shortbow (i)", Style.RANGED, 6, 3, 270).twoHanded().missile(Missile.ARROW).power(1.3).unique()),
 	DRAGON_HUNTER_CROSSBOW_T(weapon("Dragon hunter crossbow (t)", Style.RANGED, 8, 5, 260).missile(Missile.BOLT).power(1.3).unique()),
 	ICE_ANCIENT_SCEPTRE(weapon("Ice ancient sceptre", Style.MAGIC, 4, 5, 210).splash(28).freeze(1.2).missile(Missile.SPELL)
@@ -273,12 +274,12 @@ public enum Gear
 	RONDACHE(accessory("Rondache", Slot.SHIELD, 9).defence(55).damage(0.06).unique()),
 	IMBUED_ANCIENT_CAPE(accessory("Imbued ancient cape", Slot.CAPE, 5).damage(0.11).speed(0.04).unique()),
 
-	// megarares: the Fractured Archive's weapons, only ever from a champion's casket, one per style,
-	// and better than anything else for it
+	// megarares: the best weapons of all, only ever from a champion's casket (melee has two: the
+	// raids' scythe and the Fractured Archive's obligator)
+	SCYTHE_OF_VITUR(weapon("Scythe of vitur", Style.MELEE, 10, 5, 58).targets(3).twoHanded().power(1.35).unique()),
 	OBLIGATOR(weapon("Obligator", Style.MELEE, 10, 5, 58).cleave(4).freeze(0.8).power(1.45).unique()),
-	ASCENSION_CROSSBOWS(weapon("Ascension crossbows", Style.RANGED, 10, 3, 290).twoHanded().volley(2).missile(Missile.BOLT)
-		.power(1.4).unique()),
-	ZORYAS_TOME(weapon("Zorya's tome", Style.MAGIC, 10, 3, 250).targets(2).splash(26).missile(Missile.SPELL).power(1.35).unique());
+	TWISTED_BOW(weapon("Twisted bow", Style.RANGED, 10, 5, 300).twoHanded().missile(Missile.ARROW).power(1.4).unique()),
+	TUMEKENS_SHADOW(weapon("Tumeken's shadow", Style.MAGIC, 10, 5, 240).twoHanded().missile(Missile.SPELL).power(1.4).unique());
 
 	/** Seconds per game tick. */
 	public static final double TICK = 0.6;

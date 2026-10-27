@@ -3,6 +3,7 @@ package com.osrssurvivors.render;
 import com.osrssurvivors.game.BossDrop;
 import com.osrssurvivors.game.EnemyKind;
 import com.osrssurvivors.game.Gear;
+import com.osrssurvivors.game.Item;
 import com.osrssurvivors.game.Location;
 import com.osrssurvivors.game.Offer;
 import com.osrssurvivors.game.Perk;
@@ -84,6 +85,12 @@ public interface GameAssets
 	}
 
 	default BufferedImage gearIcon(Gear gear)
+	{
+		return null;
+	}
+
+	/** Picture for something in the bag (a potion shows its doses left). */
+	default BufferedImage itemIcon(Item item)
 	{
 		return null;
 	}

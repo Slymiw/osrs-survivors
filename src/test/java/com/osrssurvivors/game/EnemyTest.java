@@ -142,4 +142,22 @@ public class EnemyTest
 		assertEquals(old.maxHealth, boss.maxHealth, 1e-9);
 		assertEquals("Vorkath", boss.getTitle());
 	}
+
+	@Test
+	public void aChampionSummonedBeforeTheFirstIsStillABoss()
+	{
+		// the developer tool brings a champion forward to before the first one is due; in the
+		// browser an index before the boss list's start read nothing and broke the frame
+		GameSession s = new GameSession(new Random(4));
+		s.devSummonChampion();
+		for (int i = 0; i < 10 && s.getChampion() == null; i++)
+		{
+			s.advance(GameSession.STEP);
+		}
+		assertTrue(s.getChampion() != null && s.getChampion().getKind().isBoss());
+		for (int index = -5; index < 0; index++)
+		{
+			assertTrue(Spawner.boss(1, index, new Random(index)).isBoss());
+		}
+	}
 }
