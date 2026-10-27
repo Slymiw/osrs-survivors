@@ -23,6 +23,7 @@ import com.osrssurvivors.render.MeshSnapshot;
 import com.osrssurvivors.render.UiLayout;
 import com.osrssurvivors.render.UiSprite;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -259,6 +260,7 @@ public final class WebExport
 		export.exportNpcs();
 		export.exportPlayer();
 		export.writeData(out);
+		export.exportAppIcons(out);
 		export.exportLocations(new File(out, "loc"));
 		System.out.println("Exported to " + out.getAbsolutePath());
 	}
@@ -388,10 +390,14 @@ public final class WebExport
 		int h = open ? UiLayout.SIDE_H : 2 * row;
 		BufferedImage out = new BufferedImage(UiLayout.SIDE_W, h, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = out.createGraphics();
+		// The sprites don't quite meet: the stone backing, stretched under the pillars and rows,
+		// fills the seams that would show the arena through the panel.
+		BufferedImage backing = spriteImage(SpriteID.SIDE_BACKGROUND, 0);
+		g.drawImage(backing, 2, row / 2, UiLayout.SIDE_W - 4, h - row, null);
 		if (open)
 		{
 			int pillar = UiLayout.SIDE_PILLAR_W;
-			g.drawImage(spriteImage(SpriteID.SIDE_BACKGROUND, 0), pillar, row, null);
+			g.drawImage(backing, pillar, row, null);
 			g.drawImage(spriteImage(SpriteID.OsrsStretchSideColumns.EDGE_LEFT, 0), 0, row, null);
 			g.drawImage(spriteImage(SpriteID.OsrsStretchSideColumns.EDGE_RIGHT, 0), UiLayout.SIDE_W - pillar, row, null);
 		}
@@ -1035,6 +1041,30 @@ public final class WebExport
 	}
 
 	// ---------------------------------------------------------------- writing
+
+	/** The home screen icon (app-icon-192.png and -512.png): a dragon scimitar on the side panel's stone. */
+	private void exportAppIcons(File out) throws IOException
+	{
+		BufferedImage item = ItemSpriteFactory.createSprite(items, this::model, sprites, textures, GearArt.itemId(Gear.DRAGON_SCIMITAR),
+			1, 1, 0x302020, false);
+		BufferedImage stone = spriteImage(SpriteID.SIDE_BACKGROUND, 0);
+		for (int size : new int[]{192, 512})
+		{
+			BufferedImage icon = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g = icon.createGraphics();
+			// pixel art stays sharp: whole steps, nearest neighbour
+			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+			int k = Math.max(1, size / 96);
+			g.drawImage(stone, 0, 0, stone.getWidth() * k, stone.getHeight() * k, null);
+			// the item fills the middle, inside the zone launchers keep when they round the corners
+			int s = Math.max(1, size * 5 / 8 / item.getWidth());
+			int w = item.getWidth() * s;
+			int h = item.getHeight() * s;
+			g.drawImage(item, (size - w) / 2, (size - h) / 2, w, h, null);
+			g.dispose();
+			ImageIO.write(icon, "png", new File(out, "app-icon-" + size + ".png"));
+		}
+	}
 
 	private void writeData(File out) throws IOException
 	{

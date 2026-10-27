@@ -172,6 +172,27 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   pause screen; Esc closes it.
 - **Pause screen**: `UiLayout.loadoutSections/loadoutTiles` lay out tiles (abilities, prayers and
   skills, set bonuses, pets) with hover tooltips; main menu has a Pets page (`TitleScreen.PETS`).
+  Short screens put the stats beside the equipment (`UiLayout.statsBeside`).
+- **Touch screens** (`GameSession.setTouch`, a view setting like `bagShown`): `WebMain` takes
+  pointer events; a finger is touch, the mouse switches back (`Browser.coarsePointer` or `?touch`
+  picks the start). Fingers queue as `Finger`s handled in the frame: one on open ground while
+  RUNNING steers (`render.TouchControls`, a floating stick that follows a far finger, drawn by
+  the renderer); one on the interface presses it (`Hold`): buttons fire when the finger comes up
+  on them, bag slots tap = use / hold `LONG_PRESS_MS` = tooltip / drag = move or, out of the
+  panel, drop; the changelog drags and flings; volume bars slide. Layout for touch: every
+  button `UiLayout.buttonH` (40), the HUD `PAUSE` button (`UiLayout.pauseButton`, in `buttons()`
+  while RUNNING), level-up cards stacked upright (`stackCards`), two-column main menu, grids
+  that add columns, three-column options, `shortSide` (no bottom stone row, the top row under
+  the items) below 339 px, and `bagCrowdsPause` (upright phones: the bag tucks away while
+  paused). The world shows at least `GameRenderer.MIN_VIEW_WIDTH` across and at most
+  `TOUCH_SHORT_SIDE` along a touch screen's short side. `TouchLayoutTest` checks every screen at
+  phone sizes (on screen, apart, finger-sized, clear of the bag). Key hints are hidden on touch.
+- **Full screen and back** (index.html `OSRS.fullscreen`, `OSRS.trapBack`): the options page's
+  `FULLSCREEN` row shows where the browser allows it; it's toggled inside the pointer event
+  (`WebMain.fullscreenNow`), since browsers refuse it from the frame loop. A home-screen launch
+  (`manifest.webmanifest`, `display: fullscreen`) counts as full screen. The back button pauses
+  or closes a page (`Command.BACK`); on the main menu it's let through. The canvas keeps clear
+  of notches (`env(safe-area-inset-*)`), so `WebMain.resize` measures the canvas, not the window.
 
 ## Balance workflow
 
@@ -193,6 +214,11 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   flat XP curve.
 ## Testing gotchas
 
+- Phones can be emulated headless: `Emulation.setDeviceMetricsOverride` (mobile, scale 3) and
+  `Emulation.setTouchEmulationEnabled` (makes `pointer: coarse` match), then `Input.dispatchTouchEvent`
+  gives the page touch pointer events. Overrides last only while the DevTools connection is open:
+  a script that reconnects must set them again and wait a frame before tapping. A run in progress
+  saves on reload (`pagehide`), so edit `osrssurvivors.savedRun` (e.g. seed the bag) from the menu.
 - `java.util.Random` with consecutive small seeds gives nearly identical first draws. When a
   test needs varied rolls, derive seeds from one generator (`new Random(seeds.nextLong())`).
 - `Scenarios` (public, test source, game package) builds states that other test packages can't
@@ -226,7 +252,13 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   exported unlabelled and nothing animates. If animations freeze again after a library update,
   check the labels in `data.js` first.
 
-## Status (2026-10-26)
+## Status (2026-10-27)
+
+- New in 0.9 (checked headless in Edge with phone emulation at 390x844, 844x390, 844x340 and
+  667x320, not yet on a real phone by the user): touch controls (stick, taps on release, bag
+  hold/drag/drop, changelog fling, volume slide, back button), the phone layouts, full screen,
+  the home-screen manifest and icons, the inventory backing without gaps. Ask the user to try it
+  on their phone (iPhone Safari has no full screen API: check the Add to Home Screen route).
 
 - New in 0.8 (checked headless in Edge, not yet by the user): the inventory as the game's side
   panel (backpack tab collapses it), the scrolling changelog, save codes (copy, reset, load

@@ -50,6 +50,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,10 @@ public final class GameRenderer
 {
 	/** World units visible from the top to the bottom of the view. */
 	public static final double VIEW_HEIGHT = 480;
+	/** World units always visible across, however narrow the view. */
+	public static final double MIN_VIEW_WIDTH = 400;
+	/** Most world units a touch screen shows along its short side. */
+	public static final double TOUCH_SHORT_SIDE = 420;
 
 	// colours of the game's interfaces
 	static final Color ORANGE = new Color(255, 152, 31);
@@ -122,13 +127,35 @@ public final class GameRenderer
 
 	public static double scale(Rectangle view)
 	{
-		return view.height / VIEW_HEIGHT;
+		return scale(view, false);
+	}
+
+	/**
+	 * Screen pixels per world unit: {@link #VIEW_HEIGHT} units top to bottom, but never fewer than
+	 * {@link #MIN_VIEW_WIDTH} across (a phone held upright). A touch screen's pixels are small and
+	 * close to the eye, so it shows at most {@link #TOUCH_SHORT_SIDE} units along its short side.
+	 */
+	public static double scale(Rectangle view, boolean touch)
+	{
+		double scale = Math.min(view.height / VIEW_HEIGHT, view.width / MIN_VIEW_WIDTH);
+		return touch ? Math.max(scale, Math.min(view.width, view.height) / TOUCH_SHORT_SIDE) : scale;
 	}
 
 	/** World units visible horizontally, for {@link GameSession#setVisibleArea}. */
 	public static double visibleWidth(Rectangle view)
 	{
-		return view.width / scale(view);
+		return visibleWidth(view, false);
+	}
+
+	public static double visibleWidth(Rectangle view, boolean touch)
+	{
+		return view.width / scale(view, touch);
+	}
+
+	/** World units visible vertically, for {@link GameSession#setVisibleArea}. */
+	public static double visibleHeight(Rectangle view, boolean touch)
+	{
+		return view.height / scale(view, touch);
 	}
 
 	/**
@@ -148,12 +175,19 @@ public final class GameRenderer
 		render(graphics, view, session, assets, mouse, exitKey, dragging, null, false);
 	}
 
+	public static void render(Graphics2D graphics, Rectangle view, GameSession session, GameAssets assets,
+		Point mouse, String exitKey, int dragging, Fx fx, boolean mouseDown)
+	{
+		render(graphics, view, session, assets, mouse, exitKey, dragging, fx, mouseDown, null);
+	}
+
 	/**
 	 * @param fx screen effects to draw with the world (null for none)
 	 * @param mouseDown whether the mouse button is held, so the button under it looks pressed
+	 * @param touch what fingers are doing on a touch screen (null for none)
 	 */
 	public static void render(Graphics2D graphics, Rectangle view, GameSession session, GameAssets assets,
-		Point mouse, String exitKey, int dragging, Fx fx, boolean mouseDown)
+		Point mouse, String exitKey, int dragging, Fx fx, boolean mouseDown, TouchControls touch)
 	{
 		if (view.width <= 0 || view.height <= 0)
 		{
@@ -166,13 +200,17 @@ public final class GameRenderer
 			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, assets.pixelFonts()
 				? RenderingHints.VALUE_TEXT_ANTIALIAS_OFF : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 			Ui ui = new Ui(g, assets, session.getOptions(),
-				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime(), mouse, mouseDown);
+				session.getLevelUpTime() >= 0 ? session.getLevelUpTime() : session.getMenuTime(), mouse, mouseDown, session.isTouch());
 			new World(view, session, assets, fx).draw(g);
 			if (session.getPhase() != Phase.TITLE)
 			{
 				drawVignette(ui, view, session, fx);
-				drawHud(ui, view, session, exitKey, fx);
-				drawToasts(ui, view, fx);
+				if (session.getPhase() == Phase.RUNNING)
+				{
+					drawStick(ui, touch);
+				}
+				int below = drawHud(ui, view, session, exitKey, fx, touch);
+				drawToasts(ui, view, below, fx);
 			}
 			if (session.getPhase() != Phase.RUNNING)
 			{
@@ -213,7 +251,7 @@ public final class GameRenderer
 					drawLevelUpBanner(ui, view, levelPanel, levelUp);
 				}
 			}
-			drawBag(ui, view, session, mouse, dragging);
+			drawBag(ui, view, session, mouse, dragging, touch);
 		}
 		finally
 		{
@@ -270,7 +308,7 @@ public final class GameRenderer
 			this.session = session;
 			this.assets = assets;
 			this.fx = fx;
-			this.scale = scale(view);
+			this.scale = scale(view, session.isTouch());
 			Player p = session.getPlayer();
 			// the world shakes; the interface over it stays put
 			double shakeX = fx == null ? 0 : fx.getShakeX();
@@ -1099,7 +1137,7 @@ public final class GameRenderer
 	 * kills, coins and the place, with XP drops floating up beneath. The controls line shows at
 	 * the start of a run.
 	 */
-	private static void drawHud(Ui ui, Rectangle view, GameSession session, String exitKey, Fx fx)
+	private static int drawHud(Ui ui, Rectangle view, GameSession session, String exitKey, Fx fx, TouchControls touch)
 	{
 		Player player = session.getPlayer();
 		Progression prog = session.getProgression();
@@ -1107,6 +1145,7 @@ public final class GameRenderer
 
 		// hitpoints orb top left, current weapon beside it in a slot
 		int orbRight = drawHpOrb(ui, view.x + 6, view.y + 6, player);
+		int leftEnd = orbRight;
 		Gear weapon = session.getWeapon().getGear();
 		BufferedImage weaponIcon = weapon == null ? null : ui.assets.gearIcon(weapon);
 		if (weaponIcon != null)
@@ -1114,14 +1153,45 @@ public final class GameRenderer
 			Rectangle slot = new Rectangle(orbRight + 4, view.y + 6, UiLayout.SLOT, UiLayout.SLOT);
 			drawSlotTile(ui, slot);
 			g.drawImage(weaponIcon, slot.x + (slot.width - weaponIcon.getWidth()) / 2, slot.y + (slot.height - weaponIcon.getHeight()) / 2, null);
+			leftEnd = slot.x + slot.width;
 		}
 
-		// level badge and XP bar, top centre
+		// the card of time, kills and coins goes top right (left of the open bag where it reaches
+		// up), with a touch screen's pause button beside it
+		int cardW = UiLayout.HUD_CARD_W;
+		int right = UiLayout.hudRight(view, session);
+		int cardX = right - cardW + 2;
+		Rectangle pause = UiLayout.pauseButton(view, session);
+		if (pause != null)
+		{
+			drawPauseButton(ui, pause);
+		}
+		int rowRight = (pause != null ? pause.x : cardX) - 8;
+
+		// level badge and XP bar, top centre; between the orb and the card when the middle is
+		// taken, or on a second row under the orb on narrow screens
 		int barW = Math.min(300, view.width / 2);
 		int barH = 14;
 		int badgeW = 30;
 		int barX = view.x + (view.width - barW + badgeW) / 2;
 		int barY = view.y + 9;
+		int lowest = view.y + 50;
+		if (barX - badgeW - 4 < leftEnd + 8 || barX + barW > rowRight)
+		{
+			int room = rowRight - (leftEnd + 8 + badgeW + 4);
+			if (room >= 140)
+			{
+				barW = Math.min(300, room);
+				barX = leftEnd + 8 + badgeW + 4 + (room - barW) / 2;
+			}
+			else
+			{
+				barX = view.x + 8 + badgeW + 4;
+				barY = view.y + 58;
+				barW = Math.max(60, cardX - 8 - barX);
+				lowest = barY + 40;
+			}
+		}
 		double fill = fx != null ? fx.getXpShown() : Math.min(1.0, (double) prog.getXp() / prog.getXpToNext());
 		double pulse = fx == null ? 0 : fx.getXpPulse();
 		g.setColor(XP_BACK);
@@ -1160,10 +1230,7 @@ public final class GameRenderer
 			badgeW - 4, YELLOW);
 		drawChampion(ui, session, barX - badgeW - 4, barY + barH + 8, barW + badgeW + 4, fx);
 
-		// time, kills, coins and the place, top right, on a card
-		int cardW = 118;
-		int right = view.x + view.width - 8;
-		int cardX = right - cardW + 2;
+		// time, kills, coins and the place, on the card
 		ui.font(TextStyle.REGULAR);
 		int lineH = ui.metrics().getHeight();
 		int cardH = 8 + lineH * 3 + 12;
@@ -1207,8 +1274,13 @@ public final class GameRenderer
 		}
 
 		ui.font(TextStyle.SMALL);
-		drawPotionTimers(ui, view, session);
+		drawPotionTimers(ui, view, session, lowest + 2);
 		// the controls, while a run is new and on the pause screen
+		if (ui.touch)
+		{
+			drawTouchHint(ui, view, session, touch);
+			return lowest + 28;
+		}
 		double since = session.getElapsed();
 		float hint = session.getPhase() == Phase.PAUSED ? 1f : (float) Math.max(0, Math.min(1, (HINT_SECONDS - since) / 3));
 		if (hint > 0)
@@ -1219,6 +1291,97 @@ public final class GameRenderer
 				view.x + view.width / 2, view.y + view.height - 6, HINT);
 			g.setComposite(old);
 		}
+		return lowest + 28;
+	}
+
+	/** The touch screen's pause button: a stone square with two bars. */
+	private static void drawPauseButton(Ui ui, Rectangle r)
+	{
+		boolean pressed = ui.mouse != null && ui.mouseDown && r.contains(ui.mouse);
+		drawStoneButton(ui, r, pressed, pressed, true);
+		Graphics2D g = ui.g;
+		int barW = 5;
+		int barH = r.height / 2 - 2;
+		int y = r.y + (r.height - barH) / 2 + (pressed ? 1 : 0);
+		int cx = r.x + r.width / 2;
+		g.setColor(PANEL_EDGE_DARK);
+		g.fillRect(cx - barW - 2, y + 1, barW, barH);
+		g.fillRect(cx + 4, y + 1, barW, barH);
+		g.setColor(pressed ? WHITE : ORANGE);
+		g.fillRect(cx - barW - 3, y, barW, barH);
+		g.fillRect(cx + 3, y, barW, barH);
+	}
+
+	/**
+	 * A new run's touch controls: "drag anywhere to move" over a finger sliding inside a stick's
+	 * ring, low in the middle of the screen, fading once the run is a few seconds old.
+	 */
+	private static void drawTouchHint(Ui ui, Rectangle view, GameSession session, TouchControls touch)
+	{
+		if (session.getPhase() != Phase.RUNNING || touch != null && touch.steered)
+		{
+			// shown until the player has steered once
+			return;
+		}
+		float hint = (float) Math.max(0, Math.min(1, (HINT_SECONDS - session.getElapsed()) / 3));
+		if (hint <= 0)
+		{
+			return;
+		}
+		Graphics2D g = ui.g;
+		Composite old = g.getComposite();
+		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, hint));
+		int r = TouchControls.STICK_RADIUS;
+		int cx = view.x + view.width / 2;
+		int cy = view.y + view.height * 2 / 3;
+		double t = session.getElapsed() * 2.2;
+		drawStickAt(g, new Point(cx, cy), new Point(cx + (int) Math.round(Math.sin(t) * r * 0.8), cy));
+		ui.font(TextStyle.BOLD);
+		ui.centred("Drag anywhere to move", cx, cy + r + 18, WHITE);
+		ui.font(TextStyle.SMALL);
+		ui.centred("Let go to stand still.", cx, cy + r + 32, HINT);
+		g.setComposite(old);
+	}
+
+	private static final Color STICK_BASE = new Color(0, 0, 0, 60);
+	private static final Color STICK_RING = new Color(255, 255, 255, 70);
+	private static final Color STICK_KNOB = new Color(255, 245, 220, 150);
+	private static final Color STICK_KNOB_EDGE = new Color(255, 255, 255, 120);
+
+	/** The movement stick under the steering finger: a ring where it came down and a knob under it. */
+	private static void drawStick(Ui ui, TouchControls touch)
+	{
+		if (touch != null && touch.stickOrigin != null && touch.stickAt != null)
+		{
+			drawStickAt(ui.g, touch.stickOrigin, touch.stickAt);
+		}
+	}
+
+	private static void drawStickAt(Graphics2D g, Point origin, Point at)
+	{
+		int r = TouchControls.STICK_RADIUS;
+		double dx = at.x - origin.x;
+		double dy = at.y - origin.y;
+		double d = Math.hypot(dx, dy);
+		if (d > r)
+		{
+			dx *= r / d;
+			dy *= r / d;
+		}
+		g.setColor(STICK_BASE);
+		g.fillOval(origin.x - r, origin.y - r, 2 * r, 2 * r);
+		g.setColor(STICK_RING);
+		g.drawOval(origin.x - r, origin.y - r, 2 * r, 2 * r);
+		g.drawOval(origin.x - r + 1, origin.y - r + 1, 2 * r - 2, 2 * r - 2);
+		int k = 13;
+		int kx = (int) Math.round(origin.x + dx);
+		int ky = (int) Math.round(origin.y + dy);
+		g.setColor(SHADOW);
+		g.fillOval(kx - k + 1, ky - k + 2, 2 * k, 2 * k);
+		g.setColor(STICK_KNOB);
+		g.fillOval(kx - k, ky - k, 2 * k, 2 * k);
+		g.setColor(STICK_KNOB_EDGE);
+		g.drawOval(kx - k, ky - k, 2 * k - 1, 2 * k - 1);
 	}
 
 	/** The living champion's name and health under the XP bar, or a warning that one is coming. */
@@ -1302,8 +1465,8 @@ public final class GameRenderer
 	/** Below this share of hitpoints the screen's edge beats red. */
 	static final double LOW_HEALTH = 0.3;
 
-	/** Notices for big moments, sliding in under the XP bar. */
-	private static void drawToasts(Ui ui, Rectangle view, Fx fx)
+	/** Notices for big moments, sliding in under the XP bar, from {@code top} down. */
+	private static void drawToasts(Ui ui, Rectangle view, int top, Fx fx)
 	{
 		if (fx == null || fx.getToasts().isEmpty())
 		{
@@ -1311,7 +1474,7 @@ public final class GameRenderer
 		}
 		Graphics2D g = ui.g;
 		Composite old = g.getComposite();
-		int y = view.y + 78;
+		int y = top;
 		for (Fx.Toast t : fx.getToasts())
 		{
 			double in = Math.min(1, t.age / 0.18);
@@ -1433,9 +1596,15 @@ public final class GameRenderer
 
 		if (options)
 		{
-			ui.font(TextStyle.SMALL);
-			ui.centredFit("Sound and screen settings. Press M to mute at any time.", panel.x + panel.width / 2,
-				panel.y + UiLayout.TITLE_H + 6, panel.width - 2 * UiLayout.PAD, YELLOW);
+			// the subtitle, unless three columns of settings took its room
+			if (UiLayout.optionsSubtitleH(UiLayout.optionColumns(view, session)) > 0)
+			{
+				ui.font(TextStyle.SMALL);
+				String line = !ui.touch ? "Sound and screen settings. Press M to mute at any time."
+					: session.isFullscreenAvailable() || session.isFullscreen() ? "Sound and screen settings."
+					: "Sound and screen settings. Add this page to your home screen to play full screen.";
+				ui.centredFit(line, panel.x + panel.width / 2, panel.y + UiLayout.TITLE_H + 6, panel.width - 2 * UiLayout.PAD, YELLOW);
+			}
 		}
 		else switch (session.getPhase())
 		{
@@ -1515,7 +1684,7 @@ public final class GameRenderer
 				}
 				break;
 			case PAUSED:
-				drawLoadout(ui, panel, session);
+				drawLoadout(ui, view, panel, session);
 				break;
 			default:
 				break;
@@ -1558,7 +1727,12 @@ public final class GameRenderer
 			}
 			else if (b.action == UiLayout.Action.TOGGLE_OPTION)
 			{
-				drawOptionRow(ui, b, Option.values()[b.index], hover);
+				Option option = Option.values()[b.index];
+				drawOptionRow(ui, b, option.getTitle(), option.getDescription(), ui.on(option), hover);
+			}
+			else if (b.action == UiLayout.Action.FULLSCREEN)
+			{
+				drawOptionRow(ui, b, "Full screen", "The whole screen for the game, without the browser's bars.", session.isFullscreen(), hover);
 			}
 			else if (b.action == UiLayout.Action.PET_CARD)
 			{
@@ -1593,16 +1767,18 @@ public final class GameRenderer
 			ui.font(TextStyle.SMALL);
 			int cx = view.x + view.width / 2;
 			int bottom = view.y + view.height - 6;
-			if (ui.metrics().stringWidth(CREDITS) <= view.width - 32)
+			// narrow screens: as many lines as it takes
+			List<String> lines = ui.metrics().stringWidth(CREDITS) <= view.width - 32 ? Collections.singletonList(CREDITS)
+				: wrap(CREDITS, ui.metrics(), view.width - 16);
+			int y = bottom - (lines.size() - 1) * ui.metrics().getHeight();
+			// a screen too short for them under the menu goes without
+			if (y - ui.metrics().getAscent() > panel.y + panel.height)
 			{
-				ui.centred(CREDITS, cx, bottom, HINT);
-			}
-			else
-			{
-				// narrow screens: one sentence per line
-				int split = CREDITS.indexOf(". ") + 1;
-				ui.centred(CREDITS.substring(0, split), cx, bottom - ui.metrics().getHeight(), HINT);
-				ui.centred(CREDITS.substring(split + 1), cx, bottom, HINT);
+				for (String line : lines)
+				{
+					ui.centred(line, cx, y, HINT);
+					y += ui.metrics().getHeight();
+				}
 			}
 		}
 	}
@@ -1611,11 +1787,12 @@ public final class GameRenderer
 	 * The pause screen: the equipment grid with a table of combat numbers under it, and on the
 	 * right the weapon, then abilities, prayers and skills, set bonuses and pets as tiles.
 	 */
-	private static void drawLoadout(Ui ui, Rectangle panel, GameSession session)
+	private static void drawLoadout(Ui ui, Rectangle view, Rectangle panel, GameSession session)
 	{
+		boolean beside = UiLayout.statsBeside(view, session);
 		Graphics2D g = ui.g;
 		Build build = session.getBuild();
-		for (Map.Entry<Slot, Rectangle> e : UiLayout.equipmentSlots(panel).entrySet())
+		for (Map.Entry<Slot, Rectangle> e : UiLayout.equipmentSlots(panel, beside).entrySet())
 		{
 			Rectangle r = e.getValue();
 			drawSlotTile(ui, r);
@@ -1634,9 +1811,9 @@ public final class GameRenderer
 
 		// combat numbers, label on the left and value on the right
 		Weapon weapon = session.getWeapon();
-		int left = panel.x + UiLayout.PAD;
-		int right = left + UiLayout.LOADOUT_LEFT_W;
-		int y = UiLayout.statsTop(panel);
+		int left = UiLayout.statsLeft(panel, beside);
+		int right = left + UiLayout.statsWidth(beside);
+		int y = UiLayout.statsTop(panel, beside);
 		String[][] stats = {
 			{"Max hit", String.valueOf(Math.round(weapon.getMaxHit()))},
 			{"Attack every", String.format("%.2f s", weapon.getCooldown())},
@@ -1657,14 +1834,14 @@ public final class GameRenderer
 		}
 
 		// the weapon, then the sections
-		int x = UiLayout.loadoutRightX(panel);
+		int x = UiLayout.loadoutRightX(panel, beside);
 		int width = panel.x + panel.width - UiLayout.PAD - x;
 		g.setColor(PANEL_EDGE_DARK);
-		g.drawLine(x - 10, panel.y + UiLayout.TITLE_H, x - 10, UiLayout.statsTop(panel) + UiLayout.STAT_ROWS * UiLayout.STAT_LINE);
+		g.drawLine(x - 10, panel.y + UiLayout.TITLE_H, x - 10, Math.max(UiLayout.statsTop(panel, beside) + UiLayout.STAT_ROWS * UiLayout.STAT_LINE, panel.y + UiLayout.TITLE_H + UiLayout.GRID_H));
 		ui.font(TextStyle.BOLD);
 		String name = weapon.getGear() == null ? "Fists" : weapon.getGear().getTitle();
 		ui.text(fit(name + " (" + build.getStyle().getLabel() + ")", ui.metrics(), width), x, panel.y + UiLayout.TITLE_H + 12, WHITE);
-		for (UiLayout.Section section : UiLayout.loadoutSections(panel, session))
+		for (UiLayout.Section section : UiLayout.loadoutSections(panel, session, beside))
 		{
 			ui.font(TextStyle.SMALL);
 			int head = section.y + ui.metrics().getAscent();
@@ -1766,7 +1943,7 @@ public final class GameRenderer
 		{
 			return;
 		}
-		for (UiLayout.Tile t : UiLayout.loadoutTiles(panel, session))
+		for (UiLayout.Tile t : UiLayout.loadoutTiles(panel, session, UiLayout.statsBeside(view, session)))
 		{
 			if (!t.bounds.contains(mouse))
 			{
@@ -1821,10 +1998,21 @@ public final class GameRenderer
 		List<String> hints = hint == null ? new ArrayList<>() : wrap(hint, ui.metrics(), width - 14);
 		int line = ui.metrics().getHeight();
 		int height = 10 + line + lines.size() * line + (hints.isEmpty() ? 4 : 8 + hints.size() * line) + 4;
-		// beside the cursor, flipped to its other side near the screen's edges
-		int x = mouse.x + 16 + width <= view.x + view.width ? mouse.x + 16 : mouse.x - 16 - width;
-		int y = Math.max(view.y + 2, Math.min(mouse.y + 14, view.y + view.height - height - 2));
-		x = Math.max(view.x + 2, x);
+		int x;
+		int y;
+		if (ui.touch)
+		{
+			// above the finger, which would hide it, or under it near the top
+			x = Math.max(view.x + 2, Math.min(mouse.x - width / 2, view.x + view.width - width - 2));
+			y = mouse.y - 34 - height >= view.y + 2 ? mouse.y - 34 - height : Math.min(mouse.y + 34, view.y + view.height - height - 2);
+		}
+		else
+		{
+			// beside the cursor, flipped to its other side near the screen's edges
+			x = mouse.x + 16 + width <= view.x + view.width ? mouse.x + 16 : mouse.x - 16 - width;
+			y = Math.max(view.y + 2, Math.min(mouse.y + 14, view.y + view.height - height - 2));
+			x = Math.max(view.x + 2, x);
+		}
 		g.setColor(new Color(0, 0, 0, 80));
 		g.fillRect(x + 3, y + 3, width, height);
 		g.setColor(new Color(20, 17, 12, 240));
@@ -1879,8 +2067,9 @@ public final class GameRenderer
 	 * The bag in the bottom right corner, the game's own side panel and inventory: tab stones,
 	 * pillars and stone backing, the items on it, the one being dragged under the mouse, a tooltip
 	 * for the one hovered, and any message about the bag. With the bag hidden only the stones show.
+	 * On a short touch screen the bottom row of stones goes and the top row sits under the items.
 	 */
-	private static void drawBag(Ui ui, Rectangle view, GameSession session, Point mouse, int dragging)
+	private static void drawBag(Ui ui, Rectangle view, GameSession session, Point mouse, int dragging, TouchControls touch)
 	{
 		Rectangle side = UiLayout.sidePanel(view, session);
 		if (side == null)
@@ -1890,7 +2079,19 @@ public final class GameRenderer
 		Graphics2D g = ui.g;
 		Rectangle bag = UiLayout.bag(view, session);
 		BufferedImage stones = ui.assets.sprite(bag != null ? UiSprite.SIDE_PANEL : UiSprite.SIDE_TABS);
-		if (stones != null)
+		int row = UiLayout.SIDE_ROW_H;
+		if (stones != null && UiLayout.shortSide(view, session))
+		{
+			int w = UiLayout.SIDE_W;
+			int middle = side.height - row;
+			if (middle > 0)
+			{
+				// the pillars and backing, then the top row of stones under them
+				g.drawImage(stones, side.x, side.y, side.x + w, side.y + middle, 0, row, w, row + middle, null);
+			}
+			g.drawImage(stones, side.x, side.y + middle, side.x + w, side.y + side.height, 0, 0, w, row, null);
+		}
+		else if (stones != null)
 		{
 			g.drawImage(stones, side.x, side.y, null);
 		}
@@ -1909,7 +2110,7 @@ public final class GameRenderer
 		int hovered = -1;
 		for (int i = 0; i < Inventory.SIZE; i++)
 		{
-			Rectangle r = UiLayout.bagSlot(bag, i);
+			Rectangle r = UiLayout.bagSlot(view, session, bag, i);
 			if (mouse != null && r.contains(mouse))
 			{
 				hovered = i;
@@ -1935,7 +2136,29 @@ public final class GameRenderer
 		Item held = items.get(dragging);
 		if (held != null && mouse != null)
 		{
-			drawItem(ui, held, mouse.x, mouse.y, 0.5f);
+			if (!ui.touch)
+			{
+				drawItem(ui, held, mouse.x, mouse.y, 0.5f);
+				return;
+			}
+			// above the finger, so it can be seen; out of the bag, letting go drops it
+			boolean dropping = touch != null && touch.dropping;
+			int cx = mouse.x;
+			int cy = mouse.y - 30;
+			drawItem(ui, held, cx, cy, dropping ? 0.6f : 0.9f);
+			if (dropping)
+			{
+				g.setColor(RED);
+				g.drawOval(cx - 22, cy - 20, 44, 40);
+				g.drawLine(cx - 15, cy + 14, cx + 15, cy - 14);
+				ui.font(TextStyle.BOLD);
+				ui.centred("Let go to drop", cx, cy - 26, RED);
+			}
+			return;
+		}
+		if (ui.touch && (touch == null || !touch.inspecting))
+		{
+			// a finger shows what an item is only when held still on it
 			return;
 		}
 		Item over = items.get(hovered);
@@ -1945,7 +2168,8 @@ public final class GameRenderer
 			Gear gear = over.getGear();
 			drawTooltip(ui, view, mouse, over.getTitle(), gear != null ? rarityColour(gear.getRarity(), ui.time) : ORANGE,
 				gear != null ? gear.getRarity().getTitle() : null, over.describe(),
-				"Click to " + use + ". Shift-click or right-click to drop. Drag to move.");
+				ui.touch ? "Tap to " + use + ". Drag to move it, or out of the bag to drop it."
+					: "Click to " + use + ". Shift-click or right-click to drop. Drag to move.");
 		}
 	}
 
@@ -1975,10 +2199,10 @@ public final class GameRenderer
 	}
 
 	/** Potions working now, under the hitpoints orb: picture and seconds left, blinking near the end. */
-	private static void drawPotionTimers(Ui ui, Rectangle view, GameSession session)
+	private static void drawPotionTimers(Ui ui, Rectangle view, GameSession session, int top)
 	{
 		int x = view.x + 8;
-		int y = view.y + 52;
+		int y = top;
 		ui.font(TextStyle.SMALL);
 		for (Map.Entry<Boost, Double> e : session.getBuild().getPotions().entrySet())
 		{
@@ -2258,19 +2482,23 @@ public final class GameRenderer
 
 	/** A pet on the pets page: its picture, name and bonus, faded until it's been won. */
 	/** A setting: its name on the left, On or Off on the right, and what it covers underneath. */
-	private static void drawOptionRow(Ui ui, UiLayout.Button b, Option option, boolean hover)
+	private static void drawOptionRow(Ui ui, UiLayout.Button b, String title, String description, boolean on, boolean hover)
 	{
 		Rectangle r = b.bounds;
-		boolean on = ui.on(option);
 		int width = r.width - 16;
 		ui.font(TextStyle.BOLD);
 		int y = r.y + 6 + ui.metrics().getAscent();
-		ui.text(option.getTitle(), r.x + 8, y, hover ? WHITE : ORANGE);
+		if (r.height < UiLayout.OPTION_H)
+		{
+			// without the description, the name sits in the middle
+			y = r.y + (r.height + ui.metrics().getAscent()) / 2 - 1;
+		}
+		ui.text(title, r.x + 8, y, hover ? WHITE : ORANGE);
 		ui.right(on ? "On" : "Off", r.x + r.width - 8, y, on ? GREEN : RED);
 		ui.font(TextStyle.SMALL);
 		if (r.height >= UiLayout.OPTION_H)
 		{
-			ui.text(fit(option.getDescription(), ui.metrics(), width), r.x + 8, y + ui.metrics().getHeight() + 2, YELLOW);
+			ui.text(fit(description, ui.metrics(), width), r.x + 8, y + ui.metrics().getHeight() + 2, YELLOW);
 		}
 	}
 
@@ -2312,7 +2540,7 @@ public final class GameRenderer
 		}
 		ui.font(TextStyle.SMALL);
 		String label = muted && volume == Volume.MASTER ? "Muted" : level * 100 / Volume.MAX + "%";
-		int minusX = r.x - 4 - UiLayout.VOLUME_BUTTON_W;
+		int minusX = r.x - 4 - r.height;
 		ui.right(label, minusX - 6, baseline, muted && volume == Volume.MASTER ? RED : YELLOW);
 	}
 
@@ -2672,7 +2900,7 @@ public final class GameRenderer
 				return;
 			}
 			ui.font(TextStyle.SMALL);
-			ui.centred("Click to stop the reels", cx, textTop + ui.metrics().getAscent() + 4, HINT);
+			ui.centred(ui.touch ? "Tap to stop the reels" : "Click to stop the reels", cx, textTop + ui.metrics().getAscent() + 4, HINT);
 			return;
 		}
 		ui.font(TextStyle.BOLD);
@@ -2692,7 +2920,7 @@ public final class GameRenderer
 		for (String line : wrap(prize.getDescription(), ui.metrics(), width))
 		{
 			y += ui.metrics().getAscent();
-			if (y > panel.y + panel.height - UiLayout.BUTTON_H - UiLayout.PAD)
+			if (y > panel.y + panel.height - (ui.touch ? UiLayout.TOUCH_BUTTON_H : UiLayout.BUTTON_H) - UiLayout.PAD)
 			{
 				break;
 			}
@@ -3042,13 +3270,15 @@ public final class GameRenderer
 		/** Where the mouse is (or null), and whether its button is held. */
 		final Point mouse;
 		final boolean mouseDown;
+		/** Laid out for a touch screen: fingers, not a mouse and keys. */
+		final boolean touch;
 
 		Ui(Graphics2D g, GameAssets assets, Options options, double time)
 		{
-			this(g, assets, options, time, null, false);
+			this(g, assets, options, time, null, false, false);
 		}
 
-		Ui(Graphics2D g, GameAssets assets, Options options, double time, Point mouse, boolean mouseDown)
+		Ui(Graphics2D g, GameAssets assets, Options options, double time, Point mouse, boolean mouseDown, boolean touch)
 		{
 			this.g = g;
 			this.assets = assets;
@@ -3056,6 +3286,7 @@ public final class GameRenderer
 			this.time = time;
 			this.mouse = mouse;
 			this.mouseDown = mouseDown;
+			this.touch = touch;
 		}
 
 		boolean on(Option option)
@@ -3090,7 +3321,8 @@ public final class GameRenderer
 			{
 				font(TextStyle.SMALL);
 			}
-			centred(s, cx, y, color);
+			// still too wide (a narrow phone): cut short rather than spill out of the panel
+			centred(fit(s, metrics(), width), cx, y, color);
 		}
 
 		void right(String s, int rightX, int y, Color color)

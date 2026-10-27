@@ -18,8 +18,8 @@ The start menu offers:
 - **Upgrades**: spend coins on permanent upgrades.
 - **Pets**: the pets you've won from champions.
 - **Options**: master, combat and interface volume, and screen flashes, the level-up and boss
-  drop animations and screen shake (turn any off for a calmer screen). Also on the pause
-  screen. Kept in your browser.
+  drop animations and screen shake (turn any off for a calmer screen), and full screen where
+  the browser allows it. Also on the pause screen. Kept in your browser.
 - **Save code (other devices)**: *Copy my code* puts your progress (coins, upgrades, pets, best
   times and saved run) on the clipboard as one line of text; on another device, *Load a code*
   and paste it. Loading asks first, then replaces that browser's progress. Options stay per device.
@@ -41,6 +41,30 @@ The start menu offers:
 | 1 or click | Stop the boss drop's reels, then claim the drop |
 | R or click *Play again* | Restart after death |
 | Q or *Save & exit* | Save the run and go back to the start menu |
+
+### Phones and tablets
+
+The page plays on a touch screen, held upright or on its side. It lays itself out for fingers
+when you touch it (and back for the mouse when you click): bigger buttons, menus that fit the
+screen, and no keyboard hints.
+
+| Touch | Action |
+| --- | --- |
+| Drag anywhere on open ground | Move, like a stick that appears under your finger; let go to stand still |
+| Pause button (top right) | Pause; the pause screen has Resume, Options and Save & exit |
+| Tap a card or button | Choose it (it happens when your finger comes up on it, so slide off to change your mind) |
+| Tap the backpack tab | Show or hide the inventory |
+| Tap an item | Wear it, drink a dose or eat it |
+| Hold an item | See what it is (letting go then leaves it be) |
+| Drag an item | Move it to another slot, or out of the inventory to drop it |
+| Tap during a boss drop | Stop the reels, then claim |
+| Swipe *What's new* | Scroll it; a flick keeps it gliding |
+| Back button | Pause the run, or close the page you're on |
+
+A second finger can tap the interface while the first one steers. **Full screen** is on the
+options page where the browser has it (Android, iPad); on an iPhone, *Share > Add to Home Screen*
+opens the game full screen like an app. Held upright, the inventory starts tucked away, and it
+tucks away again on the pause screen when there's no room beside it.
 
 The game pauses when the tab is hidden or loses focus, and saves every few seconds. Dying
 clears the saved run. `index.html?dev` adds developer buttons (end run, +5 levels, champion
@@ -138,7 +162,8 @@ Needs JDK 17 (this machine: `export JAVA_HOME=/c/Users/Joe/.devtools/jdk17`).
 `build/dist` is the whole game: `index.html`, `game.js` (~0.9 MB, compiled from Java by
 [TeaVM](https://teavm.org)), `assets/data.js` (sprites, icons, fonts, models and animations) and
 one `assets/loc/<LOCATION>.js` per map location (192 × 192 tiles, about 10 MB each), loaded
-when a run starts there, plus `assets/sounds.js` (the sound effects, about 85 KB). About 85 MB in all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
+when a run starts there, plus `assets/sounds.js` (the sound effects, about 85 KB), and `manifest.webmanifest` with
+`assets/app-icon-*.png` for adding the page to a phone's home screen. About 85 MB in all. Open `index.html` directly (it works from `file://`) or serve the folder from any static
 host.
 
 The artwork is committed in `src/main/webapp/assets`, so building the page doesn't need the game.

@@ -16,6 +16,7 @@ import com.osrssurvivors.game.TitleScreen;
 import com.osrssurvivors.game.Volume;
 import com.osrssurvivors.render.Fx;
 import com.osrssurvivors.render.GameRenderer;
+import com.osrssurvivors.render.TouchControls;
 import com.osrssurvivors.render.UiLayout;
 import com.osrssurvivors.web.awt.WebImage;
 import java.awt.Color;
@@ -35,6 +36,7 @@ import java.util.Set;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExceptions;
 import org.teavm.jso.JSObject;
+import org.teavm.jso.JSProperty;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.dom.events.Event;
 import org.teavm.jso.dom.events.KeyboardEvent;
@@ -68,10 +70,66 @@ public final class WebMain
 	private static final double AUTOSAVE_MS = 5000;
 	private static final Color MUTED = new Color(255, 152, 31);
 	private static final Color UNMUTED = new Color(0, 230, 0);
+	/** Window widths per pixel of the game, so a tablet held upright isn't drawn too large to fit. */
+	private static final int WIDTH_PER_PIXEL_SCALE = 380;
+	/** Game pixels a finger can wander and still tap, and how long it rests on an item to show what it is. */
+	private static final int TAP_SLOP = 10;
+	private static final double LONG_PRESS_MS = 380;
+	/** A flicked changelog slows by this share a second; a finger resting this long before lifting doesn't flick it. */
+	private static final double FLING_DECAY = 4.5;
+	private static final double FLING_REST_MS = 90;
 
 	private enum Command
 	{
-		TOGGLE_PAUSE, CHOOSE_1, CHOOSE_2, CHOOSE_3, RESTART, EXIT, TOGGLE_BAG, MUTE
+		TOGGLE_PAUSE, CHOOSE_1, CHOOSE_2, CHOOSE_3, RESTART, EXIT, TOGGLE_BAG, MUTE,
+		/** The browser's or phone's back button. */
+		BACK
+	}
+
+	/** A pointer event; the page treats a pointer as a finger unless it's a mouse. */
+	interface PointerEvent extends MouseEvent
+	{
+		@JSProperty
+		int getPointerId();
+
+		@JSProperty
+		String getPointerType();
+	}
+
+	private enum FingerMove
+	{
+		DOWN, MOVE, UP, CANCEL
+	}
+
+	/** A finger going down, moving or coming up, handled at the start of the next frame. */
+	private static final class Finger
+	{
+		final int id;
+		final FingerMove move;
+		final Point at;
+
+		Finger(int id, FingerMove move, Point at)
+		{
+			this.id = id;
+			this.move = move;
+			this.at = at;
+		}
+	}
+
+	/** What the pressing finger went down on. */
+	private enum Hold
+	{
+		NONE,
+		/** A button, pressed when the finger comes up on it. */
+		BUTTON,
+		/** A bag slot: tapped to use, held to look at, dragged to move or out of the bag to drop. */
+		SLOT,
+		/** The changelog's list, dragged and flicked. */
+		SCROLL,
+		/** A volume bar, slid along. */
+		VOLUME,
+		/** The pause screen, where a tap shows what's under it until the next one. */
+		TILE
 	}
 
 	/** A mouse button going down or up, for the bag (which is clicked, dragged and dropped). */
@@ -138,6 +196,28 @@ public final class WebMain
 	/** Where on the changelog's scrollbar thumb the mouse holds it, or -1 when not dragging it. */
 	private int thumbGrab = -1;
 
+	/** Laid out for fingers: whichever was pressed last, a finger or the mouse, decides. */
+	private boolean touch;
+	private final TouchControls touchUi = new TouchControls();
+	private final Queue<Finger> fingers = new ArrayDeque<>();
+	/** Where each finger came down, for the full screen button (which must be pressed inside the browser's event). */
+	private final Map<Integer, Point> fingerDowns = new HashMap<>();
+	/** The finger steering the player, and the one pressing the interface, or -1. */
+	private int stickFinger = -1;
+	private int pressFinger = -1;
+	private Hold hold = Hold.NONE;
+	private UiLayout.Button heldButton;
+	private Point pressStart;
+	private double pressTime;
+	private boolean pressMoved;
+	/** The changelog under a finger: where it was last, when, and how fast the list is gliding (game pixels a second). */
+	private int scrollLastY;
+	private double scrollLastTime;
+	private double flingSpeed;
+	private double flingLast;
+	/** While paused on a screen with no room beside the bag, the bag is tucked away (see {@link UiLayout#bagCrowdsPause}). */
+	private boolean bagTucked;
+
 	private WebMain(HTMLCanvasElement canvas, WebAssets assets, SoundSystem sounds, boolean devTools)
 	{
 		this.canvas = canvas;
@@ -169,14 +249,30 @@ public final class WebMain
 
 	private void start()
 	{
+		touch = Browser.coarsePointer() || Browser.hasParam("touch");
 		resize();
+		// a phone held upright has little room: the bag starts tucked away, a tap on its tab away
+		bagShown = !touch || screen.getWidth() >= screen.getHeight();
 		meta = Saves.loadMeta();
 		metaStored = meta.getChanges();
 		options = Saves.loadOptions();
 		allUnlocked = devTools && Saves.loadAllUnlocked();
 		showMenu();
 		listen();
+		Browser.trapBack(this::back);
 		Window.requestAnimationFrame(this::frame);
+	}
+
+	/** The back button: asks the next frame to pause or close a page; returns whether there was one to. */
+	private boolean back()
+	{
+		GameSession s = session;
+		boolean used = s.getPhase() != Phase.TITLE || s.isOptionsOpen() || s.getTitleScreen() != TitleScreen.MAIN;
+		if (used)
+		{
+			commands.add(Command.BACK);
+		}
+		return used;
 	}
 
 	/** The start menu on the plain field, offering to continue a saved run. */
@@ -192,6 +288,7 @@ public final class WebMain
 		s.setOptions(options);
 		s.setAllUnlocked(allUnlocked);
 		s.setChangelogNews(Changelog.hasNews(Saves.loadChangelogSeen()));
+		s.setTouch(touch);
 		lastFrame = 0;
 		lastPhase = s.getPhase();
 		session = s;
@@ -215,27 +312,67 @@ public final class WebMain
 				focusLost();
 			}
 		});
-		canvas.addEventListener("mousedown", (MouseEvent e) ->
+		// pointer events, for the mouse and for fingers (handled apart: see touch())
+		canvas.addEventListener("pointerdown", (PointerEvent e) ->
 		{
+			// no mouse events after a touch, and no focus scrolling
+			e.preventDefault();
 			Point at = toGame(e);
+			if (isFinger(e))
+			{
+				setTouch(true);
+				fingerDowns.put(e.getPointerId(), at);
+				fingers.add(new Finger(e.getPointerId(), FingerMove.DOWN, at));
+				return;
+			}
+			setTouch(false);
 			if (e.getButton() == MouseEvent.LEFT_BUTTON)
 			{
 				clicks.add(at);
 				mouseDown = true;
+				fullscreenNow(at, at);
 			}
 			presses.add(new Press(at, true, e.getButton() == MouseEvent.RIGHT_BUTTON || e.getShiftKey()));
-			e.preventDefault();
 		});
-		canvas.addEventListener("mouseup", (MouseEvent e) ->
+		canvas.addEventListener("pointerup", (PointerEvent e) ->
 		{
-			presses.add(new Press(toGame(e), false, false));
+			Point at = toGame(e);
+			if (isFinger(e))
+			{
+				fullscreenNow(fingerDowns.remove(e.getPointerId()), at);
+				fingers.add(new Finger(e.getPointerId(), FingerMove.UP, at));
+				return;
+			}
+			presses.add(new Press(at, false, false));
 			mouseDown = false;
 		});
-		canvas.addEventListener("mousemove", (MouseEvent e) -> mouse = toGame(e));
-		canvas.addEventListener("mouseleave", (MouseEvent e) ->
+		canvas.addEventListener("pointercancel", (PointerEvent e) ->
 		{
-			mouse = null;
+			if (isFinger(e))
+			{
+				fingerDowns.remove(e.getPointerId());
+				fingers.add(new Finger(e.getPointerId(), FingerMove.CANCEL, toGame(e)));
+				return;
+			}
 			mouseDown = false;
+		});
+		canvas.addEventListener("pointermove", (PointerEvent e) ->
+		{
+			Point at = toGame(e);
+			if (isFinger(e))
+			{
+				fingers.add(new Finger(e.getPointerId(), FingerMove.MOVE, at));
+				return;
+			}
+			mouse = at;
+		});
+		canvas.addEventListener("pointerleave", (PointerEvent e) ->
+		{
+			if (!isFinger(e))
+			{
+				mouse = null;
+				mouseDown = false;
+			}
 		});
 		canvas.addEventListener("contextmenu", Event::preventDefault);
 		canvas.addEventListener("wheel", (WheelEvent e) ->
@@ -258,6 +395,51 @@ public final class WebMain
 		double sx = canvas.getWidth() / (double) Math.max(1, r.getWidth());
 		double sy = canvas.getHeight() / (double) Math.max(1, r.getHeight());
 		return new Point((int) ((e.getClientX() - r.getLeft()) * sx), (int) ((e.getClientY() - r.getTop()) * sy));
+	}
+
+	private static boolean isFinger(PointerEvent e)
+	{
+		return !"mouse".equals(e.getPointerType());
+	}
+
+	/** Lays the screen out for fingers or for the mouse, as whichever was just pressed. */
+	private void setTouch(boolean on)
+	{
+		if (touch == on)
+		{
+			return;
+		}
+		touch = on;
+		session.setTouch(on);
+		if (!on)
+		{
+			stickFinger = -1;
+			pressFinger = -1;
+			hold = Hold.NONE;
+			touchUi.release();
+		}
+		mouse = null;
+		mouseDown = false;
+	}
+
+	/**
+	 * Browsers only go full screen while handling a press, so the full screen button is pressed
+	 * here, in the event, when the press went down and came up on it; the frame only plays the click.
+	 */
+	private void fullscreenNow(Point down, Point up)
+	{
+		GameSession s = session;
+		if (down == null || s == null)
+		{
+			return;
+		}
+		Rectangle view = new Rectangle(0, 0, screen.getWidth(), screen.getHeight());
+		UiLayout.Button from = UiLayout.buttonAt(view, s, down);
+		UiLayout.Button to = UiLayout.buttonAt(view, s, up);
+		if (from != null && to != null && from.action == UiLayout.Action.FULLSCREEN && to.action == UiLayout.Action.FULLSCREEN)
+		{
+			Browser.toggleFullscreen();
+		}
 	}
 
 	private void key(KeyboardEvent e, boolean pressed)
@@ -361,10 +543,12 @@ public final class WebMain
 
 	private void resize()
 	{
+		// the canvas keeps clear of a phone's notch and home bar (index.html), so measure it
+		TextRectangle box = canvas.getBoundingClientRect();
 		Window window = Window.current();
-		int w = Math.max(1, window.getInnerWidth());
-		int h = Math.max(1, window.getInnerHeight());
-		pixelScale = Math.max(1, h / HEIGHT_PER_PIXEL_SCALE);
+		int w = Math.max(1, box.getWidth() > 0 ? (int) Math.round(box.getWidth()) : window.getInnerWidth());
+		int h = Math.max(1, box.getHeight() > 0 ? (int) Math.round(box.getHeight()) : window.getInnerHeight());
+		pixelScale = Math.max(1, Math.min(h / HEIGHT_PER_PIXEL_SCALE, w / WIDTH_PER_PIXEL_SCALE));
 		int cw = Math.max(1, w / pixelScale);
 		int ch = Math.max(1, h / pixelScale);
 		if (cw != canvas.getWidth() || ch != canvas.getHeight())
@@ -451,14 +635,40 @@ public final class WebMain
 					fx.toast(options.isMuted() ? "Sound off" : "Sound on", "Press M to turn it " + (options.isMuted() ? "on" : "off")
 						+ " again.", options.isMuted() ? MUTED : UNMUTED);
 					break;
+				case BACK:
+					if (s.isOptionsOpen())
+					{
+						s.closeOptions();
+					}
+					else if (s.getPhase() == Phase.RUNNING)
+					{
+						s.togglePause();
+					}
+					else if (s.getPhase() == Phase.TITLE && loading == null)
+					{
+						s.showTitleScreen(TitleScreen.MAIN);
+					}
+					sounds.play(SoundCues.click());
+					break;
 			}
 		}
 
 		Rectangle view = new Rectangle(0, 0, screen.getWidth(), screen.getHeight());
+		s.setTouch(touch);
+		s.setFullscreen(Browser.fullscreenAvailable(), Browser.fullscreen());
 		for (Press p = presses.poll(); p != null; p = presses.poll())
 		{
 			press(s, view, p);
 		}
+		for (Finger f = fingers.poll(); f != null; f = fingers.poll())
+		{
+			if (finger(s, view, f))
+			{
+				return;
+			}
+		}
+		holdStill(s);
+		fling(s, view);
 		scrollChangelog(s, view);
 		for (Point click = clicks.poll(); click != null; click = clicks.poll())
 		{
@@ -477,8 +687,32 @@ public final class WebMain
 			s = session;
 		}
 
-		s.setVisibleArea(GameRenderer.visibleWidth(view), GameRenderer.VIEW_HEIGHT);
-		s.setMoveDirection((right ? 1 : 0) - (left ? 1 : 0), (down ? 1 : 0) - (up ? 1 : 0));
+		s.setVisibleArea(GameRenderer.visibleWidth(view, touch), GameRenderer.visibleHeight(view, touch));
+		int keysX = (right ? 1 : 0) - (left ? 1 : 0);
+		int keysY = (down ? 1 : 0) - (up ? 1 : 0);
+		if (keysX != 0 || keysY != 0)
+		{
+			s.setMoveDirection(keysX, keysY);
+		}
+		else
+		{
+			// a finger on open ground steers; let go and the player stands still
+			double[] stick = touchUi.direction();
+			s.setMoveDirection(stick[0], stick[1]);
+		}
+		// a phone held upright has no room for the bag beside the pause screen: it tucks away
+		// while paused (its tab still brings it out) and comes back as it was
+		boolean crowded = UiLayout.bagCrowdsPause(view, s);
+		if (crowded != bagTucked)
+		{
+			bagTucked = crowded;
+			s.setBagShown(!crowded && bagShown);
+		}
+		if (s.getPhase() != Phase.TITLE || s.isOptionsOpen() || s.getTitleScreen() != TitleScreen.MAIN)
+		{
+			// the back button pauses or closes this
+			Browser.armBack();
+		}
 
 		double now = Browser.now();
 		double dt = lastFrame != 0 ? (now - lastFrame) / 1000 : 0;
@@ -498,6 +732,11 @@ public final class WebMain
 			Saves.storeBestTimes(s.getBestTimes());
 			Saves.clearRun();
 		}
+		if (touch && s.getPhase() != lastPhase && pressFinger < 0)
+		{
+			// a tooltip a tap left up goes with the screen it was on
+			mouse = null;
+		}
 		lastPhase = s.getPhase();
 		// coins at the end of a run, pets from a boss drop
 		storeMetaIfChanged();
@@ -510,7 +749,7 @@ public final class WebMain
 		assets.beginFrame();
 		Graphics2D g = screen.createGraphics();
 		boolean dragging = pressedSlot >= 0 && UiLayout.bagSlotAt(view, s, mouse) != pressedSlot;
-		GameRenderer.render(g, view, s, assets, mouse, EXIT_KEY, dragging ? pressedSlot : -1, fx, mouseDown);
+		GameRenderer.render(g, view, s, assets, mouse, EXIT_KEY, dragging ? pressedSlot : -1, fx, mouseDown, touch ? touchUi : null);
 		g.dispose();
 	}
 
@@ -623,8 +862,279 @@ public final class WebMain
 
 	private void toggleBag(GameSession s)
 	{
+		if (bagTucked)
+		{
+			// out over the pause screen, and back; as it was before pausing once play goes on
+			s.setBagShown(!s.isBagShown());
+			return;
+		}
 		bagShown = !bagShown;
 		s.setBagShown(bagShown);
+	}
+
+	// ---------------------------------------------------------------- fingers
+
+	/**
+	 * A finger on a touch screen. One on open ground while playing steers the player like a
+	 * stick that appears where it came down; one on the interface presses it: buttons go when the
+	 * finger comes up on them, bag items are tapped, held or dragged, the changelog is dragged and
+	 * flicked, volume bars slid. A second finger can press the interface while the first steers.
+	 * Returns true when the session was replaced and the frame should start over.
+	 */
+	private boolean finger(GameSession s, Rectangle view, Finger f)
+	{
+		switch (f.move)
+		{
+			case DOWN:
+				if (pressFinger >= 0 || f.id == stickFinger)
+				{
+					return false;
+				}
+				boolean open = !onInterface(s, view, f.at);
+				if (open && stickFinger < 0 && s.getPhase() == Phase.RUNNING)
+				{
+					stickFinger = f.id;
+					touchUi.stickOrigin = f.at;
+					touchUi.stickAt = f.at;
+					return false;
+				}
+				if (open && stickFinger >= 0)
+				{
+					// a second finger on open ground does nothing
+					return false;
+				}
+				pressFinger = f.id;
+				return beginPress(s, view, f.at);
+			case MOVE:
+				if (f.id == stickFinger)
+				{
+					touchUi.drag(f.at);
+				}
+				else if (f.id == pressFinger)
+				{
+					movePress(s, view, f.at);
+				}
+				return false;
+			default:
+				if (f.id == stickFinger)
+				{
+					stickFinger = -1;
+					touchUi.release();
+				}
+				else if (f.id == pressFinger)
+				{
+					pressFinger = -1;
+					return endPress(s, view, f.at, f.move == FingerMove.CANCEL);
+				}
+				return false;
+		}
+	}
+
+	/** Whether a point is on the bag or a button (else it's open ground, where a finger steers). */
+	private static boolean onInterface(GameSession s, Rectangle view, Point at)
+	{
+		Rectangle side = UiLayout.sidePanel(view, s);
+		return side != null && side.contains(at) || UiLayout.buttonAt(view, s, at) != null;
+	}
+
+	private boolean beginPress(GameSession s, Rectangle view, Point at)
+	{
+		mouse = at;
+		mouseDown = true;
+		pressStart = at;
+		pressTime = Browser.now();
+		pressMoved = false;
+		heldButton = null;
+		hold = Hold.NONE;
+		touchUi.inspecting = false;
+		touchUi.dropping = false;
+		Rectangle tab = UiLayout.inventoryTab(view, s);
+		if (tab != null && tab.contains(at))
+		{
+			toggleBag(s);
+			return false;
+		}
+		if (UiLayout.bagSlotAt(view, s, at) >= 0)
+		{
+			hold = Hold.SLOT;
+			press(s, view, new Press(at, true, false));
+			return false;
+		}
+		Rectangle side = UiLayout.sidePanel(view, s);
+		if (side != null && side.contains(at))
+		{
+			return false;
+		}
+		Rectangle port = UiLayout.changelogViewport(view, s);
+		if (port != null && port.contains(at))
+		{
+			hold = Hold.SCROLL;
+			scrollLastY = at.y;
+			scrollLastTime = pressTime;
+			flingSpeed = 0;
+			return false;
+		}
+		UiLayout.Button button = UiLayout.buttonAt(view, s, at);
+		if (button != null && button.action == UiLayout.Action.VOLUME_BAR)
+		{
+			hold = Hold.VOLUME;
+			heldButton = button;
+			return click(s, view, at);
+		}
+		if (button != null)
+		{
+			hold = Hold.BUTTON;
+			heldButton = button;
+			return false;
+		}
+		if (s.getPhase() == Phase.BOSS_DROP)
+		{
+			// a tap anywhere stops the reels, or takes the drop
+			return click(s, view, at);
+		}
+		if (s.getPhase() == Phase.PAUSED)
+		{
+			hold = Hold.TILE;
+		}
+		return false;
+	}
+
+	private void movePress(GameSession s, Rectangle view, Point at)
+	{
+		mouse = at;
+		if (!pressMoved && Math.hypot(at.x - pressStart.x, at.y - pressStart.y) > TAP_SLOP)
+		{
+			pressMoved = true;
+			touchUi.inspecting = false;
+		}
+		switch (hold)
+		{
+			case SCROLL:
+			{
+				double now = Browser.now();
+				int dy = scrollLastY - at.y;
+				wheel += dy;
+				double seconds = (now - scrollLastTime) / 1000;
+				if (seconds > 0.004)
+				{
+					// smoothed, so one jumpy event doesn't fling the list
+					flingSpeed = 0.6 * flingSpeed + 0.4 * dy / seconds;
+				}
+				scrollLastY = at.y;
+				scrollLastTime = now;
+				break;
+			}
+			case VOLUME:
+			{
+				// slid along the bar, the level follows the finger however far it strays up or down
+				Volume v = Volume.values()[heldButton.index];
+				options.setVolume(v, UiLayout.volumeAt(heldButton, at));
+				if (v == Volume.MASTER)
+				{
+					options.setMuted(false);
+				}
+				break;
+			}
+			case SLOT:
+			{
+				Rectangle side = UiLayout.sidePanel(view, s);
+				touchUi.dropping = pressedSlot >= 0 && s.getInventory().get(pressedSlot) != null && (side == null || !side.contains(at));
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	private boolean endPress(GameSession s, Rectangle view, Point at, boolean cancelled)
+	{
+		mouseDown = false;
+		Hold was = hold;
+		hold = Hold.NONE;
+		UiLayout.Button pressed = heldButton;
+		heldButton = null;
+		boolean replaced = false;
+		switch (was)
+		{
+			case BUTTON:
+			{
+				// only when the finger comes up on the button it went down on
+				UiLayout.Button under = UiLayout.buttonAt(view, s, at);
+				if (!cancelled && under != null && pressed != null && under.action == pressed.action && under.index == pressed.index)
+				{
+					replaced = click(s, view, at);
+				}
+				break;
+			}
+			case SLOT:
+				if (cancelled || touchUi.inspecting && !pressMoved)
+				{
+					// held to look at it, or the touch was taken away: nothing happens to it
+					pressedSlot = -1;
+				}
+				else if (touchUi.dropping)
+				{
+					s.dropItem(pressedSlot);
+					pressedSlot = -1;
+					Browser.vibrate(15);
+				}
+				else
+				{
+					press(s, view, new Press(at, false, false));
+				}
+				break;
+			case SCROLL:
+				if (cancelled || Browser.now() - scrollLastTime > FLING_REST_MS)
+				{
+					flingSpeed = 0;
+				}
+				break;
+			case VOLUME:
+				Saves.storeOptions(options);
+				break;
+			case TILE:
+				// what was tapped keeps its tooltip until the next tap
+				return false;
+			default:
+				break;
+		}
+		touchUi.inspecting = false;
+		touchUi.dropping = false;
+		mouse = null;
+		return replaced;
+	}
+
+	/** A finger resting on a bag item shows what it is; letting go then leaves the item be. */
+	private void holdStill(GameSession s)
+	{
+		if (hold == Hold.SLOT && !pressMoved && !touchUi.inspecting && pressedSlot >= 0
+			&& s.getInventory().get(pressedSlot) != null && Browser.now() - pressTime > LONG_PRESS_MS)
+		{
+			touchUi.inspecting = true;
+			Browser.vibrate(10);
+		}
+	}
+
+	/** A flicked changelog glides on, slowing. */
+	private void fling(GameSession s, Rectangle view)
+	{
+		double now = Browser.now();
+		double seconds = flingLast == 0 ? 0 : Math.min(0.1, (now - flingLast) / 1000);
+		flingLast = now;
+		if (UiLayout.changelogTrack(view, s) == null)
+		{
+			flingSpeed = 0;
+		}
+		if (hold == Hold.SCROLL || flingSpeed == 0)
+		{
+			return;
+		}
+		wheel += flingSpeed * seconds;
+		flingSpeed *= Math.exp(-FLING_DECAY * seconds);
+		if (Math.abs(flingSpeed) < 15)
+		{
+			flingSpeed = 0;
+		}
 	}
 
 	/** Handles a click; returns true when the session was replaced and the frame should start over. */
@@ -664,7 +1174,11 @@ public final class WebMain
 				s.chooseUpgrade(button.index);
 				break;
 			case RESUME:
+			case PAUSE:
 				s.togglePause();
+				break;
+			case FULLSCREEN:
+				// already done, in the browser's event (see fullscreenNow)
 				break;
 			case RESTART:
 				s.restart();
@@ -804,7 +1318,8 @@ public final class WebMain
 		}
 		else
 		{
-			Browser.showText("Copy this save code (Ctrl+C), then load it on your other device:", code);
+			Browser.showText(touch ? "Copy this save code, then load it on your other device:"
+				: "Copy this save code (Ctrl+C), then load it on your other device:", code);
 			s.setStatus("On your other device, choose Load a code and paste it.");
 		}
 		// the dialog swallowed the button coming up
@@ -921,6 +1436,9 @@ public final class WebMain
 		run.setOptions(options);
 		run.setAllUnlocked(allUnlocked);
 		run.setBagShown(bagShown);
+		run.setTouch(touch);
+		bagTucked = false;
+		touchUi.steered = save != null;
 		lastFrame = 0;
 		lastPhase = run.getPhase();
 		session = run;

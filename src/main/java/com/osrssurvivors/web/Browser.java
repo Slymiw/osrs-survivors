@@ -72,6 +72,42 @@ final class Browser
 	@JSBody(params = "message", script = "return window.confirm(message);")
 	static native boolean confirm(String message);
 
+	/** Whether the main pointer is a finger (a phone or tablet), so the game starts laid out for touch. */
+	@JSBody(script = "try { return window.matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0"
+		+ " && !window.matchMedia('(pointer: fine)').matches); } catch (e) { return false; }")
+	static native boolean coarsePointer();
+
+	/** Whether the browser can put the page in full screen (phones' Safari can't). */
+	@JSBody(script = "return window.OSRS.fullscreen.available();")
+	static native boolean fullscreenAvailable();
+
+	/** Whether the page fills the screen: full screen, or opened from the home screen as an app. */
+	@JSBody(script = "return window.OSRS.fullscreen.active();")
+	static native boolean fullscreen();
+
+	/** Turns full screen on or off; only works while handling a press or tap. */
+	@JSBody(script = "window.OSRS.fullscreen.toggle();")
+	static native void toggleFullscreen();
+
+	/** A short buzz on phones that can (not iPhones); nothing elsewhere. */
+	@JSBody(params = "ms", script = "try { if (navigator.vibrate) { navigator.vibrate(ms); } } catch (e) {}")
+	static native void vibrate(int ms);
+
+	@JSFunctor
+	interface BackPressed extends JSObject
+	{
+		/** Returns whether the game used the press (to close or pause something); if not, the next one leaves the page. */
+		boolean back();
+	}
+
+	/** Catches the browser's (or a phone's) back button, so it pauses or closes a page of the game rather than leaving. */
+	@JSBody(params = "callback", script = "window.OSRS.trapBack(callback);")
+	static native void trapBack(BackPressed callback);
+
+	/** Catches the back button again after it was let through (it is armed once per page of the game left open). */
+	@JSBody(script = "window.OSRS.armBack();")
+	static native void armBack();
+
 	static byte[] bytes(Int8Array array)
 	{
 		int n = array.getLength();

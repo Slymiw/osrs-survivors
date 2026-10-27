@@ -51,6 +51,10 @@ public final class UiLayout
 		SAVE_CODE,
 		COPY_SAVE_CODE,
 		LOAD_SAVE_CODE,
+		/** Turns full screen on or off, on the options page where the browser allows it. */
+		FULLSCREEN,
+		/** The pause button in the corner of a touch screen's HUD. */
+		PAUSE,
 		// developer tools, shown with ?dev
 		DEV_END_RUN, DEV_LEVELS, DEV_CHAMPION, DEV_MAX_META, DEV_RESET_META, DEV_COINS, DEV_UNLOCK_MAPS
 	}
@@ -142,6 +146,7 @@ public final class UiLayout
 	static final int SLOT = 36;
 	static final int SLOT_GAP = 4;
 	static final int GRID_H = 5 * SLOT + 4 * SLOT_GAP;
+	static final int GRID_W = 3 * SLOT + 2 * SLOT_GAP;
 	// the pause screen: equipment and stats on the left, everything else in sections on the right
 	static final int LOADOUT_LEFT_W = 156;
 	/** The pause screen's narrowest, still holding its row of three buttons. */
@@ -160,12 +165,15 @@ public final class UiLayout
 	static final int OPTION_H = 44;
 	/** A setting without its description, when the window is too short for them. */
 	static final int OPTION_SHORT_H = 28;
+	static final int TOUCH_OPTION_SHORT_H = 36;
 	/** One volume row: its name, then a minus button, the level's bar and a plus button. */
 	static final int VOLUME_H = 26;
 	static final int VOLUME_GAP = 6;
 	static final int VOLUME_BUTTON_W = 26;
 	static final int VOLUME_BAR_W = 150;
 	static final int OPTIONS_W = 420;
+	/** The options page with its settings in three columns. */
+	static final int OPTIONS_WIDE_W = 600;
 	static final int TITLE_BUTTON_W = 220;
 	/** Line under the menu title (tagline, loading status, hovered location's description). */
 	static final int SUBTITLE_H = 18;
@@ -186,6 +194,8 @@ public final class UiLayout
 	static final int LOCATION_CARD_W = 156;
 	static final int LOCATION_CARD_MAX_H = 60;
 	static final int LOCATION_CARD_MIN_H = 36;
+	/** Pets are only looked at, not pressed, so their cards can be shorter to fit a small screen. */
+	static final int PET_CARD_MIN_H = 26;
 	/** Coins line on the death screen. */
 	static final int COINS_H = 16;
 	// the boss drop's slot machine
@@ -215,6 +225,21 @@ public final class UiLayout
 	static final int BAG_ABOVE = 100;
 	/** Where the inventory's tab sits in the top row of stones. */
 	static final int INVENTORY_TAB = 3;
+	// touch screens: fingers need bigger buttons, and there is no controls line under the bag
+	static final int TOUCH_BUTTON_H = 40;
+	static final int TOUCH_VOLUME_H = 36;
+	static final int TOUCH_BAG_BOTTOM = 4;
+	/** The HUD's card of time, kills and coins in the top right, and the touch pause button beside it. */
+	public static final int HUD_CARD_W = 118;
+	public static final int PAUSE_BUTTON = 40;
+	/** Height of the HUD's top row (orb, card, pause button), which the open bag stays out of. */
+	static final int HUD_TOP_H = 70;
+	/** On a phone held upright, level-up cards go one above another once side by side they'd be narrower than this. */
+	static final int STACK_CARDS_BELOW_W = 150;
+	/** Narrowest a card in a grid (locations, upgrades, pets) gets before the grid takes more rows. */
+	static final int GRID_CARD_MIN_W = 100;
+	/** The pause screen's stats column, when a short screen puts it beside the equipment rather than under it. */
+	static final int STATS_W = 140;
 
 	private UiLayout()
 	{
@@ -225,10 +250,12 @@ public final class UiLayout
 	{
 		int w;
 		int h;
+		int bh = buttonH(session);
 		if (session.isOptionsOpen())
 		{
-			w = OPTIONS_W;
-			h = optionsHeight(optionRowHeight(view), optionColumns(view));
+			int cols = optionColumns(view, session);
+			w = cols >= 3 ? Math.min(view.width - 16, OPTIONS_WIDE_W) : OPTIONS_W;
+			h = optionsHeight(session, optionRowHeight(view, session), cols);
 			w = Math.min(w, view.width);
 			h = Math.min(h, view.height);
 			return new Rectangle(view.x + (view.width - w) / 2, view.y + (view.height - h) / 2, w, h);
@@ -237,26 +264,37 @@ public final class UiLayout
 		{
 			case LEVEL_UP:
 				int n = Math.max(1, session.getChoices().size());
-				w = n * cardWidth(view, n) + (n - 1) * GAP + 2 * PAD;
-				h = TITLE_H + CARD_H + PAD + (session.getRerollsLeft() > 0 ? BUTTON_H + GAP : 0);
+				int reroll = session.getRerollsLeft() > 0 ? bh + GAP : 0;
+				if (stackCards(view, session))
+				{
+					w = Math.min(view.width - 16, CARD_MAX_W + 2 * PAD + 120);
+					h = TITLE_H + n * CARD_H + (n - 1) * GAP + PAD + reroll;
+				}
+				else
+				{
+					w = n * cardWidth(view, n) + (n - 1) * GAP + 2 * PAD;
+					h = TITLE_H + CARD_H + PAD + reroll;
+				}
 				break;
 			case BOSS_DROP:
 				w = Math.max(3 * REEL_W + 2 * REEL_GAP + 2 * PAD + 60, 300);
-				h = TITLE_H + REEL_H + GAP + PRIZE_H + BUTTON_H + PAD;
+				h = TITLE_H + REEL_H + GAP + PRIZE_H + bh + PAD;
 				break;
 			case PAUSED:
+				boolean beside = statsBeside(view, session);
 				w = Math.min(640, view.width - 16);
-				if (sidePanel(view, session) != null)
+				if (!bagCrowdsPause(view, session) && sidePanel(view, session) != null)
 				{
 					// narrower, down to what its buttons need, to stand beside the bag
-					w = Math.min(w, Math.max(PAUSE_MIN_W, view.width - 16 - SIDE_W - GAP));
+					w = Math.min(w, Math.max(beside ? loadoutLeftW(true) + 2 * PAD + 18 + 4 * (TILE + TILE_GAP) : PAUSE_MIN_W,
+						view.width - 16 - SIDE_W - GAP));
 				}
-				h = TITLE_H + Math.max(LOADOUT_H, rightHeight(session, w)) + PAD + BUTTON_H + PAD
-					+ (session.isDevTools() ? BUTTON_H + GAP : 0);
+				h = TITLE_H + Math.max(beside ? GRID_H : LOADOUT_H, rightHeight(session, w, beside)) + PAD + bh + PAD
+					+ (session.isDevTools() ? bh + GAP : 0);
 				break;
 			case GAME_OVER:
 				w = Math.max(2 * BUTTON_W + GAP, 300) + 2 * PAD;
-				h = TITLE_H + STATS_H + COINS_H + BUTTON_H + PAD;
+				h = TITLE_H + STATS_H + COINS_H + bh + PAD;
 				break;
 			case TITLE:
 				if (session.getTitleScreen() == TitleScreen.CHANGELOG)
@@ -267,20 +305,22 @@ public final class UiLayout
 				else if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
 				{
 					w = SAVE_CODE_W;
-					h = TITLE_H + SUBTITLE_H + SAVE_CODE_TEXT_H + 2 * BUTTON_H + GAP + PAD;
+					h = TITLE_H + SUBTITLE_H + SAVE_CODE_TEXT_H + 2 * bh + GAP + PAD;
 				}
 				else if (session.getTitleScreen() != TitleScreen.MAIN)
 				{
 					int count = gridCount(session.getTitleScreen());
-					int cols = locationColumns(view);
+					int cols = gridColumns(view, session, count);
 					int rows = gridRows(cols, count);
 					w = cols * locationCardWidth(view, cols) + (cols - 1) * GAP + 2 * PAD;
-					h = TITLE_H + SUBTITLE_H + rows * locationCardHeight(view, rows) + rows * GAP + BUTTON_H + PAD;
+					h = TITLE_H + SUBTITLE_H + rows * locationCardHeight(view, session, rows) + rows * GAP + bh + PAD;
 				}
 				else
 				{
-					w = Math.max(TITLE_BUTTON_W + 40, session.isDevTools() ? 4 * DEV_BUTTON_W + 3 * GAP : 0) + 2 * PAD;
-					h = TITLE_H + 20 + SUBTITLE_H + mainButtons(session) * (BUTTON_H + GAP) + PAD;
+					int cols = mainColumns(view, session);
+					int rows = (mainButtons(session) + cols - 1) / cols;
+					w = Math.max(cols * TITLE_BUTTON_W + (cols - 1) * GAP + 40, session.isDevTools() ? 4 * DEV_BUTTON_W + 3 * GAP : 0) + 2 * PAD;
+					h = TITLE_H + 20 + SUBTITLE_H + (rows + (devRow(session) ? 1 : 0)) * (bh + GAP) + PAD;
 				}
 				break;
 			default:
@@ -289,13 +329,78 @@ public final class UiLayout
 		w = Math.min(w, view.width);
 		h = Math.min(h, view.height);
 		int x = view.x + (view.width - w) / 2;
-		Rectangle side = sidePanel(view, session);
+		int y = view.y + (view.height - h) / 2;
+		// a crowded pause screen takes the middle; the bag, tucked away, keeps out of it
+		Rectangle side = bagCrowdsPause(view, session) ? null : sidePanel(view, session);
 		if (side != null && x + w + GAP > side.x)
 		{
-			// the pause screen steps aside for the bag
-			x = Math.max(view.x, side.x - GAP - w);
+			if (side.x - GAP - w >= view.x)
+			{
+				// the pause screen steps aside for the bag
+				x = side.x - GAP - w;
+			}
+			else
+			{
+				// no room beside it (a phone held upright): above it, as far as that goes
+				y = Math.max(view.y, Math.min(y, side.y - GAP - h));
+			}
 		}
-		return new Rectangle(x, view.y + (view.height - h) / 2, w, h);
+		return new Rectangle(x, y, w, h);
+	}
+
+	/** Height of a button: taller on touch screens, for fingers. */
+	public static int buttonH(GameSession session)
+	{
+		return session.isTouch() ? TOUCH_BUTTON_H : BUTTON_H;
+	}
+
+	/** Height of a volume row, and the width of its minus and plus buttons. */
+	public static int volumeH(GameSession session)
+	{
+		return session.isTouch() ? TOUCH_VOLUME_H : VOLUME_H;
+	}
+
+	/** On a phone held upright with narrow cards, the level-up cards go one above another. */
+	public static boolean stackCards(Rectangle view, GameSession session)
+	{
+		int n = Math.max(1, session.getChoices().size());
+		return n > 1 && view.height > view.width && cardWidth(view, n) < STACK_CARDS_BELOW_W
+			&& TITLE_H + n * CARD_H + (n - 1) * GAP + PAD + buttonH(session) + GAP <= view.height;
+	}
+
+	/** Whether a short screen puts the pause screen's stats beside the equipment, rather than under it. */
+	public static boolean statsBeside(Rectangle view, GameSession session)
+	{
+		int bh = buttonH(session);
+		return TITLE_H + LOADOUT_H + 2 * PAD + bh + (session.isDevTools() ? bh + GAP : 0) > view.height;
+	}
+
+	/**
+	 * Whether the open bag leaves no room beside it for the pause screen (a phone held upright):
+	 * then the bag tucks away while paused, and its tab brings it out over the pause screen.
+	 */
+	public static boolean bagCrowdsPause(Rectangle view, GameSession session)
+	{
+		return session.getPhase() == Phase.PAUSED && !session.isOptionsOpen() && sidePanel(view, session, true) != null
+			&& view.width - 16 - SIDE_W - GAP < PAUSE_MIN_W;
+	}
+
+	private static int loadoutLeftW(boolean beside)
+	{
+		return beside ? GRID_W + 14 + STATS_W : LOADOUT_LEFT_W;
+	}
+
+	/** The main menu's buttons go in two columns when one column is taller than the screen. */
+	static int mainColumns(Rectangle view, GameSession session)
+	{
+		int bh = buttonH(session);
+		int one = TITLE_H + 20 + SUBTITLE_H + (mainButtons(session) + (devRow(session) ? 1 : 0)) * (bh + GAP) + PAD;
+		return one + 30 <= view.height || view.width < 2 * TITLE_BUTTON_W + GAP + 2 * PAD + 16 ? 1 : 2;
+	}
+
+	private static boolean devRow(GameSession session)
+	{
+		return session.isDevTools() && session.getMeta() != null;
 	}
 
 	/** The bag panel, shown while playing and paused; null when hidden. */
@@ -311,14 +416,42 @@ public final class UiLayout
 	 */
 	public static Rectangle sidePanel(Rectangle view, GameSession session)
 	{
+		Rectangle side = sidePanel(view, session, session.isBagShown());
+		if (side != null && !session.isBagShown() && bagCrowdsPause(view, session))
+		{
+			// tucked away on a crowded pause screen, its stones go too if they'd cover it
+			Rectangle panel = panel(view, session);
+			if (panel != null && panel.intersects(side))
+			{
+				return null;
+			}
+		}
+		return side;
+	}
+
+	private static Rectangle sidePanel(Rectangle view, GameSession session, boolean open)
+	{
 		Phase phase = session.getPhase();
+		int bottom = session.isTouch() ? TOUCH_BAG_BOTTOM : BAG_BOTTOM;
+		// a touch screen keeps the bag however short it is, down to what the short panel needs
+		int needs = session.isTouch() ? SIDE_H - SIDE_ROW_H + bottom : SIDE_H + bottom + BAG_ABOVE;
 		if (session.isOptionsOpen() || phase != Phase.RUNNING && phase != Phase.PAUSED
-			|| SIDE_W + 16 > view.width || SIDE_H + BAG_BOTTOM + BAG_ABOVE > view.height)
+			|| SIDE_W + 16 > view.width || needs > view.height)
 		{
 			return null;
 		}
-		int h = session.isBagShown() ? SIDE_H : 2 * SIDE_ROW_H;
-		return new Rectangle(view.x + view.width - 8 - SIDE_W, view.y + view.height - BAG_BOTTOM - h, SIDE_W, h);
+		boolean shortSide = shortSide(view, session);
+		int h = open ? (shortSide ? SIDE_H - SIDE_ROW_H : SIDE_H) : shortSide ? SIDE_ROW_H : 2 * SIDE_ROW_H;
+		return new Rectangle(view.x + view.width - 8 - SIDE_W, view.y + view.height - bottom - h, SIDE_W, h);
+	}
+
+	/**
+	 * A touch screen too short for the whole side panel (a phone on its side): the bag drops its
+	 * bottom row of stones and has the top row, with the inventory's tab, under the items instead.
+	 */
+	public static boolean shortSide(Rectangle view, GameSession session)
+	{
+		return session.isTouch() && SIDE_H + TOUCH_BAG_BOTTOM > view.height;
 	}
 
 	/** The inventory's tab stone, which opens and closes the bag; null when the side panel is hidden. */
@@ -330,7 +463,26 @@ public final class UiLayout
 			return null;
 		}
 		int x = sideTabX(INVENTORY_TAB);
-		return new Rectangle(side.x + x, side.y, 33, SIDE_ROW_H);
+		int y = shortSide(view, session) ? side.y + side.height - SIDE_ROW_H : side.y;
+		return new Rectangle(side.x + x, y, 33, SIDE_ROW_H);
+	}
+
+	/** Right edge of the HUD's top row: the screen's, or left of the open bag where it reaches up beside the card. */
+	public static int hudRight(Rectangle view, GameSession session)
+	{
+		Rectangle side = sidePanel(view, session);
+		return side != null && side.y < view.y + HUD_TOP_H ? side.x - 6 : view.x + view.width - 8;
+	}
+
+	/** The pause button left of the HUD's card, on touch screens while playing; null otherwise. */
+	public static Rectangle pauseButton(Rectangle view, GameSession session)
+	{
+		if (!session.isTouch() || session.getPhase() != Phase.RUNNING)
+		{
+			return null;
+		}
+		int right = hudRight(view, session) - HUD_CARD_W - 6;
+		return new Rectangle(right - PAUSE_BUTTON, view.y + 6, PAUSE_BUTTON, PAUSE_BUTTON);
 	}
 
 	/** Left edge of a tab's 33-pixel icon box in a row of stones (the corner stones are wider). */
@@ -348,6 +500,17 @@ public final class UiLayout
 			bag.y + SIDE_ROW_H + BAG_TOP + row * (BAG_SLOT_H + BAG_GAP_Y), BAG_SLOT_W, BAG_SLOT_H);
 	}
 
+	/** Where a bag slot is drawn, in the open bag on this screen (see {@link #shortSide}). */
+	public static Rectangle bagSlot(Rectangle view, GameSession session, Rectangle bag, int index)
+	{
+		Rectangle r = bagSlot(bag, index);
+		if (shortSide(view, session))
+		{
+			r.y -= SIDE_ROW_H;
+		}
+		return r;
+	}
+
 	/** The bag slot under a point, or -1. Bag slots are not {@link #buttons}: they are clicked, dragged and dropped. */
 	public static int bagSlotAt(Rectangle view, GameSession session, Point point)
 	{
@@ -358,7 +521,7 @@ public final class UiLayout
 		}
 		for (int i = 0; i < Inventory.SIZE; i++)
 		{
-			if (bagSlot(bag, i).contains(point))
+			if (bagSlot(view, session, bag, i).contains(point))
 			{
 				return i;
 			}
@@ -371,42 +534,49 @@ public final class UiLayout
 		Rectangle panel = panel(view, session);
 		if (panel == null)
 		{
-			return Collections.emptyList();
+			Rectangle pause = pauseButton(view, session);
+			return pause == null ? Collections.emptyList() : Collections.singletonList(new Button(Action.PAUSE, 0, pause, "Pause"));
 		}
 		List<Button> buttons = new ArrayList<>();
 		int bottom = panel.y + panel.height - PAD;
+		int bh = buttonH(session);
+		boolean keys = !session.isTouch();
 		if (session.isOptionsOpen())
 		{
-			int y = panel.y + TITLE_H + SUBTITLE_H;
-			int rowH = optionRowHeight(view);
+			int y = panel.y + TITLE_H + optionsSubtitleH(optionColumns(view, session));
+			int rowH = optionRowHeight(view, session);
 			int inner = panel.width - 2 * PAD;
+			int vh = volumeH(session);
 			for (Volume v : Volume.values())
 			{
 				int right = panel.x + panel.width - PAD;
-				int barW = Math.min(VOLUME_BAR_W, Math.max(40, inner / 2 - 2 * VOLUME_BUTTON_W));
-				Rectangle plus = new Rectangle(right - VOLUME_BUTTON_W, y, VOLUME_BUTTON_W, VOLUME_H);
-				Rectangle bar = new Rectangle(plus.x - 4 - barW, y, barW, VOLUME_H);
-				Rectangle minus = new Rectangle(bar.x - 4 - VOLUME_BUTTON_W, y, VOLUME_BUTTON_W, VOLUME_H);
+				int barW = Math.min(VOLUME_BAR_W, Math.max(40, inner / 2 - 2 * vh));
+				Rectangle plus = new Rectangle(right - vh, y, vh, vh);
+				Rectangle bar = new Rectangle(plus.x - 4 - barW, y, barW, vh);
+				Rectangle minus = new Rectangle(bar.x - 4 - vh, y, vh, vh);
 				buttons.add(new Button(Action.VOLUME_DOWN, v.ordinal(), minus, "-"));
 				buttons.add(new Button(Action.VOLUME_BAR, v.ordinal(), bar, v.getTitle()));
 				buttons.add(new Button(Action.VOLUME_UP, v.ordinal(), plus, "+"));
-				y += VOLUME_H + VOLUME_GAP;
+				y += vh + VOLUME_GAP;
 			}
 			y += GAP - VOLUME_GAP;
-			int cols = optionColumns(view);
+			int cols = optionColumns(view, session);
 			int colW = (inner - (cols - 1) * GAP) / cols;
-			for (Option o : Option.values())
+			int rows = optionRows(session);
+			for (int i = 0; i < rows; i++)
 			{
-				int col = o.ordinal() % cols;
-				buttons.add(new Button(Action.TOGGLE_OPTION, o.ordinal(),
-					new Rectangle(panel.x + PAD + col * (colW + GAP), y, colW, rowH), o.getTitle()));
-				if (col == cols - 1 || o.ordinal() == Option.values().length - 1)
+				int col = i % cols;
+				Rectangle r = new Rectangle(panel.x + PAD + col * (colW + GAP), y, colW, rowH);
+				// full screen, where the browser has it, after the stored settings
+				buttons.add(i < Option.values().length ? new Button(Action.TOGGLE_OPTION, i, r, Option.values()[i].getTitle())
+					: new Button(Action.FULLSCREEN, 0, r, "Full screen"));
+				if (col == cols - 1 || i == rows - 1)
 				{
 					y += rowH + GAP;
 				}
 			}
 			int bw = Math.min(BUTTON_W, panel.width - 2 * PAD);
-			buttons.add(new Button(Action.CLOSE_OPTIONS, 0, new Rectangle(panel.x + (panel.width - bw) / 2, bottom - BUTTON_H, bw, BUTTON_H),
+			buttons.add(new Button(Action.CLOSE_OPTIONS, 0, new Rectangle(panel.x + (panel.width - bw) / 2, bottom - bh, bw, bh),
 				"Back"));
 			return buttons;
 		}
@@ -414,105 +584,80 @@ public final class UiLayout
 		{
 			case LEVEL_UP:
 				int n = session.getChoices().size();
-				int cardW = cardWidth(view, n);
+				boolean stacked = stackCards(view, session);
+				int cardW = stacked ? panel.width - 2 * PAD : cardWidth(view, n);
 				int x = panel.x + PAD;
 				int cardTop = panel.y + TITLE_H;
 				for (int i = 0; i < n; i++)
 				{
 					buttons.add(new Button(Action.CHOOSE_UPGRADE, i, new Rectangle(x, cardTop, cardW, CARD_H),
 						session.getChoices().get(i).getTitle()));
-					x += cardW + GAP;
+					if (stacked)
+					{
+						cardTop += CARD_H + GAP;
+					}
+					else
+					{
+						x += cardW + GAP;
+					}
 				}
 				if (session.getRerollsLeft() > 0)
 				{
 					int rw = Math.min(BUTTON_W + 30, panel.width - 2 * PAD);
-					buttons.add(new Button(Action.REROLL, 0, new Rectangle(panel.x + (panel.width - rw) / 2, bottom - BUTTON_H, rw, BUTTON_H),
+					buttons.add(new Button(Action.REROLL, 0, new Rectangle(panel.x + (panel.width - rw) / 2, bottom - bh, rw, bh),
 						"Reroll (" + session.getRerollsLeft() + ")"));
 				}
 				break;
 			case BOSS_DROP:
 				int cw = Math.min(BUTTON_W, panel.width - 2 * PAD);
-				buttons.add(new Button(Action.CLAIM, 0, new Rectangle(panel.x + (panel.width - cw) / 2, bottom - BUTTON_H, cw, BUTTON_H),
+				buttons.add(new Button(Action.CLAIM, 0, new Rectangle(panel.x + (panel.width - cw) / 2, bottom - bh, cw, bh),
 					session.getBossDrop() != null && session.getBossDrop().isClaimable() ? "Claim" : "Skip"));
 				break;
 			case PAUSED:
-				addRow(buttons, panel, bottom, BUTTON_W, new Action[]{Action.RESUME, Action.OPTIONS, Action.EXIT},
-					"Resume (P)", "Options", "Save & exit");
+				addRow(buttons, panel, bottom, bh, BUTTON_W, new Action[]{Action.RESUME, Action.OPTIONS, Action.EXIT},
+					keys ? "Resume (P)" : "Resume", "Options", "Save & exit");
 				if (session.isDevTools())
 				{
-					addRow(buttons, panel, bottom - BUTTON_H - GAP, DEV_BUTTON_W,
+					addRow(buttons, panel, bottom - bh - GAP, bh, DEV_BUTTON_W,
 						new Action[]{Action.DEV_END_RUN, Action.DEV_LEVELS, Action.DEV_CHAMPION}, "End run", "+5 levels", "Champion now");
 				}
 				break;
 			case GAME_OVER:
-				addPair(buttons, panel, bottom, Action.RESTART, "Play again (R)", Action.EXIT, "Main menu");
+				addPair(buttons, panel, bottom, bh, Action.RESTART, keys ? "Play again (R)" : "Play again", Action.EXIT, "Main menu");
 				break;
 			case TITLE:
 				if (session.getTitleScreen() == TitleScreen.LOCATIONS)
 				{
-					addGrid(buttons, view, panel, Action.CHOOSE_LOCATION, Location.values().length);
+					addGrid(buttons, view, session, panel, Action.CHOOSE_LOCATION, Location.values().length);
 					break;
 				}
 				if (session.getTitleScreen() == TitleScreen.UPGRADES)
 				{
-					addGrid(buttons, view, panel, Action.BUY_PERK, Perk.values().length);
+					addGrid(buttons, view, session, panel, Action.BUY_PERK, Perk.values().length);
 					break;
 				}
 				if (session.getTitleScreen() == TitleScreen.PETS)
 				{
-					addGrid(buttons, view, panel, Action.PET_CARD, Pet.values().length);
+					addGrid(buttons, view, session, panel, Action.PET_CARD, Pet.values().length);
 					break;
 				}
 				if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
 				{
-					addRow(buttons, panel, bottom - BUTTON_H - GAP, TITLE_BUTTON_W - 40, new Action[]{Action.COPY_SAVE_CODE, Action.LOAD_SAVE_CODE},
+					addRow(buttons, panel, bottom - bh - GAP, bh, TITLE_BUTTON_W - 40, new Action[]{Action.COPY_SAVE_CODE, Action.LOAD_SAVE_CODE},
 						"Copy my code", "Load a code");
 					int pw = Math.min(BUTTON_W, panel.width - 2 * PAD);
-					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - BUTTON_H, pw, BUTTON_H),
+					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - bh, pw, bh),
 						"Back"));
 					break;
 				}
 				if (session.getTitleScreen() == TitleScreen.CHANGELOG)
 				{
 					int pw = Math.min(BUTTON_W, panel.width - 2 * PAD);
-					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - BUTTON_H, pw, BUTTON_H),
+					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - bh, pw, bh),
 						"Back"));
 					break;
 				}
-				int bw = Math.min(TITLE_BUTTON_W, panel.width - 2 * PAD);
-				int bx = panel.x + (panel.width - bw) / 2;
-				int y = panel.y + TITLE_H + 20 + SUBTITLE_H;
-				buttons.add(new Button(Action.NEW_RUN, 0, new Rectangle(bx, y, bw, BUTTON_H), "New run..."));
-				y += BUTTON_H + GAP;
-				if (session.getContinueSummary() != null)
-				{
-					buttons.add(new Button(Action.CONTINUE, 0, new Rectangle(bx, y, bw, BUTTON_H),
-						"Continue (" + session.getContinueSummary() + ")"));
-					y += BUTTON_H + GAP;
-				}
-				if (session.getMeta() != null)
-				{
-					buttons.add(new Button(Action.UPGRADES, 0, new Rectangle(bx, y, bw, BUTTON_H),
-						"Upgrades (" + session.getMeta().coins + " coins)"));
-					y += BUTTON_H + GAP;
-					buttons.add(new Button(Action.PETS, 0, new Rectangle(bx, y, bw, BUTTON_H),
-						"Pets (" + session.getMeta().getPets().size() + " / " + Pet.values().length + ")"));
-					y += BUTTON_H + GAP;
-				}
-				buttons.add(new Button(Action.OPTIONS, 0, new Rectangle(bx, y, bw, BUTTON_H), "Options"));
-				y += BUTTON_H + GAP;
-				if (session.getMeta() != null)
-				{
-					buttons.add(new Button(Action.SAVE_CODE, 0, new Rectangle(bx, y, bw, BUTTON_H), "Save code (other devices)"));
-					y += BUTTON_H + GAP;
-				}
-				buttons.add(new Button(Action.CHANGELOG, 0, new Rectangle(bx, y, bw, BUTTON_H), "What's new"));
-				if (session.isDevTools() && session.getMeta() != null)
-				{
-					addRow(buttons, panel, y + 2 * BUTTON_H + GAP, DEV_BUTTON_W,
-						new Action[]{Action.DEV_MAX_META, Action.DEV_RESET_META, Action.DEV_COINS, Action.DEV_UNLOCK_MAPS},
-						"Max all", "Reset all", "+1000 coins", "Unlock maps");
-				}
+				addMainButtons(buttons, view, session, panel);
 				break;
 			default:
 				break;
@@ -520,13 +665,63 @@ public final class UiLayout
 		return buttons;
 	}
 
-	/** Cards in a grid (locations or upgrades, by ordinal), then a back button. */
-	private static void addGrid(List<Button> buttons, Rectangle view, Rectangle panel, Action action, int count)
+	/** The main menu: one column of buttons, or two on a short screen, then the developer row. */
+	private static void addMainButtons(List<Button> buttons, Rectangle view, GameSession session, Rectangle panel)
 	{
-		int cols = locationColumns(view);
+		List<Action> actions = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		actions.add(Action.NEW_RUN);
+		labels.add("New run...");
+		if (session.getContinueSummary() != null)
+		{
+			actions.add(Action.CONTINUE);
+			labels.add("Continue (" + session.getContinueSummary() + ")");
+		}
+		if (session.getMeta() != null)
+		{
+			actions.add(Action.UPGRADES);
+			labels.add("Upgrades (" + session.getMeta().coins + " coins)");
+			actions.add(Action.PETS);
+			labels.add("Pets (" + session.getMeta().getPets().size() + " / " + Pet.values().length + ")");
+		}
+		actions.add(Action.OPTIONS);
+		labels.add("Options");
+		if (session.getMeta() != null)
+		{
+			actions.add(Action.SAVE_CODE);
+			labels.add("Save code (other devices)");
+		}
+		actions.add(Action.CHANGELOG);
+		labels.add("What's new");
+
+		int bh = buttonH(session);
+		int cols = mainColumns(view, session);
+		int rows = (actions.size() + cols - 1) / cols;
+		int bw = Math.min(TITLE_BUTTON_W, (panel.width - 2 * PAD - (cols - 1) * GAP) / cols);
+		int x0 = panel.x + (panel.width - cols * bw - (cols - 1) * GAP) / 2;
+		int y0 = panel.y + TITLE_H + 20 + SUBTITLE_H;
+		for (int i = 0; i < actions.size(); i++)
+		{
+			// down the first column, then the second
+			int col = i / rows;
+			int row = i % rows;
+			buttons.add(new Button(actions.get(i), 0, new Rectangle(x0 + col * (bw + GAP), y0 + row * (bh + GAP), bw, bh), labels.get(i)));
+		}
+		if (devRow(session))
+		{
+			addRow(buttons, panel, y0 + rows * (bh + GAP) + bh, bh, DEV_BUTTON_W,
+				new Action[]{Action.DEV_MAX_META, Action.DEV_RESET_META, Action.DEV_COINS, Action.DEV_UNLOCK_MAPS},
+				"Max all", "Reset all", "+1000 coins", "Unlock maps");
+		}
+	}
+
+	/** Cards in a grid (locations or upgrades, by ordinal), then a back button. */
+	private static void addGrid(List<Button> buttons, Rectangle view, GameSession session, Rectangle panel, Action action, int count)
+	{
+		int cols = gridColumns(view, session, count);
 		int rows = gridRows(cols, count);
 		int cw = locationCardWidth(view, cols);
-		int ch = locationCardHeight(view, rows);
+		int ch = locationCardHeight(view, session, rows);
 		int y0 = panel.y + TITLE_H + SUBTITLE_H;
 		for (int i = 0; i < count; i++)
 		{
@@ -536,15 +731,29 @@ public final class UiLayout
 				: action == Action.PET_CARD ? Pet.values()[i].getTitle() : Perk.values()[i].getTitle();
 			buttons.add(new Button(action, i, new Rectangle(x, y, cw, ch), label));
 		}
+		int bh = buttonH(session);
 		int bw = Math.min(BUTTON_W, panel.width - 2 * PAD);
 		buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - bw) / 2,
-			panel.y + panel.height - PAD - BUTTON_H, bw, BUTTON_H), "Back"));
+			panel.y + panel.height - PAD - bh, bw, bh), "Back"));
 	}
 
 	static int locationColumns(Rectangle view)
 	{
 		int available = view.width - 24 - 2 * PAD;
 		return Math.max(2, Math.min(4, (available + GAP) / (LOCATION_CARD_W + GAP)));
+	}
+
+	/** Columns for a grid of {@code count} cards: as for locations, or more (narrower cards) when the rows wouldn't fit. */
+	static int gridColumns(Rectangle view, GameSession session, int count)
+	{
+		int cols = locationColumns(view);
+		int most = Math.min(count, (view.width - 24 - 2 * PAD + GAP) / (GRID_CARD_MIN_W + GAP));
+		int fixed = TITLE_H + SUBTITLE_H + buttonH(session) + PAD + 16;
+		while (cols < most && fixed + gridRows(cols, count) * (cardMinHeight(session) + GAP) > view.height)
+		{
+			cols++;
+		}
+		return cols;
 	}
 
 	static int locationRows(int cols)
@@ -584,10 +793,15 @@ public final class UiLayout
 		return Math.max(60, Math.min(LOCATION_CARD_W, available / cols));
 	}
 
-	static int locationCardHeight(Rectangle view, int rows)
+	private static int cardMinHeight(GameSession session)
 	{
-		int available = view.height - 16 - TITLE_H - SUBTITLE_H - BUTTON_H - PAD - rows * GAP;
-		return Math.max(LOCATION_CARD_MIN_H, Math.min(LOCATION_CARD_MAX_H, available / rows));
+		return session.getTitleScreen() == TitleScreen.PETS ? PET_CARD_MIN_H : LOCATION_CARD_MIN_H;
+	}
+
+	static int locationCardHeight(Rectangle view, GameSession session, int rows)
+	{
+		int available = view.height - 16 - TITLE_H - SUBTITLE_H - buttonH(session) - PAD - rows * GAP;
+		return Math.max(cardMinHeight(session), Math.min(LOCATION_CARD_MAX_H, available / rows));
 	}
 
 	/** The button under {@code point}, or null. */
@@ -626,7 +840,7 @@ public final class UiLayout
 		{
 			return null;
 		}
-		int h = panel.height - TITLE_H - SUBTITLE_H - BUTTON_H - 2 * PAD;
+		int h = panel.height - TITLE_H - SUBTITLE_H - buttonH(session) - 2 * PAD;
 		return new Rectangle(panel.x + PAD, panel.y + TITLE_H + SUBTITLE_H, panel.width - 2 * PAD - SCROLLBAR_W - SCROLLBAR_GAP,
 			Math.max(0, h));
 	}
@@ -687,23 +901,45 @@ public final class UiLayout
 	}
 
 	/** Height of the options page with setting rows {@code rowH} high in {@code cols} columns. */
-	private static int optionsHeight(int rowH, int cols)
+	private static int optionsHeight(GameSession session, int rowH, int cols)
 	{
-		int rows = (Option.values().length + cols - 1) / cols;
-		return TITLE_H + SUBTITLE_H + Volume.values().length * (VOLUME_H + VOLUME_GAP) + GAP - VOLUME_GAP
-			+ rows * (rowH + GAP) + BUTTON_H + PAD;
+		int rows = (optionRows(session) + cols - 1) / cols;
+		return TITLE_H + optionsSubtitleH(cols) + Volume.values().length * (volumeH(session) + VOLUME_GAP) + GAP - VOLUME_GAP
+			+ rows * (rowH + GAP) + buttonH(session) + PAD;
+	}
+
+	/** The options page's setting rows: the stored options, and full screen where the browser has it. */
+	static int optionRows(GameSession session)
+	{
+		return Option.values().length + (session.isFullscreenAvailable() ? 1 : 0);
 	}
 
 	/** Setting rows keep their descriptions when the window has room for them. */
-	static int optionRowHeight(Rectangle view)
+	static int optionRowHeight(Rectangle view, GameSession session)
 	{
-		return optionsHeight(OPTION_H, 1) <= view.height ? OPTION_H : OPTION_SHORT_H;
+		return optionsHeight(session, OPTION_H, 1) <= view.height ? OPTION_H : optionShortH(session);
 	}
 
-	/** Settings go side by side in two columns when even short rows don't fit one above another. */
-	static int optionColumns(Rectangle view)
+	/** A setting without its description: taller on a touch screen, for fingers. */
+	private static int optionShortH(GameSession session)
 	{
-		return optionsHeight(OPTION_SHORT_H, 1) <= view.height ? 1 : 2;
+		return session.isTouch() ? TOUCH_OPTION_SHORT_H : OPTION_SHORT_H;
+	}
+
+	/**
+	 * Settings go side by side in two columns when even short rows don't fit one above another,
+	 * and in three (on a wider page, without its subtitle) when two columns don't fit either.
+	 */
+	static int optionColumns(Rectangle view, GameSession session)
+	{
+		int shortH = optionShortH(session);
+		return optionsHeight(session, shortH, 1) <= view.height ? 1 : optionsHeight(session, shortH, 2) <= view.height ? 2 : 3;
+	}
+
+	/** The options page's subtitle, left out to make room for three columns. */
+	public static int optionsSubtitleH(int cols)
+	{
+		return cols >= 3 ? 0 : SUBTITLE_H;
 	}
 
 	/** The volume level a click on a volume bar asks for: 0 at its left end, {@link Volume#MAX} at its right. */
@@ -729,46 +965,56 @@ public final class UiLayout
 		return null;
 	}
 
-	/** Buttons on the main menu page, for its height. */
+	/** Buttons on the main menu page, less the developer row, for its height. */
 	private static int mainButtons(GameSession session)
 	{
-		int n = 3 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 3 : 0);
-		return n + (session.isDevTools() && session.getMeta() != null ? 1 : 0);
+		return 3 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 3 : 0);
 	}
 
 	/** Equal buttons side by side, centred, their bottoms at {@code bottom}. */
-	private static void addRow(List<Button> buttons, Rectangle panel, int bottom, int maxWidth, Action[] actions, String... labels)
+	private static void addRow(List<Button> buttons, Rectangle panel, int bottom, int bh, int maxWidth, Action[] actions, String... labels)
 	{
 		int n = actions.length;
 		int w = Math.min(maxWidth, (panel.width - 2 * PAD - (n - 1) * GAP) / n);
 		int x = panel.x + (panel.width - n * w - (n - 1) * GAP) / 2;
-		int y = bottom - BUTTON_H;
+		int y = bottom - bh;
 		for (int i = 0; i < n; i++)
 		{
-			buttons.add(new Button(actions[i], 0, new Rectangle(x + i * (w + GAP), y, w, BUTTON_H), labels[i]));
+			buttons.add(new Button(actions[i], 0, new Rectangle(x + i * (w + GAP), y, w, bh), labels[i]));
 		}
 	}
 
 	/** Left edge of the pause screen's right-hand side. */
-	static int loadoutRightX(Rectangle panel)
+	static int loadoutRightX(Rectangle panel, boolean beside)
 	{
-		return panel.x + PAD + LOADOUT_LEFT_W + 18;
+		return panel.x + PAD + loadoutLeftW(beside) + 18;
 	}
 
-	/** Top of the stats table under the equipment grid. */
-	static int statsTop(Rectangle panel)
+	/** Top of the stats table: under the equipment grid, or beside it (see {@link #statsBeside}). */
+	static int statsTop(Rectangle panel, boolean beside)
 	{
-		return panel.y + TITLE_H + GRID_H + 10;
+		return beside ? panel.y + TITLE_H - 4 : panel.y + TITLE_H + GRID_H + 10;
+	}
+
+	/** Left edge of the stats table. */
+	static int statsLeft(Rectangle panel, boolean beside)
+	{
+		return panel.x + PAD + (beside ? GRID_W + 14 : 0);
+	}
+
+	static int statsWidth(boolean beside)
+	{
+		return beside ? STATS_W : LOADOUT_LEFT_W;
 	}
 
 	/**
 	 * The pause screen's right side, top to bottom: abilities (with empty places up to the
 	 * limit), prayers and skills, set bonuses and pets.
 	 */
-	public static List<Section> loadoutSections(Rectangle panel, GameSession session)
+	public static List<Section> loadoutSections(Rectangle panel, GameSession session, boolean beside)
 	{
 		Build build = session.getBuild();
-		int x = loadoutRightX(panel);
+		int x = loadoutRightX(panel, beside);
 		int width = panel.x + panel.width - PAD - x;
 		int cols = Math.max(1, (width + TILE_GAP) / (TILE + TILE_GAP));
 		int y = panel.y + TITLE_H + WEAPON_LINE_H;
@@ -825,12 +1071,12 @@ public final class UiLayout
 	}
 
 	/** Height the right side needs, for sizing the panel. */
-	private static int rightHeight(GameSession session, int width)
+	private static int rightHeight(GameSession session, int width, boolean beside)
 	{
 		// lay it out in a panel at the top of the screen and see where it ends
 		Rectangle probe = new Rectangle(0, 0, width, 2000);
 		int bottom = TITLE_H + WEAPON_LINE_H;
-		for (Section s : loadoutSections(probe, session))
+		for (Section s : loadoutSections(probe, session, beside))
 		{
 			int end = s.y + SECTION_HEAD + s.lines.size() * SECTION_LINE;
 			for (Tile t : s.tiles)
@@ -857,14 +1103,14 @@ public final class UiLayout
 	}
 
 	/** Every hoverable thing on the pause screen: equipment slots, then the sections' tiles. */
-	public static List<Tile> loadoutTiles(Rectangle panel, GameSession session)
+	public static List<Tile> loadoutTiles(Rectangle panel, GameSession session, boolean beside)
 	{
 		List<Tile> tiles = new ArrayList<>();
-		for (Map.Entry<Slot, Rectangle> e : equipmentSlots(panel).entrySet())
+		for (Map.Entry<Slot, Rectangle> e : equipmentSlots(panel, beside).entrySet())
 		{
 			tiles.add(new Tile(e.getValue(), session.getBuild().get(e.getKey()), null, 0, null));
 		}
-		for (Section s : loadoutSections(panel, session))
+		for (Section s : loadoutSections(panel, session, beside))
 		{
 			tiles.addAll(s.tiles);
 		}
@@ -872,10 +1118,10 @@ public final class UiLayout
 	}
 
 	/** Where each equipment slot is drawn on the pause screen. */
-	static Map<Slot, Rectangle> equipmentSlots(Rectangle panel)
+	static Map<Slot, Rectangle> equipmentSlots(Rectangle panel, boolean beside)
 	{
 		Map<Slot, Rectangle> slots = new EnumMap<>(Slot.class);
-		int x0 = panel.x + PAD + (LOADOUT_LEFT_W - (3 * SLOT + 2 * SLOT_GAP)) / 2;
+		int x0 = panel.x + PAD + (beside ? 0 : (LOADOUT_LEFT_W - GRID_W) / 2);
 		int y0 = panel.y + TITLE_H;
 		put(slots, Slot.HEAD, x0, y0, 1, 0);
 		put(slots, Slot.CAPE, x0, y0, 0, 1);
@@ -896,14 +1142,14 @@ public final class UiLayout
 		slots.put(slot, new Rectangle(x0 + col * (SLOT + SLOT_GAP), y0 + row * (SLOT + SLOT_GAP), SLOT, SLOT));
 	}
 
-	private static void addPair(List<Button> buttons, Rectangle panel, int bottom, Action first, String firstLabel,
+	private static void addPair(List<Button> buttons, Rectangle panel, int bottom, int bh, Action first, String firstLabel,
 		Action second, String secondLabel)
 	{
 		int w = Math.min(BUTTON_W, (panel.width - 2 * PAD - GAP) / 2);
 		int x = panel.x + (panel.width - 2 * w - GAP) / 2;
-		int y = bottom - BUTTON_H;
-		buttons.add(new Button(first, 0, new Rectangle(x, y, w, BUTTON_H), firstLabel));
-		buttons.add(new Button(second, 0, new Rectangle(x + w + GAP, y, w, BUTTON_H), secondLabel));
+		int y = bottom - bh;
+		buttons.add(new Button(first, 0, new Rectangle(x, y, w, bh), firstLabel));
+		buttons.add(new Button(second, 0, new Rectangle(x + w + GAP, y, w, bh), secondLabel));
 	}
 
 	static int cardWidth(Rectangle view, int count)

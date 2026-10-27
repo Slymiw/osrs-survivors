@@ -337,7 +337,7 @@ public class GameRendererTest
 		Rectangle view = VIEWS[1];
 		GameSession s = sessionIn(Phase.PAUSED);
 		Rectangle panel = UiLayout.panel(view, s);
-		List<UiLayout.Tile> tiles = UiLayout.loadoutTiles(panel, s);
+		List<UiLayout.Tile> tiles = UiLayout.loadoutTiles(panel, s, UiLayout.statsBeside(view, s));
 		assertTrue(tiles.size() >= 11 + GameSession.MAX_ABILITIES);
 		for (UiLayout.Tile t : tiles)
 		{

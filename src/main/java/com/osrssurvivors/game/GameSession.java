@@ -150,6 +150,11 @@ public final class GameSession
 	private double noticeUntil;
 	/** Whether the bag is shown on screen (a view setting, kept between runs). */
 	private boolean bagShown = true;
+	/** Whether the screen is laid out for fingers: bigger buttons, a pause button, drag to move (a view setting). */
+	private boolean touch;
+	/** Whether the page can go full screen, and whether it is now (view settings, from the browser). */
+	private boolean fullscreenAvailable;
+	private boolean fullscreen;
 	private int bonusCoins;
 	/** Coins paid out when the run ended; -1 while it goes on. */
 	private int coinsEarned = -1;
@@ -911,6 +916,34 @@ public final class GameSession
 	public void setBagShown(boolean shown)
 	{
 		bagShown = shown;
+	}
+
+	public boolean isTouch()
+	{
+		return touch;
+	}
+
+	/** Lays the screen out for a touch screen, or for a mouse and keys. */
+	public void setTouch(boolean touch)
+	{
+		this.touch = touch;
+	}
+
+	public boolean isFullscreenAvailable()
+	{
+		return fullscreenAvailable;
+	}
+
+	public boolean isFullscreen()
+	{
+		return fullscreen;
+	}
+
+	/** What the browser allows: whether the options page offers full screen, and whether it is on. */
+	public void setFullscreen(boolean available, boolean on)
+	{
+		fullscreenAvailable = available;
+		fullscreen = on;
 	}
 
 	/** Seconds until food (or, for karambwans, the next karambwan) can be eaten again. */

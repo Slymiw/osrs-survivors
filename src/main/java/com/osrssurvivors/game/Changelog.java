@@ -45,6 +45,12 @@ public final class Changelog
 	}
 
 	public static final List<Release> RELEASES = Collections.unmodifiableList(Arrays.asList(
+		new Release("0.9", "2026-10-27", "Phones and tablets",
+			note("Play on a phone: drag anywhere to move, let go to stand still.", null),
+			note("Big buttons to tap, a pause button, and menus that fit upright or sideways.", null),
+			note("Bag: tap to use, hold to see what it is, drag out to drop.", Gear.DRAGON_SCIMITAR),
+			note("Full screen on the options page; or add the page to your home screen.", null),
+			note("Fixed: gaps in the inventory's stone backing.", null)),
 		new Release("0.8", "2026-10-26", "The real inventory",
 			note("Save codes: carry your coins, upgrades, pets and run to another device.", Pet.ORION),
 			note("The inventory is the game's own side panel: stone tabs, pillars and all.", Boost.SARADOMIN_BREW),
