@@ -8,7 +8,7 @@ import org.teavm.jso.typedarrays.Int8Array;
 
 /**
  * The page's side of things (index.html): the exported artwork it has decoded, loading a
- * location's script, local storage and the clock.
+ * location's script, local storage, the clock, and the clipboard and dialogs for save codes.
  */
 final class Browser
 {
@@ -53,6 +53,24 @@ final class Browser
 
 	@JSBody(params = "text", script = "window.OSRS.status(text);")
 	static native void status(String text);
+
+	/** Copies text to the clipboard; false when the browser won't allow it. */
+	@JSBody(params = "text", script = "try { var t = document.createElement('textarea'); t.value = text;"
+		+ " t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t);"
+		+ " t.select(); var ok = document.execCommand('copy'); document.body.removeChild(t);"
+		+ " if (!ok && navigator.clipboard) { navigator.clipboard.writeText(text); } return ok; } catch (e) { return false; }")
+	static native boolean copyText(String text);
+
+	/** Shows text selected in a box, ready to copy. */
+	@JSBody(params = {"message", "text"}, script = "window.prompt(message, text);")
+	static native void showText(String message, String text);
+
+	/** Asks the player to type or paste something; null when they cancel. */
+	@JSBody(params = "message", script = "var r = window.prompt(message, ''); return r === null ? null : r;")
+	static native String ask(String message);
+
+	@JSBody(params = "message", script = "return window.confirm(message);")
+	static native boolean confirm(String message);
 
 	static byte[] bytes(Int8Array array)
 	{

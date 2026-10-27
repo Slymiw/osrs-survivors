@@ -16,7 +16,8 @@ import java.util.TreeMap;
 /**
  * The stored records, kept in the browser's local storage as JSON: the saved run, best times per
  * location, the lasting profile, the display options, the last changelog opened and the
- * developer's map unlock. Unreadable records are ignored.
+ * developer's map unlock. Unreadable records are ignored. The first three travel between devices
+ * as a {@link SaveCode}.
  */
 final class Saves
 {
@@ -282,6 +283,34 @@ final class Saves
 	static void storeChangelogSeen(String version)
 	{
 		Browser.setItem(CHANGELOG_KEY, version);
+	}
+
+	// ---------------------------------------------------------------- save codes
+
+	/** What a save code carries from this device: the profile, best times and saved run as stored. */
+	static SaveCode.Contents exportContents()
+	{
+		return new SaveCode.Contents(Browser.getItem(META_KEY), Browser.getItem(BEST_TIMES_KEY), Browser.getItem(SAVE_KEY));
+	}
+
+	/** Replaces this device's profile, best times and saved run with a code's; what it lacks is cleared. */
+	static void importContents(SaveCode.Contents contents)
+	{
+		replace(META_KEY, contents.profile);
+		replace(BEST_TIMES_KEY, contents.bestTimes);
+		replace(SAVE_KEY, contents.run);
+	}
+
+	private static void replace(String key, String json)
+	{
+		if (json == null)
+		{
+			Browser.removeItem(key);
+		}
+		else
+		{
+			Browser.setItem(key, json);
+		}
 	}
 
 	// ---------------------------------------------------------------- developer tools

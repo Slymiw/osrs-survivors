@@ -38,6 +38,7 @@ import org.teavm.jso.JSObject;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.dom.events.Event;
 import org.teavm.jso.dom.events.KeyboardEvent;
+import org.teavm.jso.dom.events.WheelEvent;
 import org.teavm.jso.dom.events.MouseEvent;
 import org.teavm.jso.dom.html.HTMLCanvasElement;
 import org.teavm.jso.dom.html.HTMLDocument;
@@ -60,6 +61,9 @@ public final class WebMain
 	 * A maximised browser on a 1080p screen (about 950 tall inside) gets 2x, so text stays readable.
 	 */
 	private static final int HEIGHT_PER_PIXEL_SCALE = 470;
+	/** Game pixels the changelog scrolls for a wheel "line", and each frame an up or down key is held. */
+	private static final int WHEEL_LINE = 16;
+	private static final int CHANGELOG_KEY_STEP = 8;
 	/** How often a run in progress is saved, in case the page closes. */
 	private static final double AUTOSAVE_MS = 5000;
 	private static final Color MUTED = new Color(255, 152, 31);
@@ -129,6 +133,10 @@ public final class WebMain
 	private Point mouse;
 	/** Whether the left mouse button is held, so the button under it looks pressed. */
 	private boolean mouseDown;
+	/** Mouse wheel movement not yet applied, in game pixels. */
+	private double wheel;
+	/** Where on the changelog's scrollbar thumb the mouse holds it, or -1 when not dragging it. */
+	private int thumbGrab = -1;
 
 	private WebMain(HTMLCanvasElement canvas, WebAssets assets, SoundSystem sounds, boolean devTools)
 	{
@@ -230,6 +238,15 @@ public final class WebMain
 			mouseDown = false;
 		});
 		canvas.addEventListener("contextmenu", Event::preventDefault);
+		canvas.addEventListener("wheel", (WheelEvent e) ->
+		{
+			double lines = e.getDeltaMode() == WheelEvent.DOM_DELTA_LINE ? WHEEL_LINE
+				: e.getDeltaMode() == WheelEvent.DOM_DELTA_PAGE ? screen.getHeight() : 1;
+			TextRectangle r = canvas.getBoundingClientRect();
+			wheel += e.getDeltaY() * lines * (r.getHeight() > 0 && e.getDeltaMode() == WheelEvent.DOM_DELTA_PIXEL
+				? (double) screen.getHeight() / r.getHeight() : 1);
+			e.preventDefault();
+		});
 	}
 
 	@JSBody(script = "return document.visibilityState === 'hidden';")
@@ -426,8 +443,7 @@ public final class WebMain
 					}
 					break;
 				case TOGGLE_BAG:
-					bagShown = !bagShown;
-					s.setBagShown(bagShown);
+					toggleBag(s);
 					break;
 				case MUTE:
 					options.setMuted(!options.isMuted());
@@ -443,10 +459,12 @@ public final class WebMain
 		{
 			press(s, view, p);
 		}
+		scrollChangelog(s, view);
 		for (Point click = clicks.poll(); click != null; click = clicks.poll())
 		{
-			// clicks on the bag were handled as presses
-			if (UiLayout.bagSlotAt(view, s, click) < 0 && click(s, view, click))
+			// clicks on the bag and its tab stones were handled as presses
+			Rectangle side = UiLayout.sidePanel(view, s);
+			if ((side == null || !side.contains(click)) && click(s, view, click))
 			{
 				return;
 			}
@@ -503,6 +521,22 @@ public final class WebMain
 	 */
 	private void press(GameSession s, Rectangle view, Press p)
 	{
+		Rectangle tab = UiLayout.inventoryTab(view, s);
+		if (p.down && tab != null && tab.contains(p.at))
+		{
+			// the inventory's tab opens and closes the bag, as in the game
+			pressedSlot = -1;
+			toggleBag(s);
+			return;
+		}
+		if (!p.down)
+		{
+			thumbGrab = -1;
+		}
+		else if (pressChangelogScrollbar(s, view, p.at))
+		{
+			return;
+		}
 		int slot = UiLayout.bagSlotAt(view, s, p.at);
 		if (p.down)
 		{
@@ -531,6 +565,66 @@ public final class WebMain
 		{
 			s.moveItem(from, slot);
 		}
+	}
+
+	/**
+	 * The changelog's scrollbar: a press on the thumb takes hold of it, one on the track above or
+	 * below it moves a viewport's height that way. Returns whether the press was on the scrollbar.
+	 */
+	private boolean pressChangelogScrollbar(GameSession s, Rectangle view, Point at)
+	{
+		Rectangle track = UiLayout.changelogTrack(view, s);
+		Rectangle thumb = UiLayout.changelogThumb(view, s);
+		if (track == null || thumb == null || !track.contains(at))
+		{
+			return false;
+		}
+		if (thumb.contains(at))
+		{
+			thumbGrab = at.y - thumb.y;
+		}
+		else
+		{
+			int page = UiLayout.changelogViewport(view, s).height - CHANGELOG_KEY_STEP;
+			s.setChangelogScroll(UiLayout.changelogScroll(view, s) + (at.y < thumb.y ? -page : page));
+		}
+		return true;
+	}
+
+	/** Moves the changelog's list by the mouse wheel, a held scrollbar thumb, or the up and down keys. */
+	private void scrollChangelog(GameSession s, Rectangle view)
+	{
+		double moved = wheel;
+		wheel = 0;
+		Rectangle track = UiLayout.changelogTrack(view, s);
+		if (track == null || !mouseDown)
+		{
+			// the button came up outside the page
+			thumbGrab = -1;
+		}
+		if (track == null)
+		{
+			return;
+		}
+		int max = UiLayout.maxChangelogScroll(view, s);
+		double scroll = UiLayout.changelogScroll(view, s) + moved;
+		if (thumbGrab >= 0 && mouse != null)
+		{
+			Rectangle thumb = UiLayout.changelogThumb(view, s);
+			int room = track.height - thumb.height;
+			scroll = room > 0 ? (double) (mouse.y - thumbGrab - track.y) * max / room : 0;
+		}
+		if (up != down)
+		{
+			scroll += up ? -CHANGELOG_KEY_STEP : CHANGELOG_KEY_STEP;
+		}
+		s.setChangelogScroll(Math.max(0, Math.min(max, scroll)));
+	}
+
+	private void toggleBag(GameSession s)
+	{
+		bagShown = !bagShown;
+		s.setBagShown(bagShown);
 	}
 
 	/** Handles a click; returns true when the session was replaced and the frame should start over. */
@@ -606,9 +700,6 @@ public final class WebMain
 				s.showTitleScreen(TitleScreen.CHANGELOG);
 				Saves.storeChangelogSeen(Changelog.VERSION);
 				break;
-			case CHANGELOG_PAGE:
-				s.setChangelogPage(button.index);
-				break;
 			case OPTIONS:
 				s.openOptions();
 				break;
@@ -677,6 +768,15 @@ public final class WebMain
 			case CLAIM:
 				s.claimDrop();
 				break;
+			case SAVE_CODE:
+				s.showTitleScreen(TitleScreen.SAVE_CODE);
+				break;
+			case COPY_SAVE_CODE:
+				copySaveCode(s);
+				break;
+			case LOAD_SAVE_CODE:
+				loadSaveCode(s);
+				break;
 			case CONTINUE:
 				RunSave save = Saves.loadRun();
 				if (save != null)
@@ -689,6 +789,58 @@ public final class WebMain
 				return true;
 		}
 		return session != s;
+	}
+
+	// ---------------------------------------------------------------- save codes
+
+	/** Copies this browser's progress as a save code, or shows it to copy by hand when the clipboard can't be used. */
+	private void copySaveCode(GameSession s)
+	{
+		storeMetaIfChanged();
+		String code = SaveCode.encode(Saves.exportContents());
+		if (Browser.copyText(code))
+		{
+			s.setStatus("Copied! On your other device, choose Load a code and paste it.");
+		}
+		else
+		{
+			Browser.showText("Copy this save code (Ctrl+C), then load it on your other device:", code);
+			s.setStatus("On your other device, choose Load a code and paste it.");
+		}
+		// the dialog swallowed the button coming up
+		mouseDown = false;
+	}
+
+	/** Asks for a save code and, once the player agrees, replaces this browser's progress with it. */
+	private void loadSaveCode(GameSession s)
+	{
+		String pasted = Browser.ask("Paste a save code from another device:");
+		mouseDown = false;
+		if (pasted == null)
+		{
+			return;
+		}
+		SaveCode.Contents contents;
+		try
+		{
+			contents = SaveCode.decode(pasted);
+		}
+		catch (IllegalArgumentException e)
+		{
+			s.setStatus(e.getMessage());
+			sounds.play(SoundCues.error());
+			return;
+		}
+		if (!Browser.confirm("Load " + contents.describe() + "?\n\nThis replaces the progress in this browser."))
+		{
+			return;
+		}
+		Saves.importContents(contents);
+		meta = Saves.loadMeta();
+		metaStored = meta.getChanges();
+		showMenu();
+		session.setStatus("Progress loaded from your save code.");
+		sounds.play(SoundCues.unlock());
 	}
 
 	// ---------------------------------------------------------------- runs and locations

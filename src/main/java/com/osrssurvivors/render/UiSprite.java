@@ -32,5 +32,9 @@ public enum UiSprite
 	CANNONBALL,
 	CHINCHOMPA,
 	ICE_SPELL,
-	ENEMY_SPELL
+	ENEMY_SPELL,
+	/** The game's side panel (resizable classic): tab stones, pillars and stone backing, inventory tab selected. */
+	SIDE_PANEL,
+	/** The same panel collapsed: only its two rows of tab stones, none selected. */
+	SIDE_TABS
 }

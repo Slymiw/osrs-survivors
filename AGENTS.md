@@ -91,7 +91,11 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
 - **Inventory** (`Inventory`, 28 `Item`s: gear, a potion with doses, or food; `GameSession`
   `useItem/dropItem/moveItem`; drawn by `GameRenderer.drawBag`, laid out by `UiLayout.bag`,
   clicked through `UiLayout.bagSlotAt`, not `buttons()`; `WebMain.press` handles press, drag and
-  shift/right-click drop). Using a weapon of another style calls `dress()`, which puts on that
+  shift/right-click drop). It looks like the game's resizable-classic side panel: `WebExport.sidePanel`
+  composes `UiSprite.SIDE_PANEL` (open, inventory tab lit) and `SIDE_TABS` (collapsed) from the
+  cache's stone rows, pillars, backing and tab icons; `UiLayout.sidePanel` places it (241 × 335,
+  slots 42 × 36 apart as in the game) and `inventoryTab` is the backpack stone that toggles it.
+  The pause screen narrows (to `PAUSE_MIN_W`) to stand beside it. Using a weapon of another style calls `dress()`, which puts on that
   style's pieces from the bag (one-click switch). `wear()` keeps replaced pieces worth keeping in
   the bag; `discardWeaker()` keeps one piece per slot x style. Saved as `RunSave.bag` (item
   keys) and `RunSave.potions` (seconds left); version-3 `boosts` (potions that lasted the run)
@@ -144,11 +148,18 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   others need `UNLOCK_SECONDS` (300) at difficulty − 1 on the map.
 - **Persistence** (`web.Saves`, browser local storage): `savedRun` (RunSave JSON), `bestTimes`,
   `profile` (MetaProgress), stored as JSON through `web.Json` (Gson needs reflection).
+  **Save codes** (`web.SaveCode`, main menu → `TitleScreen.SAVE_CODE`) carry those three records
+  between devices: `OSRS1-` + URL-safe base64 of `{"v":1,"profile","bestTimes","run"}` + `-` + an
+  FNV-1a checksum. Copy uses `Browser.copyText` (falls back to a prompt showing the code), load
+  uses `window.prompt`/`confirm`, then `Saves.importContents` and `WebMain.showMenu`. Bump the
+  `v`/prefix only if the stored formats change incompatibly. No server, no accounts.
 - **Dev tools**: `index.html?dev` adds buttons: pause screen (end run, +5 levels with a reward
   each, champion now) and main menu (max all, reset all, +1000 coins, unlock maps; the unlock is
   kept in local storage until "Reset all").
 - **Changelog** (`Changelog`): add a `Release` at the top for each update (its version becomes
-  `Changelog.VERSION`, shown on the main menu). The "What's new" button glows until opened
+  `Changelog.VERSION`, shown on the main menu). The page is one scrolling list
+  (`UiLayout.changelogViewport/Track/Thumb`, `GameSession.changelogScroll`; `WebMain` scrolls
+  it by wheel, thumb drag, track clicks and up/down keys). The "What's new" button glows until opened
   (`web.Saves` keeps the last version seen). Notes can carry a picture (gear, pet, place,
   monster, potion).
 - **Pathing**: monsters walk straight only when their whole body can (`Arena.clearPath`), else
@@ -216,6 +227,10 @@ The RuneLite `cache` and `client` libraries are only used by the exporter, at bu
   check the labels in `data.js` first.
 
 ## Status (2026-10-26)
+
+- New in 0.8 (checked headless in Edge, not yet by the user): the inventory as the game's side
+  panel (backpack tab collapses it), the scrolling changelog, save codes (copy, reset, load
+  round trip checked headless).
 
 - New in 0.7 (checked headless in Edge, not yet seen or heard by the user): OSRS sound effects
   (synthesised in the page) with volumes and mute, missile-timed impacts, particles, shockwaves,

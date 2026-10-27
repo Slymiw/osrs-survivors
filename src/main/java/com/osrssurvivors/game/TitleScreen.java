@@ -3,7 +3,7 @@ package com.osrssurvivors.game;
 /** Which page of the start menu is showing. */
 public enum TitleScreen
 {
-	/** New run, continue, upgrades, pets, options, what's new. */
+	/** New run, continue, upgrades, pets, options, save code, what's new. */
 	MAIN,
 	/** Choosing where to fight. */
 	LOCATIONS,
@@ -12,5 +12,7 @@ public enum TitleScreen
 	/** The pets won so far and what they do. */
 	PETS,
 	/** What's new in each version. */
-	CHANGELOG
+	CHANGELOG,
+	/** Copying progress to another device, or loading it from one, as a save code. */
+	SAVE_CODE
 }

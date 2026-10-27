@@ -399,7 +399,7 @@ public class GameRendererTest
 	}
 
 	@Test
-	public void changelogShowsEveryReleaseOnceAcrossItsPages()
+	public void changelogScrollsThroughEveryRelease()
 	{
 		for (Rectangle view : new Rectangle[]{VIEWS[0], VIEWS[1], new Rectangle(0, 0, 400, 260)})
 		{
@@ -407,35 +407,44 @@ public class GameRendererTest
 			s.setMeta(new MetaProgress());
 			s.showTitle(null);
 			s.showTitleScreen(TitleScreen.CHANGELOG);
+			Rectangle panel = UiLayout.panel(view, s);
+			Rectangle port = UiLayout.changelogViewport(view, s);
+			assertEquals("one Back button, no pages", 1, UiLayout.buttons(view, s).size());
+			UiLayout.Button back = UiLayout.buttons(view, s).get(0);
+			assertTrue(panel.contains(back.bounds));
+			assertTrue("list above the button at " + view, port.y + port.height <= back.bounds.y);
+			int max = UiLayout.maxChangelogScroll(view, s);
 			List<Changelog.Release> seen = new ArrayList<>();
-			for (int page = 0; page < Changelog.RELEASES.size(); page++)
+			for (int scroll = 0; ; scroll = Math.min(max, scroll + Math.max(1, port.height / 2)))
 			{
-				s.setChangelogPage(page);
-				Rectangle panel = UiLayout.panel(view, s);
-				int buttonsTop = Integer.MAX_VALUE;
-				for (UiLayout.Button b : UiLayout.buttons(view, s))
-				{
-					buttonsTop = Math.min(buttonsTop, b.bounds.y);
-					assertTrue(panel.contains(b.bounds));
-				}
+				s.setChangelogScroll(scroll);
 				List<UiLayout.ReleaseCard> cards = UiLayout.releaseCards(view, s);
-				assertFalse("every page shows something at " + view, cards.isEmpty());
+				assertFalse("something shows at " + view, cards.isEmpty());
 				for (UiLayout.ReleaseCard c : cards)
 				{
-					assertTrue("card inside the panel at " + view, panel.contains(c.bounds));
-					assertTrue("card above the buttons at " + view, c.bounds.y + c.bounds.height <= buttonsTop);
+					assertTrue("card overlaps the list at " + view, c.bounds.intersects(port));
 					if (!seen.contains(c.release))
 					{
 						seen.add(c.release);
 					}
 				}
+				Rectangle thumb = UiLayout.changelogThumb(view, s);
+				if (thumb != null)
+				{
+					assertTrue("thumb inside its track", UiLayout.changelogTrack(view, s).contains(thumb));
+				}
 				draw(s, view, new FakeAssets(), null);
-				if (!actions(view, s).contains(UiLayout.Action.CHANGELOG_PAGE) || seen.size() == Changelog.RELEASES.size())
+				if (scroll == max)
 				{
 					break;
 				}
 			}
 			assertEquals("all releases reachable at " + view, Changelog.RELEASES, seen);
+			// scrolling past the end stops at the last release
+			s.setChangelogScroll(1e6);
+			assertEquals(max, UiLayout.changelogScroll(view, s));
+			List<UiLayout.ReleaseCard> last = UiLayout.releaseCards(view, s);
+			assertEquals(Changelog.RELEASES.get(Changelog.RELEASES.size() - 1), last.get(last.size() - 1).release);
 		}
 	}
 

@@ -45,6 +45,11 @@ public final class Changelog
 	}
 
 	public static final List<Release> RELEASES = Collections.unmodifiableList(Arrays.asList(
+		new Release("0.8", "2026-10-26", "The real inventory",
+			note("Save codes: carry your coins, upgrades, pets and run to another device.", Pet.ORION),
+			note("The inventory is the game's own side panel: stone tabs, pillars and all.", Boost.SARADOMIN_BREW),
+			note("Click the backpack tab (or press I) to tuck it away, as in the game.", null),
+			note("This page scrolls: wheel, drag the bar or hold up and down.", null)),
 		new Release("0.7", "2026-10-26", "Sound and polish",
 			note("Sound: the game's own sound effects, for every swing, spell and monster death.", Gear.STAFF_OF_FIRE),
 			note("Master, combat and interface volume on the options page; M mutes.", null),

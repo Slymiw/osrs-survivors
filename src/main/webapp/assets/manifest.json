@@ -550,6 +550,8 @@
     "ui.ORB_FRAME": "s1071",
     "ui.ORB_HP_FILL": "s1060",
     "ui.ORB_HP_ICON": "s1067",
+    "ui.SIDE_PANEL": "ui.SIDE_PANEL",
+    "ui.SIDE_TABS": "ui.SIDE_TABS",
     "ui.SPECIAL_HITSPLAT": "s1359",
     "ui.SPELL_PROJECTILE": "s15",
     "ui.XP_SKILL_ICON": "s202"

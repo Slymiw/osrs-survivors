@@ -20,7 +20,9 @@ import com.osrssurvivors.map.MapSquare;
 import com.osrssurvivors.map.ObjectDefinition;
 import com.osrssurvivors.render.JagexPalette;
 import com.osrssurvivors.render.MeshSnapshot;
+import com.osrssurvivors.render.UiLayout;
 import com.osrssurvivors.render.UiSprite;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -44,6 +46,7 @@ import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.kit.KitType;
 import net.runelite.cache.IndexType;
 import net.runelite.cache.ItemManager;
@@ -266,6 +269,13 @@ public final class WebExport
 	{
 		for (UiSprite s : UiSprite.values())
 		{
+			if (s == UiSprite.SIDE_PANEL || s == UiSprite.SIDE_TABS)
+			{
+				String name = "ui." + s.name();
+				images.put(name, png(sidePanel(s == UiSprite.SIDE_PANEL)));
+				icon(name, name);
+				continue;
+			}
 			int item = ExportTables.itemSprite(s);
 			icon("ui." + s.name(), item >= 0 ? item(item) : sprite(ExportTables.spriteId(s)));
 		}
@@ -365,6 +375,53 @@ public final class WebExport
 			images.put(name, png(sprites.getSpriteImage(def)));
 		}
 		return name;
+	}
+
+	/**
+	 * The game's side panel in resizable classic mode, put together from its sprites: a row of
+	 * seven tab stones above and below, stone pillars either side and the stone backing between.
+	 * Open, the inventory's tab is lit; collapsed, only the two rows remain, one on the other.
+	 */
+	private BufferedImage sidePanel(boolean open)
+	{
+		int row = UiLayout.SIDE_ROW_H;
+		int h = open ? UiLayout.SIDE_H : 2 * row;
+		BufferedImage out = new BufferedImage(UiLayout.SIDE_W, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = out.createGraphics();
+		if (open)
+		{
+			int pillar = UiLayout.SIDE_PILLAR_W;
+			g.drawImage(spriteImage(SpriteID.SIDE_BACKGROUND, 0), pillar, row, null);
+			g.drawImage(spriteImage(SpriteID.OsrsStretchSideColumns.EDGE_LEFT, 0), 0, row, null);
+			g.drawImage(spriteImage(SpriteID.OsrsStretchSideColumns.EDGE_RIGHT, 0), UiLayout.SIDE_W - pillar, row, null);
+		}
+		g.drawImage(spriteImage(SpriteID.OsrsStretchSideTopbottom.TOP_ROW, 0), 0, 0, null);
+		g.drawImage(spriteImage(SpriteID.OsrsStretchSideTopbottom.BOTTOM_ROW, 0), 0, h - row, null);
+		for (int i = 0; i < 7; i++)
+		{
+			if (open && i == ExportTables.SIDE_INVENTORY_TAB)
+			{
+				int highlight = i == 0 ? SpriteID.SideStoneHighlights.TOP_LEFT : i == 6 ? SpriteID.SideStoneHighlights.TOP_RIGHT
+					: SpriteID.SideStoneHighlights.MIDDLE;
+				drawSprite(g, highlight, UiLayout.sideTabX(i), 0);
+			}
+			drawSprite(g, ExportTables.SIDE_TOP_ICONS[i], UiLayout.sideTabX(i), 0);
+			drawSprite(g, ExportTables.SIDE_BOTTOM_ICONS[i], UiLayout.sideTabX(i), h - row);
+		}
+		g.dispose();
+		return out;
+	}
+
+	/** Draws a sprite at its offset inside its box, as the client does. */
+	private void drawSprite(Graphics2D g, int spriteId, int x, int y)
+	{
+		SpriteDefinition def = sprites.findSprite(spriteId, 0);
+		g.drawImage(sprites.getSpriteImage(def), x + def.getOffsetX(), y + def.getOffsetY(), null);
+	}
+
+	private BufferedImage spriteImage(int spriteId, int frame)
+	{
+		return sprites.getSpriteImage(sprites.findSprite(spriteId, frame));
 	}
 
 	private static byte[] png(BufferedImage image) throws IOException

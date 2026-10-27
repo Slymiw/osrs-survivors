@@ -158,6 +158,18 @@ final class ExportTables
 		LOCATION_ICONS.put(Location.WILDERNESS, ItemID.SKULL);
 	}
 
+	/** Side panel tab icons, left to right: the top row of stones, then the bottom row. */
+	static final int[] SIDE_TOP_ICONS = {
+		SpriteID.SideIcons.COMBAT, SpriteID.SideIcons.STATS, SpriteID.SideIcons.QUEST, SpriteID.SideIcons.INVENTORY,
+		SpriteID.SideIcons.EQUIPMENT, SpriteID.SideIcons._5, SpriteID.SideIcons.MAGIC,
+	};
+	static final int[] SIDE_BOTTOM_ICONS = {
+		SpriteID.SideIcons.FRIENDS_CHAT, SpriteID.SideIcons._8, SpriteID.SideIcons._9, SpriteID.SideIcons.LOGOUT,
+		SpriteID.SideIcons.OPTIONS, SpriteID.SideIcons.EMOTES, SpriteID.SideIcons.MUSIC,
+	};
+	/** Index of the inventory's tab in the top row. */
+	static final int SIDE_INVENTORY_TAB = 3;
+
 	/** The item whose icon is used for a sprite, or -1 when it is an interface sprite. */
 	static int itemSprite(UiSprite which)
 	{

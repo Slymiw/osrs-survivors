@@ -47,8 +47,10 @@ public final class UiLayout
 		CLOSE_OPTIONS,
 		/** Opens the changelog. */
 		CHANGELOG,
-		/** Turns the changelog to the page in the index. */
-		CHANGELOG_PAGE,
+		/** Opens the save code page; on it, copies this device's code or loads one from another device. */
+		SAVE_CODE,
+		COPY_SAVE_CODE,
+		LOAD_SAVE_CODE,
 		// developer tools, shown with ?dev
 		DEV_END_RUN, DEV_LEVELS, DEV_CHAMPION, DEV_MAX_META, DEV_RESET_META, DEV_COINS, DEV_UNLOCK_MAPS
 	}
@@ -80,15 +82,12 @@ public final class UiLayout
 		public final Changelog.Release release;
 		/** Whether this is the newest release. */
 		public final boolean latest;
-		/** How many of its notes fit (all but on very short screens). */
-		public final int notes;
 
-		ReleaseCard(Rectangle bounds, Changelog.Release release, boolean latest, int notes)
+		ReleaseCard(Rectangle bounds, Changelog.Release release, boolean latest)
 		{
 			this.bounds = bounds;
 			this.release = release;
 			this.latest = latest;
-			this.notes = notes;
 		}
 	}
 
@@ -145,6 +144,8 @@ public final class UiLayout
 	static final int GRID_H = 5 * SLOT + 4 * SLOT_GAP;
 	// the pause screen: equipment and stats on the left, everything else in sections on the right
 	static final int LOADOUT_LEFT_W = 156;
+	/** The pause screen's narrowest, still holding its row of three buttons. */
+	static final int PAUSE_MIN_W = 3 * BUTTON_W + 2 * GAP + 2 * PAD;
 	static final int STAT_ROWS = 7;
 	static final int STAT_LINE = 15;
 	static final int LOADOUT_H = GRID_H + 10 + STAT_ROWS * STAT_LINE;
@@ -169,12 +170,19 @@ public final class UiLayout
 	/** Line under the menu title (tagline, loading status, hovered location's description). */
 	static final int SUBTITLE_H = 18;
 	static final int CHANGELOG_W = 560;
+	static final int SAVE_CODE_W = 440;
+	/** Room for the save code page's explanation above its buttons. */
+	public static final int SAVE_CODE_TEXT_H = 92;
 	static final int CHANGELOG_MAX_H = 600;
 	/** A release card's heading row (picture, version, headline, date). */
 	public static final int RELEASE_HEAD = 40;
 	/** One note's row on a release card. */
 	public static final int NOTE_H = 24;
 	static final int RELEASE_PAD = 8;
+	/** The changelog's scrollbar: its width and the gap between it and the cards. */
+	static final int SCROLLBAR_W = 8;
+	static final int SCROLLBAR_GAP = 6;
+	static final int SCROLL_THUMB_MIN = 24;
 	static final int LOCATION_CARD_W = 156;
 	static final int LOCATION_CARD_MAX_H = 60;
 	static final int LOCATION_CARD_MIN_H = 36;
@@ -186,16 +194,27 @@ public final class UiLayout
 	static final int REEL_GAP = 12;
 	/** Prize name and description under the reels. */
 	static final int PRIZE_H = 52;
-	// the bag: four columns of seven, item pictures 36 x 32 like the game's inventory
+	// the bag is the game's side panel (resizable classic): a row of seven tab stones above and
+	// below, stone pillars either side, and the inventory's four columns of seven on the stone
+	// backing between, item pictures 36 x 32, 42 apart across and 36 down, as in the game
+	public static final int SIDE_W = 241;
+	public static final int SIDE_H = 335;
+	public static final int SIDE_ROW_H = 37;
+	public static final int SIDE_PILLAR_W = 26;
 	public static final int BAG_COLS = 4;
 	static final int BAG_SLOT_W = 36;
 	static final int BAG_SLOT_H = 32;
 	static final int BAG_GAP_X = 6;
 	static final int BAG_GAP_Y = 4;
-	static final int BAG_PAD = 6;
-	public static final int BAG_HEAD = 16;
+	/** The first slot's corner on the stone backing. */
+	static final int BAG_LEFT = 16;
+	static final int BAG_TOP = 6;
 	/** Room left under the bag for the controls line. */
 	static final int BAG_BOTTOM = 18;
+	/** Room the bag leaves above it for the rest of the screen; smaller windows hide it. */
+	static final int BAG_ABOVE = 100;
+	/** Where the inventory's tab sits in the top row of stones. */
+	static final int INVENTORY_TAB = 3;
 
 	private UiLayout()
 	{
@@ -227,6 +246,11 @@ public final class UiLayout
 				break;
 			case PAUSED:
 				w = Math.min(640, view.width - 16);
+				if (sidePanel(view, session) != null)
+				{
+					// narrower, down to what its buttons need, to stand beside the bag
+					w = Math.min(w, Math.max(PAUSE_MIN_W, view.width - 16 - SIDE_W - GAP));
+				}
 				h = TITLE_H + Math.max(LOADOUT_H, rightHeight(session, w)) + PAD + BUTTON_H + PAD
 					+ (session.isDevTools() ? BUTTON_H + GAP : 0);
 				break;
@@ -239,6 +263,11 @@ public final class UiLayout
 				{
 					w = CHANGELOG_W;
 					h = Math.min(CHANGELOG_MAX_H, view.height - 16);
+				}
+				else if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
+				{
+					w = SAVE_CODE_W;
+					h = TITLE_H + SUBTITLE_H + SAVE_CODE_TEXT_H + 2 * BUTTON_H + GAP + PAD;
 				}
 				else if (session.getTitleScreen() != TitleScreen.MAIN)
 				{
@@ -260,11 +289,11 @@ public final class UiLayout
 		w = Math.min(w, view.width);
 		h = Math.min(h, view.height);
 		int x = view.x + (view.width - w) / 2;
-		Rectangle bag = bag(view, session);
-		if (bag != null && x + w + GAP > bag.x)
+		Rectangle side = sidePanel(view, session);
+		if (side != null && x + w + GAP > side.x)
 		{
 			// the pause screen steps aside for the bag
-			x = Math.max(view.x, bag.x - GAP - w);
+			x = Math.max(view.x, side.x - GAP - w);
 		}
 		return new Rectangle(x, view.y + (view.height - h) / 2, w, h);
 	}
@@ -272,19 +301,42 @@ public final class UiLayout
 	/** The bag panel, shown while playing and paused; null when hidden. */
 	public static Rectangle bag(Rectangle view, GameSession session)
 	{
+		Rectangle side = sidePanel(view, session);
+		return side != null && session.isBagShown() ? side : null;
+	}
+
+	/**
+	 * The side panel in the bottom right while playing and paused: the open bag, or with the bag
+	 * hidden just its two rows of tab stones, as the game collapses it. Null in small windows.
+	 */
+	public static Rectangle sidePanel(Rectangle view, GameSession session)
+	{
 		Phase phase = session.getPhase();
-		if (!session.isBagShown() || session.isOptionsOpen() || phase != Phase.RUNNING && phase != Phase.PAUSED)
+		if (session.isOptionsOpen() || phase != Phase.RUNNING && phase != Phase.PAUSED
+			|| SIDE_W + 16 > view.width || SIDE_H + BAG_BOTTOM + BAG_ABOVE > view.height)
 		{
 			return null;
 		}
-		int rows = Inventory.SIZE / BAG_COLS;
-		int w = BAG_COLS * BAG_SLOT_W + (BAG_COLS - 1) * BAG_GAP_X + 2 * BAG_PAD;
-		int h = BAG_HEAD + rows * BAG_SLOT_H + (rows - 1) * BAG_GAP_Y + 2 * BAG_PAD;
-		if (w + 16 > view.width || h + BAG_BOTTOM + 120 > view.height)
+		int h = session.isBagShown() ? SIDE_H : 2 * SIDE_ROW_H;
+		return new Rectangle(view.x + view.width - 8 - SIDE_W, view.y + view.height - BAG_BOTTOM - h, SIDE_W, h);
+	}
+
+	/** The inventory's tab stone, which opens and closes the bag; null when the side panel is hidden. */
+	public static Rectangle inventoryTab(Rectangle view, GameSession session)
+	{
+		Rectangle side = sidePanel(view, session);
+		if (side == null)
 		{
 			return null;
 		}
-		return new Rectangle(view.x + view.width - 8 - w, view.y + view.height - BAG_BOTTOM - h, w, h);
+		int x = sideTabX(INVENTORY_TAB);
+		return new Rectangle(side.x + x, side.y, 33, SIDE_ROW_H);
+	}
+
+	/** Left edge of a tab's 33-pixel icon box in a row of stones (the corner stones are wider). */
+	public static int sideTabX(int tab)
+	{
+		return tab == 0 ? 3 : tab == 6 ? 205 : 39 + 33 * (tab - 1);
 	}
 
 	/** Where a bag slot is drawn. */
@@ -292,8 +344,8 @@ public final class UiLayout
 	{
 		int col = index % BAG_COLS;
 		int row = index / BAG_COLS;
-		return new Rectangle(bag.x + BAG_PAD + col * (BAG_SLOT_W + BAG_GAP_X), bag.y + BAG_PAD + BAG_HEAD + row * (BAG_SLOT_H + BAG_GAP_Y),
-			BAG_SLOT_W, BAG_SLOT_H);
+		return new Rectangle(bag.x + SIDE_PILLAR_W + BAG_LEFT + col * (BAG_SLOT_W + BAG_GAP_X),
+			bag.y + SIDE_ROW_H + BAG_TOP + row * (BAG_SLOT_H + BAG_GAP_Y), BAG_SLOT_W, BAG_SLOT_H);
 	}
 
 	/** The bag slot under a point, or -1. Bag slots are not {@link #buttons}: they are clicked, dragged and dropped. */
@@ -411,22 +463,20 @@ public final class UiLayout
 					addGrid(buttons, view, panel, Action.PET_CARD, Pet.values().length);
 					break;
 				}
+				if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
+				{
+					addRow(buttons, panel, bottom - BUTTON_H - GAP, TITLE_BUTTON_W - 40, new Action[]{Action.COPY_SAVE_CODE, Action.LOAD_SAVE_CODE},
+						"Copy my code", "Load a code");
+					int pw = Math.min(BUTTON_W, panel.width - 2 * PAD);
+					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - BUTTON_H, pw, BUTTON_H),
+						"Back"));
+					break;
+				}
 				if (session.getTitleScreen() == TitleScreen.CHANGELOG)
 				{
-					int pages = changelogPages(panel).size();
-					int page = Math.min(session.getChangelogPage(), pages - 1);
-					int pw = Math.min(BUTTON_W, (panel.width - 2 * PAD - 2 * GAP) / 3);
-					int by = bottom - BUTTON_H;
-					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, by, pw, BUTTON_H), "Back"));
-					if (page > 0)
-					{
-						buttons.add(new Button(Action.CHANGELOG_PAGE, page - 1, new Rectangle(panel.x + PAD, by, pw, BUTTON_H), "Newer"));
-					}
-					if (page < pages - 1)
-					{
-						buttons.add(new Button(Action.CHANGELOG_PAGE, page + 1,
-							new Rectangle(panel.x + panel.width - PAD - pw, by, pw, BUTTON_H), "Older"));
-					}
+					int pw = Math.min(BUTTON_W, panel.width - 2 * PAD);
+					buttons.add(new Button(Action.BACK, 0, new Rectangle(panel.x + (panel.width - pw) / 2, bottom - BUTTON_H, pw, BUTTON_H),
+						"Back"));
 					break;
 				}
 				int bw = Math.min(TITLE_BUTTON_W, panel.width - 2 * PAD);
@@ -451,6 +501,11 @@ public final class UiLayout
 				}
 				buttons.add(new Button(Action.OPTIONS, 0, new Rectangle(bx, y, bw, BUTTON_H), "Options"));
 				y += BUTTON_H + GAP;
+				if (session.getMeta() != null)
+				{
+					buttons.add(new Button(Action.SAVE_CODE, 0, new Rectangle(bx, y, bw, BUTTON_H), "Save code (other devices)"));
+					y += BUTTON_H + GAP;
+				}
 				buttons.add(new Button(Action.CHANGELOG, 0, new Rectangle(bx, y, bw, BUTTON_H), "What's new"));
 				if (session.isDevTools() && session.getMeta() != null)
 				{
@@ -536,55 +591,94 @@ public final class UiLayout
 	}
 
 	/** The button under {@code point}, or null. */
-	/** The releases on the changelog's current page, as cards stacked down the panel. */
+	/**
+	 * Every release as a card, one list stacked down the changelog and moved up by its scroll;
+	 * cards wholly outside {@link #changelogViewport} are left out, the rest are clipped to it.
+	 */
 	public static List<ReleaseCard> releaseCards(Rectangle view, GameSession session)
 	{
-		Rectangle panel = panel(view, session);
-		if (panel == null || session.getTitleScreen() != TitleScreen.CHANGELOG || session.isOptionsOpen())
+		Rectangle port = changelogViewport(view, session);
+		if (port == null)
 		{
 			return Collections.emptyList();
 		}
-		List<Integer> pages = changelogPages(panel);
-		int page = Math.min(session.getChangelogPage(), pages.size() - 1);
-		int end = page + 1 < pages.size() ? pages.get(page + 1) : Changelog.RELEASES.size();
 		List<ReleaseCard> cards = new ArrayList<>();
-		int y = panel.y + TITLE_H + SUBTITLE_H;
-		int room = changelogRoom(panel);
-		for (int i = pages.get(page); i < end; i++)
+		int y = port.y - changelogScroll(view, session);
+		for (int i = 0; i < Changelog.RELEASES.size(); i++)
 		{
 			Changelog.Release r = Changelog.RELEASES.get(i);
-			// a release taller than the whole page keeps the notes that fit
-			int notes = Math.max(0, Math.min(r.notes.size(), (room - RELEASE_HEAD - RELEASE_PAD) / NOTE_H));
-			int h = RELEASE_HEAD + notes * NOTE_H + RELEASE_PAD;
-			cards.add(new ReleaseCard(new Rectangle(panel.x + PAD, y, panel.width - 2 * PAD, h), r, i == 0, notes));
+			int h = releaseHeight(r);
+			if (y + h > port.y && y < port.y + port.height)
+			{
+				cards.add(new ReleaseCard(new Rectangle(port.x, y, port.width, h), r, i == 0));
+			}
 			y += h + GAP;
 		}
 		return cards;
 	}
 
-	/** Height for release cards between the page's subtitle and its buttons. */
-	private static int changelogRoom(Rectangle panel)
+	/** The changelog's scrolling area: between the subtitle and the Back button, beside the scrollbar. */
+	public static Rectangle changelogViewport(Rectangle view, GameSession session)
 	{
-		return panel.height - TITLE_H - SUBTITLE_H - BUTTON_H - 2 * PAD;
+		Rectangle panel = panel(view, session);
+		if (panel == null || session.getPhase() != Phase.TITLE || session.getTitleScreen() != TitleScreen.CHANGELOG
+			|| session.isOptionsOpen())
+		{
+			return null;
+		}
+		int h = panel.height - TITLE_H - SUBTITLE_H - BUTTON_H - 2 * PAD;
+		return new Rectangle(panel.x + PAD, panel.y + TITLE_H + SUBTITLE_H, panel.width - 2 * PAD - SCROLLBAR_W - SCROLLBAR_GAP,
+			Math.max(0, h));
 	}
 
-	/** First release of each changelog page: as many whole cards as fit above the buttons. */
-	static List<Integer> changelogPages(Rectangle panel)
+	/** The scrollbar's track beside the cards; null when everything fits or off the changelog. */
+	public static Rectangle changelogTrack(Rectangle view, GameSession session)
 	{
-		int room = changelogRoom(panel);
-		List<Integer> starts = new ArrayList<>();
-		int used = room;
-		for (int i = 0; i < Changelog.RELEASES.size(); i++)
+		Rectangle port = changelogViewport(view, session);
+		if (port == null || maxChangelogScroll(view, session) <= 0)
 		{
-			int h = releaseHeight(Changelog.RELEASES.get(i));
-			if (used + h > room)
-			{
-				starts.add(i);
-				used = 0;
-			}
-			used += h + GAP;
+			return null;
 		}
-		return starts;
+		return new Rectangle(port.x + port.width + SCROLLBAR_GAP, port.y, SCROLLBAR_W, port.height);
+	}
+
+	/** The scrollbar's thumb: as tall as the share of the list showing, placed by the scroll. */
+	public static Rectangle changelogThumb(Rectangle view, GameSession session)
+	{
+		Rectangle track = changelogTrack(view, session);
+		if (track == null)
+		{
+			return null;
+		}
+		int content = changelogHeight();
+		int h = Math.max(SCROLL_THUMB_MIN, Math.min(track.height, track.height * track.height / content));
+		int max = maxChangelogScroll(view, session);
+		int y = track.y + (int) Math.round((track.height - h) * (double) changelogScroll(view, session) / max);
+		return new Rectangle(track.x, y, track.width, h);
+	}
+
+	/** How far the list can scroll: its height less the viewport's, never below 0. */
+	public static int maxChangelogScroll(Rectangle view, GameSession session)
+	{
+		Rectangle port = changelogViewport(view, session);
+		return port == null ? 0 : Math.max(0, changelogHeight() - port.height);
+	}
+
+	/** The session's scroll, kept within the list (the window may have grown since it was set). */
+	public static int changelogScroll(Rectangle view, GameSession session)
+	{
+		return Math.max(0, Math.min(maxChangelogScroll(view, session), (int) Math.round(session.getChangelogScroll())));
+	}
+
+	/** Height of every release card stacked with gaps between. */
+	static int changelogHeight()
+	{
+		int h = 0;
+		for (Changelog.Release r : Changelog.RELEASES)
+		{
+			h += releaseHeight(r) + GAP;
+		}
+		return Math.max(0, h - GAP);
 	}
 
 	private static int releaseHeight(Changelog.Release r)
@@ -638,7 +732,7 @@ public final class UiLayout
 	/** Buttons on the main menu page, for its height. */
 	private static int mainButtons(GameSession session)
 	{
-		int n = 3 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 2 : 0);
+		int n = 3 + (session.getContinueSummary() != null ? 1 : 0) + (session.getMeta() != null ? 3 : 0);
 		return n + (session.isDevTools() && session.getMeta() != null ? 1 : 0);
 	}
 

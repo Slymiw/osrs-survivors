@@ -1410,7 +1410,8 @@ public final class GameRenderer
 				title = session.getTitleScreen() == TitleScreen.LOCATIONS ? "Where do you want to fight?"
 					: session.getTitleScreen() == TitleScreen.UPGRADES ? "Upgrades"
 					: session.getTitleScreen() == TitleScreen.PETS ? "Pets"
-					: session.getTitleScreen() == TitleScreen.CHANGELOG ? "What's new" : "OSRS Survivors";
+					: session.getTitleScreen() == TitleScreen.CHANGELOG ? "What's new"
+					: session.getTitleScreen() == TitleScreen.SAVE_CODE ? "Save code" : "OSRS Survivors";
 				break;
 			case BOSS_DROP:
 				// the rarity's banner bounces in above the panel once the reels stop
@@ -1492,8 +1493,12 @@ public final class GameRenderer
 				}
 				else if (session.getTitleScreen() == TitleScreen.CHANGELOG)
 				{
-					line = "You're playing version " + Changelog.VERSION + ". Newest changes first.";
+					line = "You're playing version " + Changelog.VERSION + ". Newest first: scroll down for older.";
 					colour = HINT;
+				}
+				else if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
+				{
+					line = "Take your progress to another device or browser.";
 				}
 				else
 				{
@@ -1503,9 +1508,10 @@ public final class GameRenderer
 						: "Pick a place, gear up from your bare fists, survive.";
 				}
 				ui.centredFit(line, panel.x + panel.width / 2, panel.y + UiLayout.TITLE_H + 6, panel.width - 2 * UiLayout.PAD, colour);
-				for (UiLayout.ReleaseCard card : UiLayout.releaseCards(view, session))
+				drawChangelog(ui, view, session, mouse);
+				if (session.getTitleScreen() == TitleScreen.SAVE_CODE)
 				{
-					drawReleaseCard(ui, card);
+					drawSaveCodeHelp(ui, panel);
 				}
 				break;
 			case PAUSED:
@@ -1863,29 +1869,43 @@ public final class GameRenderer
 		}
 	}
 
-	private static final Color BAG_HOVER = new Color(255, 255, 255, 28);
+	private static final Color SIDE_STONE = new Color(62, 53, 41);
+	private static final Color SIDE_STONE_EDGE = new Color(28, 24, 18);
 	private static final Color POTION_FALLBACK = new Color(150, 90, 200);
 	private static final Color FOOD_FALLBACK = new Color(200, 120, 60);
 	private static final Color GEAR_FALLBACK = new Color(120, 120, 130);
 
 	/**
-	 * The bag in the bottom right corner, like the game's inventory: the items, the one being
-	 * dragged under the mouse, a tooltip for the one hovered, and any message about the bag.
+	 * The bag in the bottom right corner, the game's own side panel and inventory: tab stones,
+	 * pillars and stone backing, the items on it, the one being dragged under the mouse, a tooltip
+	 * for the one hovered, and any message about the bag. With the bag hidden only the stones show.
 	 */
 	private static void drawBag(Ui ui, Rectangle view, GameSession session, Point mouse, int dragging)
 	{
-		Rectangle bag = UiLayout.bag(view, session);
-		if (bag == null)
+		Rectangle side = UiLayout.sidePanel(view, session);
+		if (side == null)
 		{
 			return;
 		}
 		Graphics2D g = ui.g;
-		drawPanel(ui, bag);
+		Rectangle bag = UiLayout.bag(view, session);
+		BufferedImage stones = ui.assets.sprite(bag != null ? UiSprite.SIDE_PANEL : UiSprite.SIDE_TABS);
+		if (stones != null)
+		{
+			g.drawImage(stones, side.x, side.y, null);
+		}
+		else
+		{
+			g.setColor(SIDE_STONE);
+			g.fill(side);
+			g.setColor(SIDE_STONE_EDGE);
+			g.drawRect(side.x, side.y, side.width - 1, side.height - 1);
+		}
+		if (bag == null)
+		{
+			return;
+		}
 		Inventory items = session.getInventory();
-		ui.font(TextStyle.SMALL);
-		int headY = bag.y + 5 + ui.metrics().getAscent();
-		ui.text("Inventory (I)", bag.x + 8, headY, ORANGE);
-		ui.right(items.freeSlots() + " free", bag.x + bag.width - 8, headY, HINT);
 		int hovered = -1;
 		for (int i = 0; i < Inventory.SIZE; i++)
 		{
@@ -1893,8 +1913,6 @@ public final class GameRenderer
 			if (mouse != null && r.contains(mouse))
 			{
 				hovered = i;
-				g.setColor(BAG_HOVER);
-				g.fill(r);
 			}
 			Item item = items.get(i);
 			if (item != null && i != dragging)
@@ -1917,7 +1935,7 @@ public final class GameRenderer
 		Item held = items.get(dragging);
 		if (held != null && mouse != null)
 		{
-			drawItem(ui, held, mouse.x, mouse.y, 0.75f);
+			drawItem(ui, held, mouse.x, mouse.y, 0.5f);
 			return;
 		}
 		Item over = items.get(hovered);
@@ -1990,6 +2008,68 @@ public final class GameRenderer
 	/** Edge of a note's picture on the changelog. */
 	private static final int NOTE_ART = 20;
 
+	private static final String[] SAVE_CODE_HELP = {
+		"Progress is kept in this browser only. To play somewhere else, copy your code, send it to "
+			+ "yourself (an email, a note, a chat), then choose Load a code there and paste it.",
+		"The code holds your coins, upgrades, pets, best times and saved run. Loading one replaces "
+			+ "the progress in that browser.",
+	};
+
+	/** The save code page's explanation, between its subtitle and its buttons. */
+	private static void drawSaveCodeHelp(Ui ui, Rectangle panel)
+	{
+		ui.font(TextStyle.SMALL);
+		int width = panel.width - 2 * UiLayout.PAD;
+		int line = ui.metrics().getHeight();
+		int y = panel.y + UiLayout.TITLE_H + UiLayout.SUBTITLE_H + 4 + ui.metrics().getAscent();
+		int end = panel.y + UiLayout.TITLE_H + UiLayout.SUBTITLE_H + UiLayout.SAVE_CODE_TEXT_H;
+		for (String paragraph : SAVE_CODE_HELP)
+		{
+			for (String l : wrap(paragraph, ui.metrics(), width))
+			{
+				if (y > end)
+				{
+					return;
+				}
+				ui.text(l, panel.x + UiLayout.PAD, y, NOTE_TEXT);
+				y += line;
+			}
+			y += line / 2;
+		}
+	}
+
+	private static final Color SCROLL_TRACK = new Color(0, 0, 0, 90);
+	private static final Color SCROLL_THUMB = new Color(150, 132, 100);
+	private static final Color SCROLL_THUMB_HOVER = new Color(200, 176, 128);
+
+	/** The changelog's list of releases, clipped to its viewport, with a scrollbar beside it when it doesn't all fit. */
+	private static void drawChangelog(Ui ui, Rectangle view, GameSession session, Point mouse)
+	{
+		Rectangle port = UiLayout.changelogViewport(view, session);
+		if (port == null)
+		{
+			return;
+		}
+		Graphics2D g = ui.g;
+		java.awt.Shape oldClip = g.getClip();
+		g.clipRect(port.x, port.y, port.width, port.height);
+		for (UiLayout.ReleaseCard card : UiLayout.releaseCards(view, session))
+		{
+			drawReleaseCard(ui, card);
+		}
+		g.setClip(oldClip);
+		Rectangle track = UiLayout.changelogTrack(view, session);
+		Rectangle thumb = UiLayout.changelogThumb(view, session);
+		if (track == null || thumb == null)
+		{
+			return;
+		}
+		g.setColor(SCROLL_TRACK);
+		g.fillRoundRect(track.x, track.y, track.width, track.height, track.width, track.width);
+		g.setColor(mouse != null && track.contains(mouse) ? SCROLL_THUMB_HOVER : SCROLL_THUMB);
+		g.fillRoundRect(thumb.x + 1, thumb.y, thumb.width - 2, thumb.height, thumb.width - 2, thumb.width - 2);
+	}
+
 	/**
 	 * One release on the changelog: a version pill, the headline and the date across the top, then
 	 * a row per change with its picture (or a bullet).
@@ -2026,7 +2106,7 @@ public final class GameRenderer
 		ui.text(fit(release.headline, ui.metrics(), r.x + r.width - 18 - dateW - x), x, baseline, ORANGE);
 
 		int y = r.y + UiLayout.RELEASE_HEAD;
-		for (Changelog.Note note : release.notes.subList(0, card.notes))
+		for (Changelog.Note note : release.notes)
 		{
 			int cy = y + UiLayout.NOTE_H / 2 - 2;
 			int ax = r.x + 12;

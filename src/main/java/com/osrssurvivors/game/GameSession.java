@@ -132,8 +132,8 @@ public final class GameSession
 	private boolean optionsOpen;
 	/** Whether this player hasn't opened the changelog since the latest update. */
 	private boolean changelogNews;
-	/** Which page of the changelog is showing. */
-	private int changelogPage;
+	/** How far down the changelog's list is scrolled, in pixels (the layout keeps it in range). */
+	private double changelogScroll;
 	/** Real seconds the start menu has been showing, for its little animations. */
 	private double menuTime;
 	/** Developer tool: every location can be picked. */
@@ -336,7 +336,7 @@ public final class GameSession
 			if (screen == TitleScreen.CHANGELOG)
 			{
 				changelogNews = false;
-				changelogPage = 0;
+				changelogScroll = 0;
 			}
 		}
 	}
@@ -352,15 +352,15 @@ public final class GameSession
 		changelogNews = news;
 	}
 
-	public int getChangelogPage()
+	public double getChangelogScroll()
 	{
-		return changelogPage;
+		return changelogScroll;
 	}
 
-	/** Turns the changelog's page; the layout keeps it in range. */
-	public void setChangelogPage(int page)
+	/** Scrolls the changelog's list; the layout keeps it in range. */
+	public void setChangelogScroll(double scroll)
 	{
-		changelogPage = Math.max(0, page);
+		changelogScroll = Math.max(0, scroll);
 	}
 
 	/** Real seconds the start menu has been up. */

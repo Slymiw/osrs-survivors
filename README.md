@@ -6,7 +6,7 @@ real OSRS gear, prayers and spells. Champions drop unique loot on slot-machine r
 run earns coins for permanent upgrades.
 
 Open the page and play. There's nothing to install and no account to make. Progress is kept in
-your browser's local storage.
+your browser's local storage; a save code carries it to another device or browser.
 
 ## Playing
 
@@ -20,8 +20,12 @@ The start menu offers:
 - **Options**: master, combat and interface volume, and screen flashes, the level-up and boss
   drop animations and screen shake (turn any off for a calmer screen). Also on the pause
   screen. Kept in your browser.
-- **What's new**: the changelog, newest version first. After an update the button glows until
-  you've looked. The version number sits beside the game's name.
+- **Save code (other devices)**: *Copy my code* puts your progress (coins, upgrades, pets, best
+  times and saved run) on the clipboard as one line of text; on another device, *Load a code*
+  and paste it. Loading asks first, then replaces that browser's progress. Options stay per device.
+- **What's new**: the changelog, newest version first, in one list you scroll (mouse wheel,
+  the scrollbar, or the up and down keys). After an update the button glows until you've looked.
+  The version number sits beside the game's name.
 
 | Key | Action |
 | --- | --- |
@@ -30,7 +34,7 @@ The start menu offers:
 | Click an item in the inventory | Wear it, drink a dose or eat it (works while paused too) |
 | Shift-click or right-click an item | Drop it |
 | Drag an item | Move it to another slot |
-| I / Tab | Show or hide the inventory |
+| I / Tab or click the backpack tab | Show or hide the inventory |
 | M | Mute or unmute the sound |
 | 1 / 2 / 3 or click a card | Pick a level-up reward |
 | R or click *Reroll* | Re-roll the offers (with the Reroll upgrade) |
@@ -63,7 +67,9 @@ now, max all, reset all, +1000 coins, unlock maps).
     - Other prayers: Rapid Heal and Redemption.
     - Skills: Hitpoints, Agility, Swiftness, Longrange, Multicombat.
     - Spells and items: Telekinetic Grab, Lamp of Knowledge, Vengeance, Special Attack.
-  - **Inventory**: 28 slots in the bottom right, like the game's. Now and then a weapon for
+  - **Inventory**: 28 slots in the bottom right, drawn as the game's own side panel (resizable
+    classic: tab stones, pillars and stone backing from the game's sprites); clicking the backpack
+    tab collapses it to the stones, as in the game. Now and then a weapon for
     another style is offered for the bag; once one is there, armour and accessories for that
     style come too (one bag item a screen). Click the weapon to switch: the style's gear from the
     bag goes on with it and what it replaces goes in the bag, so one click swaps style and back.
